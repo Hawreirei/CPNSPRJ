@@ -1,0 +1,78 @@
+import { PROCEDURAL_TOPICS } from '../domain/blueprint';
+import { DEFAULT_PRICES, FALLBACK_PRICE } from '../providers/types';
+import { uid } from '../lib/id';
+import type { BatchItem, Blueprint, Difficulty, PlanBatch, Settings, Subtest } from '../domain/types';
+
+const MIX: Difficulty[] = ['sedang', 'mudah', 'sedang', 'sulit', 'sedang', 'mudah', 'sulit', 'sedang', 'sedang', 'mudah'];
+
+export const isProcedural = (b: Pick<PlanBatch, 'items'>) => b.items.length > 0 && b.items.every((i) => PROCEDURAL_TOPICS.has(i.topic));
+
+/** Chunk items into batches: procedural topics alone (no AI), the rest mixed up to `batchSize`. */
+export function chunkItems(subtest: Subtest, items: BatchItem[], batchSize: number, basedOn?: string[]): PlanBatch[] {
+  const batches: PlanBatch[] = [];
+  const procedural = items.filter((i) => PROCEDURAL_TOPICS.has(i.topic));
+  const ai = items.filter((i) => !PROCEDURAL_TOPICS.has(i.topic));
+  const groups = new Map<string, BatchItem[]>();
+  for (const it of procedural) groups.set(`${it.topic}|${it.difficulty}`, [...(groups.get(`${it.topic}|${it.difficulty}`) ?? []), it]);
+  for (const g of groups.values()) batches.push({ id: uid(), subtest, items: g, count: g.length, status: 'pending' });
+  for (let i = 0; i < ai.length; i += batchSize) {
+    const chunk = ai.slice(i, i + batchSize);
+    batches.push({ id: uid(), subtest, items: chunk, count: chunk.length, status: 'pending', basedOn: basedOn?.slice(i, i + batchSize) });
+  }
+  return batches;
+}
+
+/** Spread each section's questions over its topics and difficulties, then batch them. */
+export function planBatches(blueprint: Blueprint, batchSize: number): PlanBatch[] {
+  const batches: PlanBatch[] = [];
+  for (const sec of blueprint.sections) {
+    if (!sec.count || !sec.topics.length) continue;
+    const items: BatchItem[] = Array.from({ length: sec.count }, (_, i) => ({
+      topic: sec.topics[i % sec.topics.length],
+      // Rotate the mix per topic round so a topic doesn't always get the same difficulty.
+      difficulty: sec.difficulty === 'campuran' ? MIX[(i + Math.floor(i / sec.topics.length) * 3) % MIX.length] : sec.difficulty,
+    }));
+    batches.push(...chunkItems(sec.subtest, items, batchSize));
+  }
+  return batches;
+}
+
+export function batchLabel(b: PlanBatch): string {
+  const topics = [...new Set(b.items.map((i) => i.topic))];
+  return `${b.subtest} · ${topics.length > 2 ? `${topics.slice(0, 2).join(', ')} +${topics.length - 2}` : topics.join(', ')} (${b.count})`;
+}
+
+const OUT_PER_Q = { TWK: 420, TIU: 420, TKP: 650 } as const;
+const IN_PER_REQ = 1300;
+
+export interface PlanEstimate {
+  requests: number;
+  freeQuestions: number;
+  aiQuestions: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: [number, number];
+  minutes: [number, number];
+}
+
+export function estimatePlan(batches: PlanBatch[], model: string, settings: Pick<Settings, 'concurrency' | 'priceOverrides'>): PlanEstimate {
+  const pending = batches.filter((b) => b.status !== 'done');
+  const ai = pending.filter((b) => !isProcedural(b));
+  const aiQuestions = ai.reduce((n, b) => n + b.count, 0);
+  const inputTokens = ai.length * IN_PER_REQ;
+  const outputTokens = ai.reduce((n, b) => n + b.count * OUT_PER_Q[b.subtest], 0);
+  const price = settings.priceOverrides[model] ?? DEFAULT_PRICES[model] ?? FALLBACK_PRICE;
+  const cost = (inputTokens * price.input + outputTokens * price.output) / 1e6;
+  const conc = Math.max(1, settings.concurrency);
+  const secs = outputTokens / 80 / conc;
+  // Upper bound: reasoning models may spend 1-3x extra output on hidden thinking.
+  return {
+    requests: ai.length,
+    freeQuestions: pending.filter(isProcedural).reduce((n, b) => n + b.count, 0),
+    aiQuestions,
+    inputTokens,
+    outputTokens,
+    costUsd: [cost, cost * 3],
+    minutes: [secs / 60, (secs * 3) / 60],
+  };
+}
