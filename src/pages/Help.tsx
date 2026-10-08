@@ -53,6 +53,10 @@ export default function Help() {
             besok. Batas ulangan per hari bisa diubah di Pengaturan.
           </li>
           <li>
+            <b>Kamus Rumus TIU</b>: rumus dan pola deret, persen, jarak-waktu-kecepatan, perbandingan, dan silogisme, masing-masing dengan contoh. Disusun manual
+            dan bisa dicari; pembahasan soal TIU dengan topik yang cocok menautkan ke bagian kamusnya.
+          </li>
+          <li>
             <b>Bank Soal</b>: semua soal tersimpan dan bisa dipakai ulang untuk set baru tanpa AI. Centang soal lalu klik Unduh untuk mendapatkan file
             PDF/Word.
           </li>

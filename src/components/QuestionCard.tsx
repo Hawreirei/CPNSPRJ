@@ -8,6 +8,7 @@ import { CellView } from './FigureView';
 import { RichText } from './RichText';
 import { Badge, FlagList, SubtestBadge } from './ui';
 import { isGraded, isTopOption } from '../domain/examPackage';
+import { hasKamus, kamusPath } from '../domain/kamus';
 
 // The tutor, its prompts and the similar-question generator load only when someone asks.
 const TutorDialog = lazy(() => import('./TutorDialog'));
@@ -141,6 +142,14 @@ export function Explanation({
         </div>
       )}
       {q.subtest === 'TKP' && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Skor TKP adalah rasional berbasis nilai pelayanan publik, bukan kunci resmi.</p>}
+      {onFeedback && hasKamus(q.subtest, q.topic) && (
+        <p className="mt-2 text-xs">
+          {/* A new tab, so a practice or review in progress stays where it is. */}
+          <a className="text-brand-600 dark:text-brand-300 underline" href={`#${kamusPath(q.topic)}`} target="_blank" rel="noreferrer">
+            Rumus {q.topic} di Kamus Rumus TIU (tab baru)
+          </a>
+        </p>
+      )}
       {!!q.notes?.length && (
         <div className="mt-3 space-y-1.5">
           <div className="text-xs font-semibold">Catatan Anda</div>
