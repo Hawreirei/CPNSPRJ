@@ -1,10 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { db } from '../db';
-import type { ApiKeyRecord, KeyLimits, ProviderId } from '../domain/types';
-import { addKey, deleteKey, providerConfig, refreshKeyModel, refreshStaleKeyModels, setDefaultKey } from '../engine/keys';
+import type { ApiKeyRecord, KeyLimits, ModelInfo, ProviderId } from '../domain/types';
+import { addKey, chooseKeyModel, deleteKey, loadKeyModels, providerConfig, refreshKeyModel, refreshStaleKeyModels, setDefaultKey, useAutoModel } from '../engine/keys';
+import { ModelSelect } from '../components/ModelSelect';
 import { clearQuotaBlock, defaultLimits, keyUsage, LIMIT_PRESETS, limitsOf, releaseRequest, reserveRequest } from '../engine/quota';
-import { complete, groupModels, isModelUnavailable, listModels, pickRecommendedModel, ProviderError, PROVIDERS, suggestedReplacement } from '../providers';
+import { complete, isModelUnavailable, listModelInfo, pickRecommendedModel, ProviderError, PROVIDERS, suggestedReplacement } from '../providers';
 import type { ProviderConfig } from '../providers';
 import { Badge, fmtDate } from '../components/ui';
 
@@ -12,36 +13,6 @@ async function testConnection(cfg: ProviderConfig): Promise<string> {
   const t = Date.now();
   const res = await complete(cfg, { system: 'Balas hanya dengan JSON.', prompt: 'Balas tepat: {"ok": true}', maxTokens: 4000 });
   return `Berhasil dengan ${cfg.model} (${((Date.now() - t) / 1000).toFixed(1)} dtk, ${res.inputTokens + res.outputTokens} token).`;
-}
-
-function ModelPicker({ value, onChange, models, suggestions, disabled }: { value: string; onChange: (m: string) => void; models: string[]; suggestions: string[]; disabled?: boolean }) {
-  const groups = groupModels(models);
-  if (groups.length) {
-    return (
-      <select className="input font-mono" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
-        {!models.includes(value) && value && <option value={value}>{value} (tidak ada di daftar akun)</option>}
-        {groups.map((g) => (
-          <optgroup key={g.label} label={g.label}>
-            {g.ids.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-    );
-  }
-  return (
-    <>
-      <input className="input font-mono" list="model-suggestions" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} />
-      <datalist id="model-suggestions">
-        {suggestions.map((m) => (
-          <option key={m} value={m} />
-        ))}
-      </datalist>
-    </>
-  );
 }
 
 function LimitsEditor({ value, onChange }: { value: KeyLimits; onChange: (l: KeyLimits) => void }) {
@@ -98,7 +69,8 @@ export default function ApiKeys() {
   const [model, setModel] = useState(PROVIDERS.gemini.defaultModel);
   const [autoModel, setAutoModel] = useState(true);
   const [limits, setLimits] = useState<KeyLimits>(defaultLimits('gemini'));
-  const [models, setModels] = useState<string[]>([]);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [modelsAt, setModelsAt] = useState<number | undefined>();
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const info = PROVIDERS[provider];
@@ -113,21 +85,33 @@ export default function ApiKeys() {
     setStatus(null);
   }
 
-  /** Read the account's models and select the newest stable recommended one. */
+  /** Read the account's models; in automatic mode also select the newest stable recommended one. */
   async function discover(): Promise<{ model: string; checked: boolean; note: string }> {
     try {
-      const list = await listModels(cfgFor(model));
+      const list = await listModelInfo(cfgFor(model));
       setModels(list);
-      const pick = pickRecommendedModel(list);
+      setModelsAt(Date.now());
+      if (!autoModel) return { model, checked: true, note: `${list.length} model ditemukan.` };
+      const pick = pickRecommendedModel(list.map((m) => m.id));
       if (pick) {
         setModel(pick);
-        return { model: pick, checked: true, note: `${list.length} model ditemukan; dipilih model stabil terbaru: ${pick}.` };
+        return { model: pick, checked: true, note: `${list.length} model ditemukan; otomatis dipilih model stabil terbaru: ${pick}.` };
       }
       return { model, checked: true, note: `${list.length} model ditemukan, tetapi tidak ada yang dikenali sebagai model teks stabil. Pilih manual.` };
     } catch (e) {
       return { model, checked: false, note: `Daftar model tidak bisa dibaca (${(e as Error).message}). Memakai ${model}.` };
     }
   }
+
+  // Load the model list as soon as a key is typed (listing costs no generation quota).
+  useEffect(() => {
+    if (!ready) return;
+    const t = setTimeout(() => {
+      void discover().then((r) => !r.checked && setStatus({ ok: false, msg: r.note }));
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey, baseUrl, provider]);
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);
@@ -184,36 +168,64 @@ export default function ApiKeys() {
             </div>
           )}
           <div className="sm:col-span-2 space-y-2">
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" className="mt-1" checked={autoModel} onChange={(e) => setAutoModel(e.target.checked)} />
-              <span>
-                <b>Pilih model terbaru yang stabil secara otomatis</b> (disarankan). Aplikasi membaca daftar model akun Anda, memilih versi stabil terbaru, mengecek
-                ulang tiap minggu, dan otomatis berpindah bila model dihentikan penyedia.
-              </span>
+            <label className="label">
+              Model {models.length > 0 && <span className="muted">· {models.length} model tersedia di akun Anda</span>}
             </label>
-            <div>
-              <label className="label">Model</label>
-              <div className="flex gap-2">
-                <ModelPicker value={model} onChange={setModel} models={models} suggestions={info.suggestedModels} />
-                <button
-                  className="btn shrink-0"
-                  disabled={busy || !ready}
-                  onClick={() =>
-                    run(async () => {
-                      const r = await discover();
-                      setStatus({ ok: r.checked, msg: r.note });
-                    })
+            <div className="flex gap-2">
+              <ModelSelect
+                models={models}
+                value={autoModel ? null : model}
+                autoOption={`Otomatis — model stabil terbaru${models.length && model ? ` (sekarang: ${model})` : ''}`}
+                onChange={(c) => {
+                  if (c.kind === 'model') {
+                    setAutoModel(false);
+                    setModel(c.id);
+                  } else {
+                    setAutoModel(true);
+                    const pick = pickRecommendedModel(models.map((m) => m.id));
+                    if (pick) setModel(pick);
                   }
-                >
-                  Muat model
-                </button>
-              </div>
-              <p className="muted mt-1 text-xs">
-                {autoModel
-                  ? 'Model di atas akan diganti otomatis dengan model stabil terbaru saat key disimpan. Anda tetap bisa memilih manual dengan mematikan opsi otomatis.'
-                  : 'Mode manual: model tetap seperti pilihan Anda. Model "preview" bisa berubah atau dihentikan tanpa pemberitahuan.'}
-              </p>
+                }}
+              />
+              <button
+                className="btn shrink-0"
+                disabled={busy || !ready}
+                title="Membaca daftar model tidak memakai kuota"
+                onClick={() =>
+                  run(async () => {
+                    const r = await discover();
+                    setStatus({ ok: r.checked, msg: r.note });
+                  })
+                }
+              >
+                Muat ulang daftar
+              </button>
             </div>
+            {!models.length && (
+              <div>
+                <input
+                  className="input font-mono"
+                  list="model-suggestions"
+                  placeholder="atau ketik ID model, misal gemini-3.5-flash"
+                  value={autoModel ? '' : model}
+                  onChange={(e) => {
+                    setAutoModel(!e.target.value);
+                    setModel(e.target.value || PROVIDERS[provider].defaultModel);
+                  }}
+                />
+                <datalist id="model-suggestions">
+                  {info.suggestedModels.map((m) => (
+                    <option key={m} value={m} />
+                  ))}
+                </datalist>
+              </div>
+            )}
+            <p className="muted text-xs">
+              {autoModel
+                ? 'Otomatis: aplikasi memilih model stabil versi terbaru, mengecek ulang tiap minggu, dan berpindah bila model dihentikan penyedia.'
+                : 'Manual: model ini dipakai apa adanya dan tidak akan diganti otomatis. Model "preview" bisa berubah atau dihentikan sewaktu-waktu.'}{' '}
+              Model juga bisa dipilih per set di halaman Set Baru.
+            </p>
           </div>
           <div className="sm:col-span-2">
             <label className="label">Batas kuota key ini</label>
@@ -248,7 +260,9 @@ export default function ApiKeys() {
               run(async () => {
                 const r = autoModel ? await discover() : { model, checked: false, note: '' };
                 if (!r.model) throw new Error('Pilih model terlebih dahulu.');
-                await addKey({ provider, label: label || info.name, apiKey, model: r.model, baseUrl, autoModel, modelCheckedAt: r.checked ? Date.now() : undefined, limits });
+                // Manual choice is saved exactly as picked.
+                const rec = await addKey({ provider, label: label || info.name, apiKey, model: r.model, baseUrl, autoModel, modelCheckedAt: r.checked ? Date.now() : undefined, limits });
+                if (models.length) await db.keys.update(rec.id, { models, modelsFetchedAt: modelsAt });
                 setApiKey('');
                 setLabel('');
                 setStatus({ ok: true, msg: `Key disimpan (terenkripsi) dengan model ${r.model}.${r.note ? ' ' + r.note : ''}` });
@@ -281,7 +295,6 @@ export default function ApiKeys() {
 
 function KeyRow({ k }: { k: ApiKeyRecord }) {
   const [msg, setMsg] = useState<string | null>(null);
-  const [models, setModels] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [editLimits, setEditLimits] = useState(false);
   const auto = k.autoModel !== false;
@@ -331,7 +344,7 @@ function KeyRow({ k }: { k: ApiKeyRecord }) {
                   if (!(e instanceof ProviderError) || !isModelUnavailable(e.status, e.message)) throw e;
                   // The model was retired: switch (auto keys) or tell the user what to pick (manual keys).
                   const hint = suggestedReplacement(e.message);
-                  if (!auto) throw new Error(`Model ${k.model} sudah tidak tersedia.${hint ? ` Penyedia menyarankan ${hint}.` : ''} Pilih model lain atau aktifkan "otomatis".`);
+                  if (!auto) throw new Error(`Model ${k.model} sudah tidak tersedia.${hint ? ` Penyedia menyarankan ${hint}.` : ''} Pilih model lain di daftar, atau pilih "Otomatis".`);
                   const r = await refreshKeyModel(k.id, { exclude: k.model, hint });
                   if (!r.changed) throw e;
                   const retry = await reserveRequest(k, 200);
@@ -354,36 +367,44 @@ function KeyRow({ k }: { k: ApiKeyRecord }) {
       </div>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="muted text-xs">Model:</span>
-        {auto ? (
-          <span className="font-mono text-xs">{k.model}</span>
-        ) : (
-          <div className="w-72">
-            <ModelPicker value={k.model} models={models} suggestions={PROVIDERS[k.provider].suggestedModels} onChange={(m) => m.trim() && db.keys.update(k.id, { model: m.trim() })} />
-          </div>
-        )}
-        {auto && <Badge tone="green">otomatis</Badge>}
-        {k.modelCheckedAt && <span className="muted text-xs">dicek {fmtDate(k.modelCheckedAt)}</span>}
+        <div className="min-w-0 flex-1 sm:max-w-md">
+          <ModelSelect
+            className="input text-xs"
+            models={k.models ?? []}
+            value={auto ? null : k.model}
+            autoOption={`Otomatis — model stabil terbaru (sekarang: ${k.model})`}
+            disabled={busy}
+            onChange={(c) =>
+              act(async () => {
+                if (c.kind === 'model') {
+                  await chooseKeyModel(k.id, c.id);
+                  return `Model diatur ke ${c.id} (manual, tidak akan diganti otomatis).`;
+                }
+                const r = await useAutoModel(k.id);
+                return `Mode otomatis aktif: ${r.model}.`;
+              })
+            }
+          />
+        </div>
+        {auto ? <Badge tone="green">otomatis</Badge> : <Badge tone="blue">manual</Badge>}
         <button
           className="btn btn-sm"
           disabled={busy}
+          title="Membaca daftar model tidak memakai kuota"
           onClick={() =>
             act(async () => {
-              if (!auto) {
-                const list = await listModels(await providerConfig(k.id));
-                setModels(list);
-                return `${list.length} model dimuat. Pilih dari daftar.`;
+              if (auto) {
+                const r = await refreshKeyModel(k.id);
+                return `${(await db.keys.get(k.id))?.models?.length ?? 0} model dimuat. ${r.changed ? `Model diperbarui ke ${r.model}.` : `Sudah memakai model stabil terbaru (${r.model}).`}`;
               }
-              const r = await refreshKeyModel(k.id);
-              return r.changed ? `Model diperbarui ke ${r.model}.` : `Sudah memakai model stabil terbaru (${r.model}).`;
+              const list = await loadKeyModels(k.id);
+              return `${list.length} model dimuat.`;
             })
           }
         >
-          {auto ? 'Perbarui model' : 'Muat daftar model'}
+          Muat ulang daftar
         </button>
-        <label className="ml-auto flex items-center gap-1 text-xs">
-          <input type="checkbox" checked={auto} onChange={(e) => db.keys.update(k.id, { autoModel: e.target.checked })} />
-          otomatis
-        </label>
+        {k.modelsFetchedAt && <span className="muted text-xs">daftar {fmtDate(k.modelsFetchedAt)}</span>}
       </div>
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="muted">Kuota:</span>

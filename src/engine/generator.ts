@@ -111,8 +111,8 @@ interface ModelSession {
   onWait?: (ms: number, reason: string) => void;
 }
 
-async function openSession(keyId?: string): Promise<ModelSession> {
-  const { keyId: id, autoModel, ...cfg } = await freshProviderConfig(keyId);
+async function openSession(keyId?: string, modelOverride?: string): Promise<ModelSession> {
+  const { keyId: id, autoModel, ...cfg } = await freshProviderConfig(keyId, modelOverride);
   const rec = (await resolveKey(id))!;
   return { cfg, keyId: id, autoModel, key: { id: rec.id, provider: rec.provider, limits: rec.limits } };
 }
@@ -190,6 +190,14 @@ async function callAndParse(
         if (session.cfg.model !== model || (await swapModel(session, e.message))) {
           attempt--;
           continue;
+        }
+        if (!session.autoModel) {
+          // The user picked this model: don't switch it silently, explain instead.
+          const hint = suggestedReplacement(e.message);
+          throw new ProviderError(
+            `Model ${model} yang Anda pilih sudah tidak tersedia untuk key ini.${hint ? ` Penyedia menyarankan ${hint}.` : ''} Pilih model lain di halaman API Keys (atau "Otomatis"), lalu klik Lanjutkan.`,
+            { status: e.status },
+          );
         }
       }
       const retryable = !(e instanceof ProviderError) || e.retryable;
@@ -286,7 +294,7 @@ export async function startGeneration(setId: string): Promise<void> {
   let session: ModelSession | null = null;
   if (todo.some((b) => !isProcedural(b))) {
     try {
-      session = await openSession(set.keyId);
+      session = await openSession(set.keyId, set.model);
       session.onSwap = (from, to) => log(setId, 'info', `Model ${from} tidak tersedia lagi; otomatis beralih ke ${to}.`);
       session.onWait = (ms, reason) => {
         update(setId, { waitUntil: Date.now() + ms, waitReason: reason });

@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { describeStatus, quotaInfo } from './http';
 import { ProviderError } from './types';
 import type { LlmRequest, LlmResponse, ProviderConfig } from './types';
+import type { ModelInfo } from '../domain/types';
 
 function client(cfg: ProviderConfig) {
   // BYOK app: the user's own key is sent straight from their browser to Anthropic.
@@ -49,11 +50,11 @@ export async function completeAnthropic(cfg: ProviderConfig, req: LlmRequest): P
   }
 }
 
-export async function listAnthropicModels(cfg: ProviderConfig): Promise<string[]> {
+export async function listAnthropicModels(cfg: ProviderConfig): Promise<ModelInfo[]> {
   try {
-    const ids: string[] = [];
-    for await (const m of client(cfg).models.list()) ids.push(m.id);
-    return ids;
+    const out: ModelInfo[] = [];
+    for await (const m of client(cfg).models.list()) out.push({ id: m.id, label: m.display_name });
+    return out;
   } catch (e) {
     return wrap(e);
   }
