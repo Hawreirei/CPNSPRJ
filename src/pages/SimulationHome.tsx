@@ -18,6 +18,8 @@ export default function SimulationHome() {
   const [shuffleQ, setShuffleQ] = useState(false);
   const [duration, setDuration] = useState<number | ''>('');
   const [practiceTimed, setPracticeTimed] = useState(false);
+  const [catMode, setCatMode] = useState(false);
+  const [lockedOrder, setLockedOrder] = useState(false);
   /** Topics picked for practice; `null` until the set's questions have loaded. */
   const [topics, setTopics] = useState<string[] | null>(null);
   const [error, setError] = useState('');
@@ -59,15 +61,21 @@ export default function SimulationHome() {
 
   async function start() {
     setError('');
+    const cat = !practice && catMode;
+    // Full screen needs the click itself, so it is asked for before anything is awaited.
+    if (cat && document.fullscreenEnabled) void document.documentElement.requestFullscreen().catch(() => {});
     try {
       const a = await startAttempt(setId, {
         shuffleQuestions: shuffleQ,
         durationMinutes: practice && !practiceTimed ? 0 : Number(duration),
         mode,
         filter: practice ? { topics: topics ?? [] } : undefined,
+        catMode: cat,
+        lockedOrder: cat && lockedOrder,
       });
       nav(attemptPath(a));
     } catch (e) {
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
       setError(e instanceof Error ? e.message : String(e));
     }
   }
@@ -177,6 +185,30 @@ export default function SimulationHome() {
                 <input type="checkbox" checked={practiceTimed} onChange={(e) => setPracticeTimed(e.target.checked)} />
                 Pakai batas waktu
               </label>
+            )}
+            {!practice && (
+              <>
+                <label className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" className="mt-1" checked={catMode} onChange={(e) => setCatMode(e.target.checked)} aria-describedby="cat-mode-help" />
+                  <span>
+                    Mode CAT
+                    <span id="cat-mode-help" className="muted block text-xs">
+                      Layar penuh bila perangkat mendukung, dan setiap kali Anda meninggalkan tab ujian dicatat di Laporan Skor (tanpa pengurangan nilai).
+                    </span>
+                  </span>
+                </label>
+                {catMode && (
+                  <label className="flex items-start gap-2 pl-6 text-sm">
+                    <input type="checkbox" className="mt-1" checked={lockedOrder} onChange={(e) => setLockedOrder(e.target.checked)} aria-describedby="locked-order-help" />
+                    <span>
+                      Kunci urutan sub-tes (TWK → TIU → TKP, tanpa kembali)
+                      <span id="locked-order-help" className="muted block text-xs">
+                        Latihan pembagian waktu. Kami belum menemukan sumber resmi BKN bahwa ujian CAT sungguhan mengunci urutan sub-tes.
+                      </span>
+                    </span>
+                  </label>
+                )}
+              </>
             )}
           </div>
           <ul className="muted list-disc space-y-1 pl-5 text-xs">

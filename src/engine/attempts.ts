@@ -16,6 +16,10 @@ export async function startAttempt(
     durationMinutes: number;
     mode?: AttemptMode;
     filter?: QuestionFilter;
+    /** Exam only: full screen and tab-away log (see domain/catMode.ts). */
+    catMode?: boolean;
+    /** Exam in Mode CAT only: sub-tests one after another, no way back. */
+    lockedOrder?: boolean;
   },
 ): Promise<Attempt> {
   const set = await db.sets.get(setId);
@@ -28,6 +32,10 @@ export async function startAttempt(
     // A reading passage's questions move as one block, in their own order.
     questions = SUBTESTS.flatMap((s) => shuffleUnits(questions.filter((q) => q.subtest === s)));
   }
+  const catMode = mode === 'exam' && !!opts.catMode;
+  const lockedOrder = catMode && !!opts.lockedOrder;
+  // A locked order walks sub-test blocks, so each sub-test must be one block.
+  if (lockedOrder) questions = SUBTESTS.flatMap((s) => questions.filter((q) => q.subtest === s));
   const now = Date.now();
   const attempt: Attempt = {
     id: uid(),
@@ -42,6 +50,7 @@ export async function startAttempt(
     timeSpent: {},
     currentIndex: 0,
     passing: await passingForSet(set, questions),
+    ...(catMode && { catMode, lockedOrder, tabAways: [] }),
   };
   await db.attempts.add(attempt);
   return attempt;

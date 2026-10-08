@@ -237,6 +237,17 @@ export interface Attempt {
   currentIndex: number;
   passing: Record<Subtest, number>;
   result?: AttemptResult;
+  /** Exam taken in "Mode CAT": full screen where supported, and leaving the tab is recorded. */
+  catMode?: boolean;
+  /** Mode CAT option: each sub-test in turn, with no way back to an earlier one. */
+  lockedOrder?: boolean;
+  /** Mode CAT: each time the exam tab was hidden, when and for how long. Recorded only, never penalised. */
+  tabAways?: TabAway[];
+}
+
+export interface TabAway {
+  at: number;
+  ms: number;
 }
 
 /** Self-assessment after seeing the explanation in a review. */

@@ -16,6 +16,25 @@ import { QuestionCard } from '../components/QuestionCard';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { FeedbackDialog } from '../components/FeedbackDialog';
 import { Badge, Empty, fmtDate, ProgressBar, SubtestBadge } from '../components/ui';
+import { tabAwaySummary } from '../domain/catMode';
+import type { TabAway } from '../domain/types';
+
+/** What Mode CAT recorded. Shown, never scored. */
+function CatModeCard({ aways, lockedOrder }: { aways?: TabAway[]; lockedOrder: boolean }) {
+  const t = tabAwaySummary(aways);
+  return (
+    <section className="card space-y-1 text-sm" aria-labelledby="cat-mode-title">
+      <h2 id="cat-mode-title">Mode CAT</h2>
+      <p>
+        {t.count === 0
+          ? 'Tidak pernah meninggalkan halaman ujian.'
+          : `Meninggalkan halaman ujian ${t.count} kali, total ${fmtSec(t.totalMs)}${t.count > 1 ? ` (terlama ${fmtSec(t.longestMs)})` : ''}.`}
+      </p>
+      {lockedOrder && <p className="muted">Urutan sub-tes dikunci.</p>}
+      <p className="muted text-xs">Hanya catatan untuk Anda; nilai tidak dikurangi.</p>
+    </section>
+  );
+}
 
 export default function ScoreReport() {
   const { attemptId = '' } = useParams();
@@ -72,6 +91,8 @@ export default function ScoreReport() {
           </Link>
         </div>
       </div>
+
+      {a.catMode && <CatModeCard aways={a.tabAways} lockedOrder={!!a.lockedOrder} />}
 
       <div className={`card ${practice ? '' : `border-2 ${r.passedAll ? 'border-green-500' : 'border-red-400'}`}`}>
         <div className="flex flex-wrap items-center gap-4">
