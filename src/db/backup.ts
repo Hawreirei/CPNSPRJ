@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { SNOOZE_DAYS } from '../domain/backupReminder';
 import { db } from './index';
-import type { Attempt, QSet, Question, ReviewItem } from '../domain/types';
+import type { Attempt, CardState, QSet, Question, ReviewItem } from '../domain/types';
 import { REVIEW_DAYS_KEY } from '../engine/review';
 import { logDay } from '../engine/streak';
 
@@ -17,6 +17,8 @@ interface BackupFile {
   reviews?: ReviewItem[];
   /** Days reviews were graded, for the streak. Missing in older backups. */
   reviewDays?: string[];
+  /** Flashcards being learned (#47). Missing in older backups. */
+  cards?: CardState[];
 }
 
 export async function exportBackup(): Promise<Blob> {
@@ -30,6 +32,7 @@ export async function exportBackup(): Promise<Blob> {
     attempts: await db.attempts.toArray(),
     reviews: await db.reviews.toArray(),
     reviewDays: ((await db.meta.get(REVIEW_DAYS_KEY))?.value as string[] | undefined) ?? [],
+    cards: await db.cards.toArray(),
   };
   return new Blob([JSON.stringify(data)], { type: 'application/json' });
 }
@@ -38,11 +41,12 @@ export async function exportBackup(): Promise<Blob> {
 export async function importBackup(file: File): Promise<{ sets: number; questions: number; attempts: number; reviews: number }> {
   const data = JSON.parse(await file.text()) as Partial<BackupFile>;
   if (data.app !== 'cpns-skd-builder') throw new Error('Berkas bukan cadangan CPNS SKD Set Builder.');
-  await db.transaction('rw', [db.sets, db.questions, db.attempts, db.reviews, db.meta], async () => {
+  await db.transaction('rw', [db.sets, db.questions, db.attempts, db.reviews, db.cards, db.meta], async () => {
     if (data.questions?.length) await db.questions.bulkPut(data.questions);
     if (data.sets?.length) await db.sets.bulkPut(data.sets.map((s) => ({ ...s, status: s.status === 'generating' ? 'paused' : s.status })));
     if (data.attempts?.length) await db.attempts.bulkPut(data.attempts);
     if (data.reviews?.length) await db.reviews.bulkPut(data.reviews);
+    if (data.cards?.length) await db.cards.bulkPut(data.cards);
     if (data.settings) await db.meta.put({ key: 'settings', value: data.settings });
     if (Array.isArray(data.reviewDays) && data.reviewDays.length) {
       const mine = ((await db.meta.get(REVIEW_DAYS_KEY))?.value as string[] | undefined) ?? [];

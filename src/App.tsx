@@ -21,6 +21,8 @@ const Practice = lazy(() => import('./pages/Practice'));
 const Review = lazy(() => import('./pages/Review'));
 const ImportSet = lazy(() => import('./pages/ImportSet'));
 const ImportPhoto = lazy(() => import('./pages/ImportPhoto'));
+const Kamus = lazy(() => import('./pages/Kamus'));
+const Kartu = lazy(() => import('./pages/Kartu'));
 
 /** Full-screen pages (exam, practice, print) wait for their code on their own; the rest under the layout's menu. */
 const page = (el: ReactNode) => <Suspense fallback={null}>{el}</Suspense>;
@@ -45,6 +47,8 @@ export default function App() {
           <Route path="progress" element={<Progress />} />
           <Route path="keys" element={<ApiKeys />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="kamus" element={<Kamus />} />
+          <Route path="kartu" element={<Kartu />} />
           <Route path="help" element={<Help />} />
           <Route path="import" element={<ImportSet />} />
         </Route>

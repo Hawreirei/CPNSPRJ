@@ -60,7 +60,10 @@ export function nextInterval(item: Pick<ReviewItem, 'interval' | 'ease' | 'reps'
   return { interval: Math.min(MAX_INTERVAL, Math.max(1, interval)), ease };
 }
 
-export function schedule(item: ReviewItem, grade: Grade, now: number): ReviewItem {
+/** The scheduling fields shared by notebook questions and flashcards (#47). */
+export type SrsState = Pick<ReviewItem, 'due' | 'interval' | 'ease' | 'reps' | 'lapses' | 'lastReviewedAt' | 'lastGrade'>;
+
+export function schedule<T extends SrsState>(item: T, grade: Grade, now: number): T {
   const { interval, ease } = nextInterval(item, grade);
   return {
     ...item,

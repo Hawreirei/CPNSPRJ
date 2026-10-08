@@ -301,6 +301,22 @@ export interface ReviewItem {
   sourceAttemptId?: string;
 }
 
+/** A flashcard being learned (#47): its spaced-repetition schedule, the same as a notebook question's. */
+export interface CardState {
+  /** Stable id from src/domain/cards.ts, e.g. "uud-28I-1" or "pancasila-4". */
+  cardId: string;
+  due: number;
+  interval: number;
+  ease: number;
+  reps: number;
+  lapses: number;
+  addedAt: number;
+  /** First time the card was graded: new cards a day are limited by it. */
+  firstReviewedAt?: number;
+  lastReviewedAt?: number;
+  lastGrade?: Grade;
+}
+
 export type ProviderId = 'gemini' | 'openai' | 'anthropic' | 'compat';
 
 export interface ApiKeyRecord {
