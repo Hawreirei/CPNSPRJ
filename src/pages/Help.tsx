@@ -7,7 +7,8 @@ export default function Help() {
         <h2>Cara kerja</h2>
         <ol className="list-decimal space-y-1 pl-5">
           <li>
-            <b>API key</b>: tempel key Gemini, OpenAI, Claude, atau penyedia OpenAI-compatible (misal OpenRouter). Aplikasi memakai model hemat secara default.
+            <b>API key</b>: tempel key Gemini, OpenAI, Claude, atau penyedia OpenAI-compatible (misal OpenRouter). Aplikasi membaca daftar model akun Anda, memilih
+            model stabil terbaru, dan otomatis pindah ke model pengganti bila model lama dihentikan penyedia.
           </li>
           <li>
             <b>Set Baru</b>: pilih preset, sub-tes, topik, jumlah, dan kesulitan. Panel Rencana menampilkan jumlah permintaan, perkiraan biaya, dan waktu sebelum Anda

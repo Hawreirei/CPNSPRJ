@@ -172,6 +172,9 @@ export interface ApiKeyRecord {
   iv: Uint8Array<ArrayBuffer>;
   isDefault: boolean;
   createdAt: number;
+  /** When true, the app keeps `model` on the newest stable recommended model. */
+  autoModel?: boolean;
+  modelCheckedAt?: number;
 }
 
 export interface Settings {

@@ -31,7 +31,14 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 
 ## Penyedia AI
 
-Gemini, OpenAI, Anthropic Claude, dan endpoint OpenAI-compatible (misal OpenRouter). Default memakai model hemat (`gemini-2.5-flash`, `gpt-5-mini`, `claude-haiku-4-5`). Tombol **Muat model** membaca daftar model akun Anda dan memilih model hemat secara otomatis. Permintaan dikirim langsung dari browser ke penyedia.
+Gemini, OpenAI, Anthropic Claude, dan endpoint OpenAI-compatible (misal OpenRouter). Permintaan dikirim langsung dari browser ke penyedia.
+
+**Pemilihan model otomatis.** Nama model tidak dikunci di kode, karena penyedia rutin menghentikan model lama:
+
+- Saat key disimpan, aplikasi membaca daftar model akun Anda dan memilih model **stabil dengan versi terbaru** di kelas seimbang: Gemini Flash, GPT mini, atau Claude Sonnet. Model preview/eksperimental dan model non-teks (embedding, gambar, audio) dilewati.
+- Pilihan dicek ulang tiap 7 hari sebelum generasi.
+- Bila penyedia menolak model karena sudah dihentikan (misal 404), aplikasi berpindah ke model stabil terbaru lalu mengulang permintaan.
+- Mode manual tetap tersedia per key, dengan daftar model yang dikelompokkan: direkomendasikan, hemat, paling kuat, alias "latest", dan preview.
 
 API key dienkripsi AES-GCM dengan kunci perangkat non-extractable (WebCrypto) di IndexedDB. Enkripsi ini melindungi data tersimpan, tetapi tidak melindungi dari kode berbahaya yang berjalan di halaman (misal ekstensi browser). Build produksi memasang Content-Security-Policy yang ketat.
 

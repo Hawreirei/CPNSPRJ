@@ -1,5 +1,6 @@
 import { PROCEDURAL_TOPICS } from '../domain/blueprint';
 import { DEFAULT_PRICES, FALLBACK_PRICE } from '../providers/types';
+import { familyPrice } from '../providers/models';
 import { uid } from '../lib/id';
 import type { BatchItem, Blueprint, Difficulty, PlanBatch, Settings, Subtest } from '../domain/types';
 
@@ -61,7 +62,7 @@ export function estimatePlan(batches: PlanBatch[], model: string, settings: Pick
   const aiQuestions = ai.reduce((n, b) => n + b.count, 0);
   const inputTokens = ai.length * IN_PER_REQ;
   const outputTokens = ai.reduce((n, b) => n + b.count * OUT_PER_Q[b.subtest], 0);
-  const price = settings.priceOverrides[model] ?? DEFAULT_PRICES[model] ?? FALLBACK_PRICE;
+  const price = settings.priceOverrides[model] ?? DEFAULT_PRICES[model] ?? familyPrice(model) ?? FALLBACK_PRICE;
   const cost = (inputTokens * price.input + outputTokens * price.output) / 1e6;
   const conc = Math.max(1, settings.concurrency);
   const secs = outputTokens / 80 / conc;

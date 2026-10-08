@@ -5,11 +5,11 @@ import { buildPrompt, buildRewritePrompt, SYSTEM_PROMPT } from '../domain/prompt
 import { parseAiQuestions } from '../domain/schemas';
 import { SUBTESTS } from '../domain/types';
 import { validateQuestion } from '../domain/validators';
-import { complete, ProviderError } from '../providers';
+import { complete, isModelUnavailable, ProviderError } from '../providers';
 import type { ProviderConfig } from '../providers';
 import type { PlanBatch, QSet, Question } from '../domain/types';
 import { batchLabel, isProcedural } from './plan';
-import { providerConfig } from './keys';
+import { freshProviderConfig, providerConfig, refreshKeyModel } from './keys';
 
 export interface GenProgress {
   setId: string;
@@ -95,24 +95,69 @@ async function addUsage(setId: string, inputTokens: number, outputTokens: number
   });
 }
 
-/** Call the model and parse; retries once on parse or transient errors. */
+/** Provider config shared by one run; swapped in place if the model is retired mid-run. */
+interface ModelSession {
+  cfg: ProviderConfig;
+  keyId: string;
+  autoModel: boolean;
+  swapped?: Promise<void>;
+  onSwap?: (from: string, to: string) => void;
+}
+
+async function openSession(keyId?: string): Promise<ModelSession> {
+  const { keyId: id, autoModel, ...cfg } = await freshProviderConfig(keyId);
+  return { cfg, keyId: id, autoModel };
+}
+
+/** Switch to the newest stable model once per session when the provider says the current one is gone. */
+async function swapModel(s: ModelSession): Promise<boolean> {
+  if (!s.autoModel) return false;
+  if (!s.swapped) {
+    const from = s.cfg.model;
+    s.swapped = (async () => {
+      const { model } = await refreshKeyModel(s.keyId);
+      s.cfg = await providerConfig(s.keyId);
+      if (model !== from) s.onSwap?.(from, model);
+    })();
+    try {
+      await s.swapped;
+    } catch {
+      return false;
+    }
+    return s.cfg.model !== from;
+  }
+  await s.swapped.catch(() => undefined);
+  return true;
+}
+
+/** Call the model and parse; retries on parse or transient errors and recovers from a retired model. */
 async function callAndParse(
-  cfg: ProviderConfig,
+  session: ModelSession,
   prompt: string,
   ctx: Parameters<typeof parseAiQuestions>[1],
   signal: AbortSignal,
   onUsage: (i: number, o: number) => Promise<void>,
 ): Promise<Question[]> {
   let lastErr: unknown;
+  let triedSwap = false;
   for (let attempt = 0; attempt < 3; attempt++) {
     if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+    const model = session.cfg.model;
     try {
-      const res = await complete(cfg, { system: SYSTEM_PROMPT, prompt, signal });
+      const res = await complete(session.cfg, { system: SYSTEM_PROMPT, prompt, signal });
       await onUsage(res.inputTokens, res.outputTokens);
       return parseAiQuestions(res.text, ctx);
     } catch (e) {
       if ((e as Error).name === 'AbortError') throw e;
       lastErr = e;
+      if (e instanceof ProviderError && !triedSwap && isModelUnavailable(e.status, e.message)) {
+        triedSwap = true;
+        // Another worker may already have swapped; otherwise refresh from the live list.
+        if (session.cfg.model !== model || (await swapModel(session))) {
+          attempt--;
+          continue;
+        }
+      }
       const retryable = !(e instanceof ProviderError) || e.retryable;
       if (!retryable) break;
       await sleep(1500 * 2 ** attempt, signal);
@@ -131,12 +176,12 @@ function sleep(ms: number, signal: AbortSignal) {
   });
 }
 
-async function runBatch(set: QSet, batch: PlanBatch, cfg: ProviderConfig | null, hashes: Set<string>, signal: AbortSignal) {
+async function runBatch(set: QSet, batch: PlanBatch, session: ModelSession | null, hashes: Set<string>, signal: AbortSignal) {
   let questions: Question[];
   if (isProcedural(batch)) {
     questions = generateFigural(batch.items[0].topic, batch.items[0].difficulty, batch.count);
   } else {
-    if (!cfg) throw new Error('Belum ada API key.');
+    if (!session) throw new Error('Belum ada API key.');
     const basedOn = batch.basedOn ? ((await db.questions.bulkGet(batch.basedOn)).filter(Boolean) as Question[]) : undefined;
     const prompt = buildPrompt({
       subtest: batch.subtest,
@@ -144,7 +189,7 @@ async function runBatch(set: QSet, batch: PlanBatch, cfg: ProviderConfig | null,
       avoid: await recentStems(batch.subtest, [...new Set(batch.items.map((i) => i.topic))]),
       basedOn,
     });
-    questions = await callAndParse(cfg, prompt, { subtest: batch.subtest, items: batch.items, setId: set.id }, signal, (i, o) => addUsage(set.id, i, o));
+    questions = await callAndParse(session, prompt, { subtest: batch.subtest, items: batch.items, setId: set.id }, signal, (i, o) => addUsage(set.id, i, o));
     questions = questions.slice(0, batch.count);
   }
   const validated = questions.map((q) => {
@@ -181,10 +226,11 @@ export async function startGeneration(setId: string): Promise<void> {
   const total = set.batches.reduce((n, b) => n + b.count, 0);
   const doneCount = set.batches.filter((b) => b.status === 'done').reduce((n, b) => n + b.count, 0);
 
-  let cfg: ProviderConfig | null = null;
+  let session: ModelSession | null = null;
   if (todo.some((b) => !isProcedural(b))) {
     try {
-      cfg = await providerConfig(set.keyId);
+      session = await openSession(set.keyId);
+      session.onSwap = (from, to) => log(setId, 'info', `Model ${from} tidak tersedia lagi; otomatis beralih ke ${to}.`);
     } catch (e) {
       update(setId, { running: false, total, done: doneCount });
       log(setId, 'error', (e as Error).message);
@@ -196,7 +242,7 @@ export async function startGeneration(setId: string): Promise<void> {
   controllers.set(setId, ctrl);
   await db.sets.update(setId, { status: 'generating' });
   update(setId, { running: true, total, done: doneCount, current: [], log: [] });
-  log(setId, 'info', `Mulai: ${todo.length} batch.`);
+  log(setId, 'info', `Mulai: ${todo.length} batch${session ? ` · model ${session.cfg.model}` : ''}.`);
 
   const hashes = await knownHashes();
   const queue = [...todo];
@@ -206,7 +252,7 @@ export async function startGeneration(setId: string): Promise<void> {
       const batch = queue.shift()!;
       update(setId, { current: [...(progress.get(setId)?.current ?? []), label(batch)] });
       try {
-        const n = await runBatch(set, batch, cfg, hashes, ctrl.signal);
+        const n = await runBatch(set, batch, session, hashes, ctrl.signal);
         update(setId, { done: (progress.get(setId)?.done ?? 0) + n });
       } catch (e) {
         if ((e as Error).name === 'AbortError') break;
@@ -237,9 +283,9 @@ export async function stopGeneration(setId: string) {
 
 /** Rewrite one question in place (keeps id and position). */
 export async function rewriteQuestion(q: Question, instruction: string, keyId?: string): Promise<Question> {
-  const cfg = await providerConfig(keyId);
+  const session = await openSession(keyId);
   const ctrl = new AbortController();
-  const [nq] = await callAndParse(cfg, buildRewritePrompt(q, instruction), { subtest: q.subtest, items: [{ topic: q.topic, difficulty: q.difficulty }], setId: q.originSetId }, ctrl.signal, async () => {});
+  const [nq] = await callAndParse(session, buildRewritePrompt(q, instruction), { subtest: q.subtest, items: [{ topic: q.topic, difficulty: q.difficulty }], setId: q.originSetId }, ctrl.signal, async () => {});
   if (!nq) throw new Error('AI tidak mengembalikan soal.');
   const updated = validateQuestion({ ...nq, id: q.id, starred: q.starred, locked: q.locked, createdAt: q.createdAt, updatedAt: Date.now() });
   await db.questions.put(updated);
@@ -252,7 +298,7 @@ export async function moreLikeThis(setId: string, q: Question, count: number, ke
   if (q.source === 'procedural') {
     questions = generateFigural(q.topic, q.difficulty, count);
   } else {
-    const cfg = await providerConfig(keyId);
+    const session = await openSession(keyId);
     const items = Array.from({ length: count }, () => ({ topic: q.topic, difficulty: q.difficulty }));
     const prompt = buildPrompt({
       subtest: q.subtest,
@@ -261,7 +307,7 @@ export async function moreLikeThis(setId: string, q: Question, count: number, ke
       instruction: `Semua soal meniru gaya, jenis, dan tingkat kesulitan soal contoh ini, tetapi dengan isi, angka, dan konteks berbeda: "${q.stem.slice(0, 600)}"`,
     });
     const ctrl = new AbortController();
-    questions = await callAndParse(cfg, prompt, { subtest: q.subtest, items, setId }, ctrl.signal, (i, o) => addUsage(setId, i, o));
+    questions = await callAndParse(session, prompt, { subtest: q.subtest, items, setId }, ctrl.signal, (i, o) => addUsage(setId, i, o));
   }
   const hashes = await knownHashes();
   const validated = questions.slice(0, count).map((x) => validateQuestion(x, hashes));
