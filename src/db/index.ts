@@ -18,7 +18,10 @@ export class AppDB extends Dexie {
   reviews!: EntityTable<ReviewItem, 'questionId'>;
 
   constructor() {
-    super('cpns-skd-builder');
+    // Dexie's query cache served a page it had already shown a stale list: an exam finished
+    // elsewhere still read as unfinished on the dashboard until a reload. Every query reads
+    // IndexedDB instead; the data here is small enough that this costs nothing visible.
+    super('cpns-skd-builder', { cache: 'disabled' });
     this.version(1).stores({
       questions: 'id, subtest, topic, difficulty, hash, starred, originSetId, createdAt',
       sets: 'id, updatedAt, status',

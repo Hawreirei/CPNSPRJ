@@ -2,13 +2,15 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, useSettings } from '../db';
-import { TOPICS } from '../domain/blueprint';
+import { topicsFor } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
 import type { Blueprint, Question, Subtest } from '../domain/types';
 import { createBankSet } from '../engine/sets';
 import { normalizeText } from '../lib/id';
 import { QuestionCard, type CardMode } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
+import { FeedbackDialog } from '../components/FeedbackDialog';
+import { answerStats, isReported } from '../domain/quality';
 import { Empty } from '../components/ui';
 import { DownloadDialog } from '../components/DownloadDialog';
 
@@ -22,12 +24,21 @@ export default function QuestionBank() {
   const [sub, setSub] = useState<Subtest | ''>('');
   const [topic, setTopic] = useState('');
   const [diff, setDiff] = useState('');
-  const [only, setOnly] = useState<'' | 'starred' | 'flagged'>('');
+  const [only, setOnly] = useState<'' | 'starred' | 'flagged' | 'reported'>('');
   const [mode, setMode] = useState<CardMode>('soal');
   const [limit, setLimit] = useState(PAGE);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Question | null>(null);
+  const [feedbackFor, setFeedbackFor] = useState<Question | null>(null);
+  const attempts = useLiveQuery(() => db.attempts.toArray(), []);
+  const stats = useMemo(() => answerStats(attempts ?? [], all ?? []), [attempts, all]);
   const [downloading, setDownloading] = useState(false);
+
+  // The profile's topics, plus any older ones questions in the bank still carry.
+  const topicOptions = useMemo(() => {
+    const subs = sub ? [sub] : SUBTESTS;
+    return [...new Set([...subs.flatMap((x) => topicsFor(settings, x)), ...(all ?? []).filter((x) => subs.includes(x.subtest)).map((x) => x.topic)])];
+  }, [settings, sub, all]);
 
   const filtered = useMemo(() => {
     if (!all) return [];
@@ -39,6 +50,7 @@ export default function QuestionBank() {
         (!diff || x.difficulty === diff) &&
         (only !== 'starred' || x.starred) &&
         (only !== 'flagged' || x.flags.some((f) => f.severity === 'warn')) &&
+        (only !== 'reported' || isReported(x)) &&
         (!needle || normalizeText(`${x.stem} ${x.options.map((o) => o.text).join(' ')} ${x.topic}`).includes(needle)),
     );
   }, [all, q, sub, topic, diff, only]);
@@ -123,7 +135,7 @@ export default function QuestionBank() {
             <div className="mt-2 grid gap-2 sm:grid-cols-3">
               <select className="input" value={topic} onChange={(e) => setTopic(e.target.value)}>
                 <option value="">Semua topik</option>
-                {(sub ? TOPICS[sub] : SUBTESTS.flatMap((x) => TOPICS[x])).map((t) => (
+                {topicOptions.map((t) => (
                   <option key={t}>{t}</option>
                 ))}
               </select>
@@ -137,6 +149,7 @@ export default function QuestionBank() {
                 <option value="">Semua soal</option>
                 <option value="starred">Berbintang saja</option>
                 <option value="flagged">Perlu dicek saja</option>
+                <option value="reported">Dilaporkan saja</option>
               </select>
             </div>
           </details>
@@ -186,6 +199,8 @@ export default function QuestionBank() {
                 <QuestionCard
                   q={x}
                   mode={mode}
+                  stats={stats.get(x.id)}
+                  onFeedback={() => setFeedbackFor(x)}
                   actions={
                     <>
                       <button className="btn btn-ghost btn-sm" title={x.starred ? 'Hapus bintang' : 'Beri bintang'} onClick={() => db.questions.update(x.id, { starred: !x.starred })}>
@@ -193,6 +208,9 @@ export default function QuestionBank() {
                       </button>
                       <button className="btn btn-ghost btn-sm" disabled={x.locked} onClick={() => setEditing(x)}>
                         Edit
+                      </button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setFeedbackFor(x)}>
+                        {x.report ? 'Laporan' : 'Laporkan'}
                       </button>
                     </>
                   }
@@ -208,6 +226,7 @@ export default function QuestionBank() {
         </div>
       )}
       {editing && <QuestionEditor q={editing} onClose={() => setEditing(null)} />}
+      {feedbackFor && <FeedbackDialog q={feedbackFor} onClose={() => setFeedbackFor(null)} />}
       {downloading && (
         <DownloadDialog
           open

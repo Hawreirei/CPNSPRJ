@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { db, getSetQuestions, useSettings } from '../db';
 import { SUBTEST_NAMES } from '../domain/blueprint';
+import { opensGroup, passageLabel } from '../domain/groups';
 import { SUBTESTS } from '../domain/types';
 import type { Question } from '../domain/types';
 import { KeyLine, QuestionCard } from '../components/QuestionCard';
@@ -47,7 +48,16 @@ export default function PrintView() {
         </h2>
         <div className="space-y-3">
           {g.items.map(({ q, i }) => (
-            <QuestionCard key={q.id} q={q} index={i} mode={withKey ? 'pembahasan' : 'soal'} showFlags={false} />
+            <QuestionCard
+              key={q.id}
+              q={q}
+              index={i}
+              mode={withKey ? 'pembahasan' : 'soal'}
+              showFlags={false}
+              // Printed once, above the first question of its group.
+              passage={opensGroup(questions, q) ? 'open' : 'hidden'}
+              passageLabel={passageLabel(questions, q)}
+            />
           ))}
         </div>
       </section>

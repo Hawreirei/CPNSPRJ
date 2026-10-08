@@ -62,6 +62,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: 'index.html',
+        // Click handling for study reminders (src/lib/reminder.ts); generateSW keeps its precache.
+        importScripts: ['sw-notify.js'],
       },
     }),
   ],
@@ -73,6 +75,10 @@ export default defineConfig({
         chunkFileNames(chunk) {
           const lib = Object.keys(LAZY_LIBS).find((l) => chunk.moduleIds.some((id) => id.includes(`node_modules/${l}/`)));
           return `assets/${lib ? LAZY_LIBS[lib] : '[name]'}-[hash].js`;
+        },
+        // App code shared by several pages goes in one chunk, not a dozen tiny ones: each file is a round trip.
+        codeSplitting: {
+          groups: [{ name: 'shared', test: /[\\/]src[\\/]/, minShareCount: 2 }],
         },
       },
     },

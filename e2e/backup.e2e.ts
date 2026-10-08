@@ -25,7 +25,9 @@ test('a backup exported here restores everything in a fresh browser', async ({ p
   );
   const other = await fresh.newPage();
   await other.goto('#/settings');
-  await other.locator('input[type=file][accept*="json"]').setInputFiles(path);
+  const chooser = other.waitForEvent('filechooser');
+  await other.getByRole('button', { name: 'Pulihkan dari file' }).click();
+  await (await chooser).setFiles(path);
   await expect(other.getByText('Dipulihkan: 1 set, 30 soal, 0 simulasi, 0 catatan Buku Kesalahan.')).toBeVisible();
   await other.goto('#/sets');
   await expect(other.getByText('Latihan Singkat').first()).toBeVisible();

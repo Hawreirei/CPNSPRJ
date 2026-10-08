@@ -63,7 +63,7 @@ test('main pages and dialogs have no serious or critical WCAG violations, light 
       await page.locator('h1, h2').first().waitFor();
       found.push(...(await violations(page)).map((v) => `${scheme} ${p}: ${v}`));
     }
-    // Dialogs: download, and the question editor.
+    // Dialogs: download, the question editor, rating/reporting a question, and a syllabus profile.
     await page.goto(setPath);
     await page.getByRole('button', { name: /Unduh PDF \/ Word/ }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -73,6 +73,16 @@ test('main pages and dialogs have no serious or critical WCAG violations, light 
     await page.getByRole('button', { name: 'Edit soal' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     found.push(...(await violations(page)).map((v) => `${scheme} editor dialog: ${v}`));
+    await page.keyboard.press('Escape');
+    await page.locator('article').first().locator('summary', { hasText: '⋯' }).click();
+    await page.getByRole('button', { name: 'Laporkan atau nilai soal' }).click();
+    // With a reason picked, so the note field is shown too.
+    await page.getByRole('dialog').getByRole('radio', { name: 'Kunci jawaban salah' }).check();
+    found.push(...(await violations(page)).map((v) => `${scheme} feedback dialog: ${v}`));
+    await page.keyboard.press('Escape');
+    await page.goto('#/settings');
+    await page.getByRole('button', { name: 'Duplikat & ubah' }).click();
+    found.push(...(await violations(page)).map((v) => `${scheme} syllabus profile dialog: ${v}`));
     await page.keyboard.press('Escape');
   }
   expect(found, found.join('\n')).toEqual([]);

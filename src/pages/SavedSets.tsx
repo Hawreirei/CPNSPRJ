@@ -24,9 +24,14 @@ export default function SavedSets() {
           <h1>Set Saya</h1>
           <p className="muted mt-1">Semua set soal yang pernah Anda buat. Tersimpan otomatis di browser ini.</p>
         </div>
-        <Link className="btn btn-primary" to="/new">
-          + Buat soal baru
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link className="btn" to="/import">
+            Impor set dari berkas
+          </Link>
+          <Link className="btn btn-primary" to="/new">
+            + Buat soal baru
+          </Link>
+        </div>
       </div>
       <input className="input max-w-sm" placeholder="Cari nama set…" value={q} onChange={(e) => setQ(e.target.value)} />
       {shown.length === 0 ? (

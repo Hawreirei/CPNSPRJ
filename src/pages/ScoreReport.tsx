@@ -5,6 +5,7 @@ import { db } from '../db';
 import { isCorrect, scoreQuestion, weakTopics } from '../domain/scoring';
 import { SUBTEST_NAMES } from '../domain/blueprint';
 import { attemptMode } from '../domain/practice';
+import type { Question } from '../domain/types';
 import { mistakesInAttempt } from '../engine/srs';
 import { attemptQuestions } from '../engine/attempts';
 import { startGeneration } from '../engine/generator';
@@ -12,7 +13,28 @@ import { createRemedialSet } from '../engine/sets';
 import { Recommendations, TimingCard, TkpCard, UnsureCard } from '../components/Analysis';
 import { fmtSec } from '../engine/analytics';
 import { QuestionCard } from '../components/QuestionCard';
+import { opensGroup, passageLabel } from '../domain/groups';
+import { FeedbackDialog } from '../components/FeedbackDialog';
 import { Badge, Empty, fmtDate, ProgressBar, SubtestBadge } from '../components/ui';
+import { tabAwaySummary } from '../domain/catMode';
+import type { TabAway } from '../domain/types';
+
+/** What Mode CAT recorded. Shown, never scored. */
+function CatModeCard({ aways, lockedOrder }: { aways?: TabAway[]; lockedOrder: boolean }) {
+  const t = tabAwaySummary(aways);
+  return (
+    <section className="card space-y-1 text-sm" aria-labelledby="cat-mode-title">
+      <h2 id="cat-mode-title">Mode CAT</h2>
+      <p>
+        {t.count === 0
+          ? 'Tidak pernah meninggalkan halaman ujian.'
+          : `Meninggalkan halaman ujian ${t.count} kali, total ${fmtSec(t.totalMs)}${t.count > 1 ? ` (terlama ${fmtSec(t.longestMs)})` : ''}.`}
+      </p>
+      {lockedOrder && <p className="muted">Urutan sub-tes dikunci.</p>}
+      <p className="muted text-xs">Hanya catatan untuk Anda; nilai tidak dikurangi.</p>
+    </section>
+  );
+}
 
 export default function ScoreReport() {
   const { attemptId = '' } = useParams();
@@ -27,6 +49,7 @@ export default function ScoreReport() {
   }, [attemptId]);
   const [review, setReview] = useState<'none' | 'wrong' | 'all'>('none');
   const [busy, setBusy] = useState(false);
+  const [feedbackFor, setFeedbackFor] = useState<Question | null>(null);
 
   if (data === undefined) return null;
   if (!data?.a.result) return <Empty title="Hasil tidak ditemukan" />;
@@ -46,6 +69,7 @@ export default function ScoreReport() {
   const reviewList = questions
     .map((q, i) => ({ q, i }))
     .filter(({ q }) => review === 'all' || (review === 'wrong' && !isCorrect(q, a.answers[q.id])));
+  const shownQuestions = reviewList.map((x) => x.q);
 
   return (
     <div className="space-y-6">
@@ -67,6 +91,8 @@ export default function ScoreReport() {
           </Link>
         </div>
       </div>
+
+      {a.catMode && <CatModeCard aways={a.tabAways} lockedOrder={!!a.lockedOrder} />}
 
       <div className={`card ${practice ? '' : `border-2 ${r.passedAll ? 'border-green-500' : 'border-red-400'}`}`}>
         <div className="flex flex-wrap items-center gap-4">
@@ -182,6 +208,10 @@ export default function ScoreReport() {
                 index={i}
                 mode="pembahasan"
                 showFlags={false}
+                passage={opensGroup(shownQuestions, q) ? 'open' : 'closed'}
+                passageLabel={passageLabel(questions, q)}
+                userAnswer={a.answers[q.id]}
+                onFeedback={() => setFeedbackFor(q)}
                 actions={
                   <Badge tone={isCorrect(q, ans) ? 'green' : 'red'}>
                     Jawaban Anda: {ans ?? '—'} · skor {scoreQuestion(q, ans)}
@@ -191,6 +221,7 @@ export default function ScoreReport() {
             );
           })}
       </section>
+      {feedbackFor && <FeedbackDialog q={feedbackFor} onClose={() => setFeedbackFor(null)} />}
     </div>
   );
 }

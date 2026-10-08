@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { db, getSetQuestions, useSettings } from '../db';
 import { SUBTESTS } from '../domain/types';
@@ -9,6 +9,12 @@ import { crossCheckQuestions, isCrossCheckable, needsCrossCheck, type CrossCheck
 import { moveInSet, removeFromSet } from '../engine/sets';
 import { QuestionCard, type CardMode } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
+import { FeedbackDialog } from '../components/FeedbackDialog';
+
+// Sharing (and its QR code library) loads only when someone shares.
+const ShareDialog = lazy(() => import('../components/ShareDialog'));
+import { answerStats } from '../domain/quality';
+import { opensGroup, passageLabel } from '../domain/groups';
 import { DownloadDialog } from '../components/DownloadDialog';
 import { Badge, Empty, ProgressBar } from '../components/ui';
 
@@ -22,9 +28,12 @@ export default function SetDetail() {
   const [filter, setFilter] = useState<'all' | 'flagged' | 'starred'>('all');
   const [sub, setSub] = useState<Subtest | 'all'>('all');
   const [editing, setEditing] = useState<Question | null>(null);
+  const [feedbackFor, setFeedbackFor] = useState<Question | null>(null);
+  const attempts = useLiveQuery(() => db.attempts.toArray(), []);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const settings = useSettings();
   const [checking, setChecking] = useState(false);
   const [checkMsg, setCheckMsg] = useState<string | null>(null);
@@ -34,10 +43,12 @@ export default function SetDetail() {
 
   const flaggedCount = questions.filter((q) => q.flags.some((f) => f.severity === 'warn')).length;
   const starredCount = questions.filter((q) => q.starred).length;
+  const stats = answerStats(attempts ?? [], questions);
   const shown = questions
     .map((q, i) => ({ q, i }))
     .filter(({ q }) => (sub === 'all' || q.subtest === sub) && (filter === 'all' || (filter === 'flagged' ? q.flags.some((f) => f.severity === 'warn') : q.starred)));
 
+  const shownQuestions = shown.map((x) => x.q);
   const unchecked = questions.filter(needsCrossCheck);
   const describe = (r: CrossCheckResult) =>
     `${r.checked} soal diperiksa silang, ${r.mismatched} berbeda jawaban${r.mismatched ? ' (ditandai "perlu dicek")' : ''}.` +
@@ -91,6 +102,9 @@ export default function SetDetail() {
         <div className="flex flex-wrap gap-2">
           <button className="btn btn-primary" disabled={!questions.length} onClick={() => setDownloading(true)}>
             ⬇ Unduh PDF / Word
+          </button>
+          <button className="btn" disabled={!questions.length || set.status === 'generating'} onClick={() => setSharing(true)}>
+            Bagikan
           </button>
           <Link className={`btn ${questions.length ? '' : 'pointer-events-none opacity-50'}`} to={`/simulation?set=${set.id}`}>
             Mulai latihan ujian
@@ -154,6 +168,11 @@ export default function SetDetail() {
               q={q}
               index={i}
               mode={mode}
+              // The passage in full above the first shown question of its group, folded on the rest.
+              passage={opensGroup(shownQuestions, q) ? 'open' : 'closed'}
+              passageLabel={passageLabel(questions, q)}
+              stats={stats.get(q.id)}
+              onFeedback={() => setFeedbackFor(q)}
               actions={
                 busyId === q.id ? (
                   <Badge tone="blue">memproses…</Badge>
@@ -170,6 +189,7 @@ export default function SetDetail() {
                     <ActionMenu
                       items={[
                         { label: 'Edit soal', disabled: q.locked, onClick: () => setEditing(q) },
+                        { label: q.report ? 'Ubah laporan atau nilai' : 'Laporkan atau nilai soal', onClick: () => setFeedbackFor(q) },
                         {
                           label: 'Tulis ulang dengan AI',
                           disabled: q.locked || q.source === 'procedural',
@@ -215,6 +235,12 @@ export default function SetDetail() {
         </div>
       )}
       {editing && <QuestionEditor q={editing} onClose={() => setEditing(null)} />}
+      {feedbackFor && <FeedbackDialog q={feedbackFor} onClose={() => setFeedbackFor(null)} />}
+      {sharing && (
+        <Suspense fallback={null}>
+          <ShareDialog setId={set.id} name={set.name} onClose={() => setSharing(false)} />
+        </Suspense>
+      )}
       {downloading && (
         <DownloadDialog open onClose={() => setDownloading(false)} meta={{ name: set.name, durationMinutes: set.blueprint.durationMinutes }} questions={questions} />
       )}

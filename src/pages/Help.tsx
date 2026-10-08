@@ -22,12 +22,22 @@ export default function Help() {
             <b>Simulasi CAT</b>: timer, grid nomor, ragu-ragu, kirim otomatis. Laporan menampilkan skor per sub-tes terhadap ambang batas dan topik lemah.
           </li>
           <li>
+            <b>Mode CAT</b>: centang saat memulai ujian. Ujian dibuka layar penuh bila perangkat mendukung (tombol "Keluar layar penuh" selalu ada), dan setiap
+            kali Anda meninggalkan tab ujian dicatat di Laporan Skor tanpa pengurangan nilai. Opsi "Kunci urutan sub-tes" melatih pembagian waktu (TWK → TIU →
+            TKP tanpa kembali); ini bukan aturan resmi yang sudah kami pastikan.
+          </li>
+          <li>
             <b>Mode Latihan</b>: di halaman Latihan Ujian pilih "Latihan". Kunci dan pembahasan tampil langsung setelah menjawab, jawaban tidak bisa diubah,
             dan Anda bisa memilih topik tertentu. Hasil latihan tidak masuk grafik skor ujian di Progres. Dari Laporan Skor, klik "Latih ulang topik ini".
           </li>
           <li>
             <b>Rencana belajar</b>: di Pengaturan, isi waktu belajar per hari dan, bila sudah ada, tanggal ujian. Beranda lalu menampilkan hitung mundur,
-            target hari ini, dan kesiapan Anda dibanding skor target. Jadwal simulasi mingguan bisa diunduh ke kalender (.ics).
+            target hari ini, dan kesiapan Anda dibanding skor target. Jadwal simulasi mingguan bisa diunduh ke kalender (.ics). Di rencana ada juga
+            pengingat harian lewat notifikasi browser; pengingat ini hanya bisa muncul saat aplikasi terbuka, jadi kalender (.ics) tetap cara yang paling andal.
+          </li>
+          <li>
+            <b>Streak dan lencana</b>: Beranda menghitung hari berturut-turut Anda menyelesaikan latihan, ujian, atau ulangan Buku Kesalahan. Hari di luar hari
+            belajar yang dipilih di rencana tidak memutus streak; saat sakit atau libur, tekan "Jeda streak". Semuanya bisa dimatikan di Pengaturan.
           </li>
           <li>
             <b>Buku Kesalahan</b>: soal yang salah, kosong, atau ditandai ragu-ragu masuk otomatis. Setiap hari buka "Ulangan hari ini", jawab soalnya, lihat

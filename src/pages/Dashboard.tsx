@@ -2,35 +2,30 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { db, useSettings } from '../db';
 import { attemptMode, attemptPath, examAttempts } from '../domain/practice';
-import { weakTopics } from '../domain/scoring';
-import { recommendations } from '../engine/analytics';
-import { attemptQuestions } from '../engine/attempts';
+import { getReviewDays } from '../engine/review';
+import { weakFocus } from '../engine/today';
 import { dueQueue, isDue } from '../engine/srs';
 import { BackupReminderCard } from '../components/BackupReminder';
+import { StorageWarningCard } from '../components/StorageCard';
+import { StreakCard } from '../components/StreakCard';
 import { StudyPlanCard } from '../components/StudyPlanCard';
 import { Badge, Stat, fmtDate } from '../components/ui';
 
 export default function Dashboard() {
   const settings = useSettings();
   const data = useLiveQuery(async () => {
-    const [sets, questions, keys, attempts, reviews] = await Promise.all([
+    const [sets, questions, keys, attempts, reviews, reviewDays] = await Promise.all([
       db.sets.orderBy('updatedAt').reverse().limit(5).toArray(),
       db.questions.count(),
       db.keys.count(),
       db.attempts.orderBy('startedAt').reverse().toArray(),
       db.reviews.toArray(),
+      getReviewDays(),
     ]);
     const setCount = await db.sets.count();
     const flagged = await db.questions.filter((q) => q.flags.some((f) => f.severity === 'warn')).count();
-    // Topics to practise today: the latest attempt's weak-topic advice, else its weakest topics.
-    let weak: { topics: string[]; setId: string } | undefined;
-    const latest = attempts.find((a) => a.result);
-    if (latest && (await db.sets.get(latest.setId))) {
-      const advice = recommendations(latest, await attemptQuestions(latest)).find((r) => r.kind === 'weak-topic')?.practiceTopics;
-      const topics = advice ?? weakTopics(latest.result!.topics).slice(0, 3).map((t) => t.topic);
-      if (topics.length) weak = { topics, setId: latest.setId };
-    }
-    return { sets, setCount, questions, keys, attempts, flagged, reviews, weak, now: Date.now() };
+    const weak = await weakFocus(attempts);
+    return { sets, setCount, questions, keys, attempts, flagged, reviews, reviewDays, weak, now: Date.now() };
   });
   if (!data) return null;
   const finished = data.attempts.filter((a) => a.result);
@@ -76,7 +71,11 @@ export default function Dashboard() {
 
       <StudyPlanCard settings={settings} attempts={data.attempts} reviews={data.reviews} weak={data.weak} now={data.now} />
 
+      <StreakCard settings={settings} attempts={finished} reviews={data.reviews} reviewDays={data.reviewDays} now={data.now} />
+
       <BackupReminderCard />
+
+      <StorageWarningCard />
 
       {/* With a plan, today's reviews are one of its targets; no separate card. */}
       {data.reviews.length > 0 && !settings.studyPlan && (

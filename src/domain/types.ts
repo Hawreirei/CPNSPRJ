@@ -17,9 +17,44 @@ export interface FigureCell {
   count: number; // 1-4 copies of the shape
 }
 export interface Figure {
-  layout: 'series' | 'analogy';
+  /**
+   * series: a row of steps; analogy: a : b :: c : ?; matrix: 3×3, row by row; transform: a figure
+   * and its rotated or mirrored result; odd-one-out: no stem figure, the five options are the puzzle.
+   */
+  layout: 'series' | 'analogy' | 'matrix' | 'transform' | 'odd-one-out';
   /** `null` marks the "?" cell. */
   cells: (FigureCell | null)[];
+}
+
+export interface QuestionNote {
+  text: string;
+  at: number;
+}
+
+export interface Passage {
+  id: string;
+  title?: string;
+  text: string;
+  /** The group's questions in reading order; the database returns them in no particular order. */
+  questionIds?: string[];
+}
+
+export interface DataSeries {
+  name: string;
+  values: number[];
+}
+
+/** Numbers drawn by the app for a data-analysis question. */
+export interface DataFigure {
+  kind: 'table' | 'bar' | 'line' | 'pie';
+  title: string;
+  /** Unit of the values ("ton", "orang"); a pie chart's values are percentages. */
+  unit: string;
+  /** Heading of the category column, e.g. "Tahun" or "Kecamatan". */
+  category: string;
+  labels: string[];
+  /** Charts plot one series (one axis, no legend); a table may have several columns. */
+  series: DataSeries[];
 }
 
 export interface QuestionOption {
@@ -27,6 +62,8 @@ export interface QuestionOption {
   text: string;
   /** TWK/TIU: 5 for the correct option, 0 otherwise. TKP: 1-5. */
   score: number;
+  /** TKP: why this option earns its score (asked for on hard questions). */
+  rationale?: string;
   figure?: FigureCell;
 }
 
@@ -44,7 +81,17 @@ export type FlagKind =
   /** A second model, shown no key, picked the same option. */
   | 'cross-checked'
   /** Cross-check was on but could not run for this question (e.g. quota used up). */
-  | 'cross-check-pending';
+  | 'cross-check-pending'
+  /** The learner reported a problem; mirrors `Question.report` until they withdraw it. */
+  | 'user-report';
+
+export type ReportReason = 'kunci-salah' | 'ambigu' | 'usang' | 'typo' | 'lainnya';
+
+export interface QuestionReport {
+  reason: ReportReason;
+  note?: string;
+  at: number;
+}
 
 export interface Flag {
   kind: FlagKind;
@@ -68,11 +115,26 @@ export interface Question {
   /** TIU numerical: expression that mathjs evaluates to the correct answer. */
   mathExpression?: string;
   figure?: Figure;
+  /** TIU data analysis: the numbers the question is about, shown as a table or a chart. */
+  data?: DataFigure;
+  /**
+   * A reading text shared by a group of questions. Each question in the group carries the same
+   * passage (same id), so every view and export has it without a lookup.
+   */
+  passage?: Passage;
   flags: Flag[];
   locked: boolean;
   starred: boolean;
   hash: string;
   originSetId?: string;
+  /** A problem the learner reported. Kept until they withdraw it; never cleared automatically. */
+  report?: QuestionReport;
+  /** The learner's 1–5 rating. Low-rated questions are picked last from the bank. */
+  rating?: number;
+  /** Notes the learner kept, e.g. a tutor's explanation. */
+  notes?: QuestionNote[];
+  /** Came in a shared set from someone else: which set, and when it was imported. */
+  importedFrom?: { name: string; at: number };
   source: 'ai' | 'procedural' | 'manual';
   createdAt: number;
   updatedAt: number;
@@ -83,6 +145,8 @@ export interface SectionSpec {
   count: number;
   topics: string[];
   difficulty: DifficultyChoice;
+  /** Relative share per topic from the syllabus profile; missing means an even spread. */
+  weights?: Record<string, number>;
 }
 
 export interface Blueprint {
@@ -173,6 +237,17 @@ export interface Attempt {
   currentIndex: number;
   passing: Record<Subtest, number>;
   result?: AttemptResult;
+  /** Exam taken in "Mode CAT": full screen where supported, and leaving the tab is recorded. */
+  catMode?: boolean;
+  /** Mode CAT option: each sub-test in turn, with no way back to an earlier one. */
+  lockedOrder?: boolean;
+  /** Mode CAT: each time the exam tab was hidden, when and for how long. Recorded only, never penalised. */
+  tabAways?: TabAway[];
+}
+
+export interface TabAway {
+  at: number;
+  ms: number;
 }
 
 /** Self-assessment after seeing the explanation in a review. */
@@ -218,8 +293,11 @@ export interface ApiKeyRecord {
   label: string;
   model: string;
   baseUrl?: string;
-  cipher: ArrayBuffer;
-  iv: Uint8Array<ArrayBuffer>;
+  /** Encrypted key; absent for a session-only key, whose secret lives in sessionStorage only. */
+  cipher?: ArrayBuffer;
+  iv?: Uint8Array<ArrayBuffer>;
+  /** "Jangan simpan": the key itself is never written to IndexedDB and is gone when the tab closes. */
+  sessionOnly?: boolean;
   isDefault: boolean;
   createdAt: number;
   /** Self-imposed rate limits matching the key's plan (0 = no limit). */
@@ -263,6 +341,55 @@ export interface StudyPlan {
   minutesPerDay?: number;
   /** Day of the weekly full simulation, 0 = Sunday … 6 = Saturday. */
   simulationDay?: number;
+  /** Weekdays the learner plans to study (0 = Sunday); missing means every day. Other days never break a streak. */
+  studyDays?: number[];
+  /** Daily browser notification at a local time ("HH:MM"), shown when the app is open or next opened. */
+  reminder?: { enabled: boolean; time: string };
+}
+
+/** A break from the streak (illness, holiday): local dates, inclusive; no `to` while it lasts. */
+export interface StreakPause {
+  from: string;
+  to?: string;
+}
+
+export interface StreakSettings {
+  /** Hides the streak, the "target met" mark and badges everywhere. */
+  off?: boolean;
+  pauses?: StreakPause[];
+  /** Badges already earned, so each is announced once. */
+  earned?: { id: string; at: number }[];
+}
+
+export interface KisiTopic {
+  name: string;
+  /** Relative share of questions; 1 when missing. */
+  weight?: number;
+}
+
+/** The exam's shape a syllabus profile can carry; applied to Settings when the profile is chosen. */
+export interface ExamNumbers {
+  counts: Record<Subtest, number>;
+  passing: Record<Subtest, number>;
+  durationMinutes: number;
+}
+
+/** Topics per sub-test, and optionally the exam's numbers, as a shareable file. */
+export interface KisiProfile {
+  version: 1;
+  id: string;
+  name: string;
+  /** Where the topics come from, e.g. an official decree, or "bawaan aplikasi". */
+  source?: string;
+  /** Date of the source, YYYY-MM-DD. */
+  date?: string;
+  topics: Record<Subtest, KisiTopic[]>;
+  exam?: ExamNumbers;
+}
+
+export interface KisiSettings {
+  activeId: string;
+  custom: KisiProfile[];
 }
 
 export interface CrossCheckSettings {
@@ -288,6 +415,10 @@ export interface Settings {
   studyPlan?: StudyPlan;
   /** Second-opinion check of new questions by another model. Off unless enabled. */
   crossCheck?: CrossCheckSettings;
+  /** Syllabus profiles the learner added, and which one is in use. Absent means the built-in one. */
+  kisi?: KisiSettings;
+  /** Streak and badges; on unless switched off. */
+  streak?: StreakSettings;
   /** USD per 1M tokens, keyed by model id; fallback used when unknown. */
   priceOverrides: Record<string, { input: number; output: number }>;
 }

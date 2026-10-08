@@ -50,6 +50,7 @@ export function StudyPlanCard({
   });
   const ready = readiness(finished, plan, settings.passing, settings.counts);
   const budget = plan.minutesPerDay ?? 60;
+  const met = !settings.streak?.off && items.length > 0 && items.every((it) => it.done);
 
   return (
     <section className="card space-y-4" aria-labelledby="plan-title">
@@ -76,7 +77,10 @@ export function StudyPlanCard({
 
       {days !== 0 && (
         <div>
-          <div className="mb-1 text-sm font-medium">Target hari ini (± {budget} menit)</div>
+          <div className="mb-1 flex flex-wrap items-center gap-x-3 text-sm font-medium">
+            <span>Target hari ini (± {budget} menit)</span>
+            {met && <span className="text-green-700 dark:text-green-400">✓ Target hari ini tercapai</span>}
+          </div>
           {items.length === 0 ? (
             <p className="muted text-sm">Tidak ada target khusus hari ini. Coba latihan topik yang menurut Anda paling sulit.</p>
           ) : (

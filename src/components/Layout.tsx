@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Disclaimer } from './Disclaimer';
 import { useUpdateWaiting } from '../lib/pwa';
+import { useStudyReminder } from '../lib/reminder';
+import { useSettings } from '../db';
+import { isQuotaError, QUOTA_MESSAGE } from '../engine/storage';
 
 const NAV = [
   { to: '/', label: 'Beranda', end: true },
@@ -19,6 +22,14 @@ const NAV = [
 export default function Layout() {
   const [open, setOpen] = useState(false);
   const updateWaiting = useUpdateWaiting();
+  useStudyReminder(!!useSettings().studyPlan?.reminder?.enabled);
+  // A write that failed because storage is full, anywhere in the app: say so instead of failing silently.
+  const [storageFull, setStorageFull] = useState(false);
+  useEffect(() => {
+    const onRejection = (e: PromiseRejectionEvent) => isQuotaError(e.reason) && setStorageFull(true);
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => window.removeEventListener('unhandledrejection', onRejection);
+  }, []);
   return (
     <div className="min-h-screen md:flex">
       <header className="no-print flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden dark:border-slate-800 dark:bg-slate-900">
@@ -53,6 +64,14 @@ export default function Layout() {
         </div>
       </aside>
       <main className="min-w-0 flex-1">
+        {storageFull && (
+          <div role="alert" className="no-print flex items-center gap-3 border-b border-red-400 bg-red-50 px-4 py-2 text-xs text-red-800 dark:bg-red-950 dark:text-red-200">
+            <span className="flex-1">{QUOTA_MESSAGE}</span>
+            <button className="btn btn-sm" onClick={() => setStorageFull(false)}>
+              Tutup
+            </button>
+          </div>
+        )}
         {updateWaiting && (
           <div className="no-print flex items-center gap-3 border-b border-brand-500 bg-brand-50 px-4 py-2 text-xs text-brand-700 dark:bg-slate-800 dark:text-brand-100">
             <span className="flex-1">Versi baru aplikasi sudah tersedia. Muat ulang setelah proses yang sedang berjalan selesai.</span>
@@ -63,7 +82,10 @@ export default function Layout() {
         )}
         <Disclaimer />
         <div className="mx-auto max-w-6xl p-4 md:p-6">
-          <Outlet />
+          {/* Pages load on first visit; the menu stays put meanwhile. */}
+          <Suspense fallback={null}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
     </div>

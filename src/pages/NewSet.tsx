@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { db, useSettings } from '../db';
-import { buildPreset, PRESETS, PROCEDURAL_TOPICS, SUBTEST_NAMES, TOPICS } from '../domain/blueprint';
+import { activeProfile, buildPreset, PRESETS, PROCEDURAL_TOPICS, SUBTEST_NAMES, topicsFor, weightsFor } from '../domain/blueprint';
 import type { PresetId } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
 import type { Blueprint, DifficultyChoice, SectionSpec, Subtest } from '../domain/types';
@@ -36,6 +36,8 @@ export default function NewSet() {
   /** Model for this set only; empty = follow the key's setting. */
   const [setModel, setSetModel] = useState<string>('');
   const [busy, setBusy] = useState(false);
+  const [includeReported, setIncludeReported] = useState(false);
+  const reportedCount = useLiveQuery(() => db.questions.filter((q) => !!q.report).count(), []);
   const [msg, setMsg] = useState<string | null>(null);
 
   // Re-seed once real settings load from IndexedDB.
@@ -77,7 +79,10 @@ export default function NewSet() {
       let sections: SectionSpec[];
       if (patch === null) sections = b.sections.filter((x) => x.subtest !== s);
       else if (exists) sections = b.sections.map((x) => (x.subtest === s ? { ...x, ...patch } : x));
-      else sections = [...b.sections, { subtest: s, count: 10, topics: [...TOPICS[s]], difficulty, ...patch }];
+      else {
+        const weights = weightsFor(settings, s);
+        sections = [...b.sections, { subtest: s, count: 10, topics: topicsFor(settings, s), difficulty, ...(weights ? { weights } : {}), ...patch }];
+      }
       sections.sort((a, c) => SUBTESTS.indexOf(a.subtest) - SUBTESTS.indexOf(c.subtest));
       return { ...b, sections };
     });
@@ -98,7 +103,7 @@ export default function NewSet() {
 
   async function fromBank() {
     setBusy(true);
-    const { picked, shortfall } = await pickFromBank(bp);
+    const { picked, shortfall } = await pickFromBank(bp, { includeReported });
     if (!picked.length) {
       setMsg('Bank Soal belum punya soal yang cocok. Buat soal dengan AI dulu.');
       setBusy(false);
@@ -227,7 +232,15 @@ export default function NewSet() {
               </div>
 
               <div className="space-y-3">
-                <div className="label">Jumlah soal dan topik</div>
+                <div>
+                  <div className="label">Jumlah soal dan topik</div>
+                  <p className="muted text-xs">
+                    Topik dari profil kisi-kisi "{activeProfile(settings).name}".{' '}
+                    <Link className="text-brand-600 underline dark:text-brand-300" to="/settings">
+                      Ganti profil
+                    </Link>
+                  </p>
+                </div>
                 {SUBTESTS.map((s) => {
                   const sec = bp.sections.find((x) => x.subtest === s);
                   return (
@@ -254,7 +267,7 @@ export default function NewSet() {
                       </div>
                       {sec && (
                         <div className="mt-3 flex flex-wrap gap-1.5">
-                          {TOPICS[s].map((t) => {
+                          {topicsFor(settings, s).map((t) => {
                             const on = sec.topics.includes(t);
                             return (
                               <button
@@ -403,6 +416,12 @@ export default function NewSet() {
             <button className="btn w-full" disabled={busy || !total} onClick={fromBank} title="Memakai soal yang sudah pernah dibuat. Tidak memakai kuota AI.">
               Ambil dari Bank Soal (tanpa AI)
             </button>
+            {!!reportedCount && (
+              <label className="muted flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={includeReported} onChange={(e) => setIncludeReported(e.target.checked)} />
+                Pakai juga {reportedCount} soal yang Anda laporkan
+              </label>
+            )}
           </div>
         </aside>
       </div>

@@ -1,5 +1,6 @@
 import { NUMERIC_TOPICS } from './blueprint';
 import { approxEqual, evaluateExpression, parseNumeric } from './numeric';
+import { reportFlag } from './quality';
 import type { Flag, OptionLabel, Question } from './types';
 
 export { loadMath } from './numeric';
@@ -52,6 +53,8 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
   if (knownHashes?.has(next.hash)) {
     flags.push({ kind: 'duplicate', severity: 'info', message: 'Soal yang mirip sudah ada di Bank Soal.' });
   }
+  // The learner's report outlives every re-check; only they can withdraw it.
+  if (next.report) flags.push(reportFlag(next.report));
 
   return { ...next, flags };
 }

@@ -3,13 +3,17 @@ import { useRef, useState } from 'react';
 import { db, saveSettings, useSettings } from '../db';
 import { getBackupState, importBackup } from '../db/backup';
 import { fmtAgo } from '../domain/backupReminder';
+import { KisiProfiles } from '../components/KisiProfiles';
 import { CrossCheckEditor } from '../components/CrossCheckEditor';
 import { StudyPlanEditor } from '../components/StudyPlanEditor';
+import { StorageCard } from '../components/StorageCard';
 import { autoBackupNow, chooseBackupFile, downloadBackup, isAutoBackupSupported, stopAutoBackup } from '../lib/autoBackup';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
 import { DEFAULT_PRICES } from '../providers/types';
 import { getTextSize, getTheme, setTextSize, setTheme, type TextSize, type Theme } from '../lib/theme';
+import { errorText } from '../engine/storage';
+import { clearErrorLog, downloadErrorLog, logError, useErrorCount } from '../lib/errorLog';
 
 export default function SettingsPage() {
   const s = useSettings();
@@ -107,8 +111,25 @@ export default function SettingsPage() {
       </section>
 
       <section className="card space-y-3">
+        <h2>Streak dan lencana</h2>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={!s.streak?.off} onChange={(e) => saveSettings({ streak: { ...s.streak, off: !e.target.checked } })} />
+          Tampilkan streak, tanda target harian tercapai, dan lencana
+        </label>
+        <p className="muted text-xs">
+          Streak dihitung dari latihan, ujian, dan ulangan Buku Kesalahan yang selesai, menurut tanggal di perangkat ini. Saat dimatikan, semuanya disembunyikan; lencana
+          yang sudah diraih tetap tersimpan.
+        </p>
+      </section>
+
+      <section className="card space-y-3">
         <h2>Pemeriksa silang (opsional)</h2>
         <CrossCheckEditor settings={s} />
+      </section>
+
+      <section className="card space-y-3">
+        <h2>Profil kisi-kisi</h2>
+        <KisiProfiles settings={s} />
       </section>
 
       <section className="card space-y-3">
@@ -135,7 +156,8 @@ export default function SettingsPage() {
                 const r = await importBackup(f);
                 setMsg(`Dipulihkan: ${r.sets} set, ${r.questions} soal, ${r.attempts} simulasi, ${r.reviews} catatan Buku Kesalahan.`);
               } catch (err) {
-                setMsg(`Gagal: ${(err as Error).message}`);
+                void logError('import', err);
+                setMsg(`Gagal: ${errorText(err)}`);
               }
             }}
           />
@@ -143,6 +165,16 @@ export default function SettingsPage() {
         {msg && <p className="text-sm">{msg}</p>}
         <AutoBackupPanel />
         <p className="muted text-xs">Berkas cadangan tidak dienkripsi dan berisi riwayat belajar Anda. Simpan di tempat yang aman.</p>
+      </section>
+
+      <section className="card space-y-3">
+        <h2>Penyimpanan</h2>
+        <StorageCard />
+      </section>
+
+      <section className="card space-y-3">
+        <h2>Log galat</h2>
+        <ErrorLogSection />
       </section>
 
       <details className="card">
@@ -346,7 +378,7 @@ function AutoBackupPanel() {
     try {
       await fn();
     } catch (e) {
-      setMsg(`Gagal: ${(e as Error).message}`);
+      setMsg(`Gagal: ${errorText(e)}`);
     } finally {
       setBusy(false);
     }
@@ -405,5 +437,27 @@ function AutoBackupPanel() {
       )}
       {msg && <p className="text-sm text-red-600 dark:text-red-400">{msg}</p>}
     </div>
+  );
+}
+
+/** Download or clear the local error log; nothing is sent anywhere. */
+function ErrorLogSection() {
+  const count = useErrorCount();
+  return (
+    <>
+      <p className="muted text-sm">
+        Galat yang terjadi di aplikasi dicatat di perangkat ini (paling banyak 200 terakhir) supaya bisa dilampirkan saat melaporkan masalah. Tidak ada yang
+        dikirim ke mana pun. Isinya sudah disaring: tanpa API key, isi soal, atau prompt.
+      </p>
+      <p className="text-sm">{count ? `${count} galat tercatat.` : 'Belum ada galat yang tercatat.'}</p>
+      <div className="flex flex-wrap gap-2">
+        <button className="btn" disabled={!count} onClick={() => void downloadErrorLog()}>
+          Unduh log galat
+        </button>
+        <button className="btn btn-ghost" disabled={!count} onClick={() => void clearErrorLog()}>
+          Hapus log
+        </button>
+      </div>
+    </>
   );
 }

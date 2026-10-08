@@ -5,8 +5,11 @@ import { attemptMode, feedback, isTimed } from '../domain/practice';
 import type { Attempt, OptionLabel, Question } from '../domain/types';
 import { attemptQuestions, finishAttempt } from '../engine/attempts';
 import { AnswerOptions, FeedbackBanner } from '../components/AnswerOptions';
-import { FigureView } from '../components/FigureView';
+import { StemMedia } from '../components/DataView';
+import { PassageView } from '../components/PassageView';
+import { passageLabel } from '../domain/groups';
 import { Explanation } from '../components/QuestionCard';
+import { FeedbackDialog } from '../components/FeedbackDialog';
 import { RichText } from '../components/RichText';
 import { Badge, Modal, SubtestBadge } from '../components/ui';
 
@@ -28,6 +31,7 @@ export default function Practice() {
   const [now, setNow] = useState(Date.now());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [gridOpen, setGridOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const enteredAt = useRef(Date.now());
   // On every question change, focus moves to its heading so screen readers announce it.
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -214,16 +218,23 @@ export default function Practice() {
             <Badge>{q.topic}</Badge>
             {isFlagged && <span className="badge bg-amber-100 text-amber-800">ragu-ragu</span>}
           </div>
+          {/* Every question of a passage group shows the passage, so it stays in view while moving through the group. */}
+          {q.passage && <PassageView passage={q.passage} label={passageLabel(questions, q)} />}
           <div className="text-[15px] leading-relaxed">
             <RichText text={q.stem} />
           </div>
-          {q.figure && <FigureView figure={q.figure} />}
+          <StemMedia q={q} />
           <AnswerOptions q={q} chosen={chosen} revealed={!!fb} onAnswer={answer} />
 
           {fb && (
             <div aria-live="polite">
               <FeedbackBanner q={q} answer={chosen!} />
-              <Explanation q={q} />
+              <Explanation
+                q={q}
+                userAnswer={chosen}
+                onFeedback={() => setFeedbackOpen(true)}
+                onChanged={(saved) => setQuestions((qs) => qs.map((x) => (x.id === saved.id ? saved : x)))}
+              />
             </div>
           )}
 
@@ -281,6 +292,14 @@ export default function Practice() {
           </button>
         </div>
       </Modal>
+      {feedbackOpen && (
+        <FeedbackDialog
+          q={q}
+          onClose={() => setFeedbackOpen(false)}
+          // Practice works on a snapshot of the questions; keep it in step with what was saved.
+          onSaved={(saved) => setQuestions((qs) => qs.map((x) => (x.id === saved.id ? saved : x)))}
+        />
+      )}
     </div>
   );
 }

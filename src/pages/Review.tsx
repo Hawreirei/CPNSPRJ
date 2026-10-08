@@ -8,8 +8,10 @@ import type { Grade, OptionLabel, Question, ReasonTag, ReviewItem, Subtest } fro
 import { backfillFromHistory, gradeReview, removeReview, setReasonTags } from '../engine/review';
 import { addDays, dueQueue, fmtDue, fmtInterval, isDue, nextInterval, reviewedToday } from '../engine/srs';
 import { AnswerOptions, FeedbackBanner } from '../components/AnswerOptions';
-import { FigureView } from '../components/FigureView';
+import { StemMedia } from '../components/DataView';
+import { PassageView } from '../components/PassageView';
 import { Explanation } from '../components/QuestionCard';
+import { FeedbackDialog } from '../components/FeedbackDialog';
 import { RichText } from '../components/RichText';
 import { Badge, Empty, SubtestBadge } from '../components/ui';
 
@@ -183,6 +185,7 @@ function ReviewCard({ q, item, onGrade }: { q: Question; item: ReviewItem; onGra
   const [chosen, setChosen] = useState<OptionLabel | undefined>();
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const fb = chosen ? feedback(q, chosen) : null;
   const best = feedback(q, 'A').best.join(', ');
   const suggested: Grade = fb?.correct ? 'baik' : 'lupa';
@@ -221,10 +224,11 @@ function ReviewCard({ q, item, onGrade }: { q: Question; item: ReviewItem; onGra
         {item.lapses > 0 && <Badge tone="amber">terlupa {item.lapses}×</Badge>}
         {item.reps > 0 && <Badge>ulangan ke-{item.reps + 1}</Badge>}
       </div>
+      {q.passage && <PassageView passage={q.passage} />}
       <div className="text-[15px] leading-relaxed">
         <RichText text={q.stem} />
       </div>
-      {q.figure && <FigureView figure={q.figure} />}
+      <StemMedia q={q} />
       <AnswerOptions q={q} chosen={chosen} revealed={revealed} onAnswer={answer} />
 
       {!revealed ? (
@@ -242,7 +246,8 @@ function ReviewCard({ q, item, onGrade }: { q: Question; item: ReviewItem; onGra
               Fokus TKP: pahami <b>mengapa opsi {best}</b> paling sesuai dengan nilai pelayanan publik dan profesionalisme, lalu bandingkan dengan pilihan Anda.
             </p>
           )}
-          <Explanation q={q} />
+          <Explanation q={q} userAnswer={chosen} onFeedback={() => setFeedbackOpen(true)} />
+          {feedbackOpen && <FeedbackDialog q={q} onClose={() => setFeedbackOpen(false)} />}
           <ReasonTags item={item} />
 
           <div className="mt-4 border-t border-slate-200 pt-3 dark:border-slate-800">
@@ -300,6 +305,7 @@ function ReasonTags({ item }: { item: ReviewItem }) {
 function Notebook({ items, now }: { items: ReviewItem[]; now: number }) {
   const [subtest, setSubtest] = useState<Subtest | ''>('');
   const [tag, setTag] = useState<ReasonTag | ''>('');
+  const [feedbackFor, setFeedbackFor] = useState<Question | null>(null);
   const questions = useLiveQuery(async () => {
     const rows = await db.questions.bulkGet(items.map((r) => r.questionId));
     return new Map(rows.filter((q): q is Question => !!q).map((q) => [q.id, q]));
@@ -361,12 +367,14 @@ function Notebook({ items, now }: { items: ReviewItem[]; now: number }) {
                 <RichText text={q.stem} />
               </span>
             </summary>
-            {q.figure && <FigureView figure={q.figure} />}
+            {q.passage && <PassageView passage={q.passage} mode="closed" />}
+            <StemMedia q={q} />
             <AnswerOptions q={q} revealed onAnswer={() => {}} />
-            <Explanation q={q} />
+            <Explanation q={q} onFeedback={() => setFeedbackFor(q)} />
           </details>
         </article>
       ))}
+      {feedbackFor && <FeedbackDialog q={feedbackFor} onClose={() => setFeedbackFor(null)} />}
     </div>
   );
 }

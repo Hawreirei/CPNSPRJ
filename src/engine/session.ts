@@ -1,5 +1,5 @@
 import { SYSTEM_PROMPT } from '../domain/prompts';
-import { parseAiQuestions } from '../domain/schemas';
+import { parseAiPassages, parseAiQuestions } from '../domain/schemas';
 import type { ApiKeyRecord, Question } from '../domain/types';
 import { complete, isModelUnavailable, ProviderError, suggestedReplacement } from '../providers';
 import type { ProviderConfig } from '../providers';
@@ -121,6 +121,17 @@ export async function callModel<T>(
     }
   }
   throw lastErr;
+}
+
+/** Generate reading passages with their questions: all of them, or a retry. */
+export function callAndParsePassages(
+  session: ModelSession,
+  prompt: string,
+  ctx: Parameters<typeof parseAiPassages>[1],
+  signal: AbortSignal,
+  onUsage: (i: number, o: number) => Promise<void>,
+): Promise<Question[]> {
+  return callModel(session, { system: SYSTEM_PROMPT, prompt }, (text) => parseAiPassages(text, ctx), signal, onUsage);
 }
 
 /** Generate questions: callModel with the authoring prompt and the question parser. */

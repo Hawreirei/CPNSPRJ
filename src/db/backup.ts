@@ -2,6 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { SNOOZE_DAYS } from '../domain/backupReminder';
 import { db } from './index';
 import type { Attempt, QSet, Question, ReviewItem } from '../domain/types';
+import { REVIEW_DAYS_KEY } from '../engine/review';
+import { logDay } from '../engine/streak';
 
 interface BackupFile {
   app: 'cpns-skd-builder';
@@ -13,6 +15,8 @@ interface BackupFile {
   attempts: Attempt[];
   /** Missing in backups made before the mistake notebook existed. */
   reviews?: ReviewItem[];
+  /** Days reviews were graded, for the streak. Missing in older backups. */
+  reviewDays?: string[];
 }
 
 export async function exportBackup(): Promise<Blob> {
@@ -25,6 +29,7 @@ export async function exportBackup(): Promise<Blob> {
     questions: await db.questions.toArray(),
     attempts: await db.attempts.toArray(),
     reviews: await db.reviews.toArray(),
+    reviewDays: ((await db.meta.get(REVIEW_DAYS_KEY))?.value as string[] | undefined) ?? [],
   };
   return new Blob([JSON.stringify(data)], { type: 'application/json' });
 }
@@ -39,6 +44,11 @@ export async function importBackup(file: File): Promise<{ sets: number; question
     if (data.attempts?.length) await db.attempts.bulkPut(data.attempts);
     if (data.reviews?.length) await db.reviews.bulkPut(data.reviews);
     if (data.settings) await db.meta.put({ key: 'settings', value: data.settings });
+    if (Array.isArray(data.reviewDays) && data.reviewDays.length) {
+      const mine = ((await db.meta.get(REVIEW_DAYS_KEY))?.value as string[] | undefined) ?? [];
+      const days = data.reviewDays.filter((d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)).reduce(logDay, mine);
+      await db.meta.put({ key: REVIEW_DAYS_KEY, value: days });
+    }
   });
   return { sets: data.sets?.length ?? 0, questions: data.questions?.length ?? 0, attempts: data.attempts?.length ?? 0, reviews: data.reviews?.length ?? 0 };
 }

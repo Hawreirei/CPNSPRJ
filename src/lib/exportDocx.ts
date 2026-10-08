@@ -1,9 +1,12 @@
 import { getSettings } from '../db';
 import { SUBTEST_NAMES } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
-import type { Question } from '../domain/types';
+import { fmtNum } from '../domain/describe';
+import type { DataFigure, Question } from '../domain/types';
 import { toPlain } from '../components/RichText';
-import { cellSvg, figureSvg, svgToPng } from './figureSvg';
+import { dataChartSvg } from './dataSvg';
+import { opensGroup, passageLabel } from '../domain/groups';
+import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
 
 export type PackKind = 'soal' | 'soal-kunci' | 'lengkap' | 'kunci' | 'pembahasan';
 
@@ -30,9 +33,9 @@ export function keyText(q: Question): string {
 
 export async function exportDocx(meta: ExportMeta, questions: Question[], pack: PackKind): Promise<Blob> {
   const d = await import('docx');
-  const { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, Footer, PageBreak } = d;
+  const { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, Footer, PageBreak, Table, TableRow, TableCell } = d;
   const settings = await getSettings();
-  type Child = InstanceType<typeof Paragraph>;
+  type Child = InstanceType<typeof Paragraph> | InstanceType<typeof Table>;
 
   const text = (s: string, opts: { bold?: boolean; size?: number; italics?: boolean; color?: string } = {}) =>
     toPlain(s)
@@ -74,15 +77,35 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
     return out;
   }
 
+  /** A data question's numbers: a real table, or the chart as an image under its title. */
+  async function dataBlock(data: DataFigure): Promise<Child[]> {
+    const title = new Paragraph({ keepNext: true, spacing: { before: 80 }, children: [new TextRun({ text: data.title, bold: true, size: 20 })] });
+    if (data.kind !== 'table') return [title, new Paragraph({ keepNext: true, children: [await image(dataChartSvg(data, '#111', '#fff'))] })];
+    const cell = (text: string, opts: { bold?: boolean; right?: boolean } = {}) =>
+      new TableCell({ children: [new Paragraph({ alignment: opts.right ? AlignmentType.RIGHT : AlignmentType.LEFT, children: [new TextRun({ text, bold: opts.bold, size: 20 })] })] });
+    const rows = [
+      new TableRow({ tableHeader: true, children: [cell(data.category, { bold: true }), ...data.series.map((s) => cell(s.name, { bold: true, right: true }))] }),
+      ...data.labels.map((l, i) => new TableRow({ children: [cell(l), ...data.series.map((s) => cell(fmtNum(s.values[i]), { right: true }))] })),
+    ];
+    return [title, new Table({ rows })];
+  }
+
   async function questionBlock(q: Question, n: number, withKey: boolean): Promise<Child[]> {
     const out: Child[] = [];
+    // A reading passage is printed once, above the first question of its group.
+    if (q.passage && opensGroup(questions, q)) {
+      out.push(new Paragraph({ spacing: { before: 240 }, keepNext: true, children: [new TextRun({ text: `${passageLabel(questions, q)}${q.passage.title ? `: ${q.passage.title}` : ''}`, bold: true })] }));
+      out.push(new Paragraph({ keepNext: true, alignment: AlignmentType.JUSTIFIED, children: text(q.passage.text) }));
+    }
     out.push(new Paragraph({ spacing: { before: 200 }, keepNext: true, children: [new TextRun({ text: `${n}. `, bold: true }), ...text(q.stem)] }));
-    if (q.figure) out.push(new Paragraph({ keepNext: true, children: [await image(figureSvg(q.figure, 72, '#111'))] }));
+    if (hasStemFigure(q.figure)) out.push(new Paragraph({ keepNext: true, children: [await image(figureSvg(q.figure, 72, '#111'))] }));
+    if (q.data) out.push(...(await dataBlock(q.data)));
     for (const o of q.options) {
       const runs = o.figure ? [await image(cellSvg(o.figure, 56, '#111'))] : text(o.text);
       const suffix = withKey && q.subtest === 'TKP' ? [new TextRun({ text: `  (skor ${o.score})`, italics: true, color: '555555' })] : [];
       const isKey = withKey && q.subtest !== 'TKP' && o.label === q.answer;
       out.push(new Paragraph({ indent: { left: 360 }, keepNext: true, children: [new TextRun({ text: `${o.label}. `, bold: isKey }), ...runs, ...suffix] }));
+      if (withKey && o.rationale) out.push(new Paragraph({ indent: { left: 720 }, keepNext: true, children: text(o.rationale, { italics: true, size: 18, color: '444444' }) }));
     }
     return out;
   }

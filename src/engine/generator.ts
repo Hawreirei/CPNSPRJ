@@ -1,16 +1,19 @@
 import { useSyncExternalStore } from 'react';
 import { db, getSettings } from '../db';
-import { generateFigural } from '../domain/figural';
-import { buildPrompt, buildRepairPrompt, buildRewritePrompt } from '../domain/prompts';
+import { endOfGroup } from '../domain/groups';
+import { easier } from '../domain/blueprint';
+import { buildPassagePrompt, buildPrompt, buildRepairPrompt, buildRewritePrompt } from '../domain/prompts';
 import { SUBTESTS } from '../domain/types';
 import { loadMath, validateQuestion } from '../domain/validators';
 import { ProviderError } from '../providers';
 import type { FlagKind, PlanBatch, QSet, Question } from '../domain/types';
 import { uid } from '../lib/id';
-import { batchLabel, isProcedural } from './plan';
+import { batchLabel, isPassageBatch, isProcedural, passageSizes } from './plan';
 import { isLimited, keyUsage, limitsOf, QuotaExhaustedError } from './quota';
 import { CROSS_CHECK_KINDS, isCrossCheckable, openCheckerSession, runCrossCheck } from './crosscheck';
-import { callAndParse, openSession, type ModelSession } from './session';
+import { callAndParse, callAndParsePassages, openSession, type ModelSession } from './session';
+import { errorText, isQuotaError } from './storage';
+import { logError } from '../lib/errorLog';
 
 export interface GenProgress {
   setId: string;
@@ -61,7 +64,9 @@ export async function appendToSet(setId: string, questions: Question[], afterId?
     await db.questions.bulkPut(questions);
     let ids = [...set.questionIds];
     if (afterId && ids.includes(afterId)) {
-      ids.splice(ids.indexOf(afterId) + 1, 0, ...questions.map((q) => q.id));
+      // After a passage question means after its whole group, which must not be split.
+      const after = endOfGroup((await db.questions.bulkGet(ids)).filter((q): q is Question => !!q), afterId);
+      ids.splice(ids.indexOf(after) + 1, 0, ...questions.map((q) => q.id));
     } else {
       ids.push(...questions.map((q) => q.id));
       const all = (await db.questions.bulkGet(ids)).filter((q): q is Question => !!q);
@@ -99,10 +104,18 @@ async function addUsage(setId: string, inputTokens: number, outputTokens: number
   });
 }
 
+// The figural and data generators are only needed while questions are being made.
+const procedural = () => import('../domain/procedural');
+
 async function runBatch(set: QSet, batch: PlanBatch, session: ModelSession | null, hashes: Set<string>, signal: AbortSignal) {
   let questions: Question[];
   if (isProcedural(batch)) {
-    questions = generateFigural(batch.items[0].topic, batch.items[0].difficulty, batch.count);
+    questions = (await procedural()).generateProcedural(batch.items[0].topic, batch.items[0].difficulty, batch.count);
+  } else if (isPassageBatch(batch)) {
+    if (!session) throw new Error('Belum ada API key.');
+    const sizes = passageSizes(batch.count);
+    const prompt = buildPassagePrompt({ items: batch.items, sizes, avoid: await recentStems(batch.subtest, [batch.items[0].topic]) });
+    questions = await callAndParsePassages(session, prompt, { items: batch.items, sizes, setId: set.id }, signal, (i, o) => addUsage(set.id, i, o));
   } else {
     if (!session) throw new Error('Belum ada API key.');
     const basedOn = batch.basedOn ? ((await db.questions.bulkGet(batch.basedOn)).filter(Boolean) as Question[]) : undefined;
@@ -239,11 +252,12 @@ export async function startGeneration(setId: string): Promise<void> {
           break;
         }
         failures++;
-        const msg = (e as Error).message ?? String(e);
-        await setBatch(setId, batch.id, { status: 'failed', error: msg });
+        void logError('generation', e);
+        const msg = errorText(e);
+        await setBatch(setId, batch.id, { status: 'failed', error: msg }).catch(() => {});
         log(setId, 'error', `${label(batch)}: ${msg}`);
-        // Stop early on auth errors: every other batch would fail the same way.
-        if (e instanceof ProviderError && (e.status === 401 || e.status === 403)) ctrl.abort();
+        // Stop early on auth errors and a full disk: every other batch would fail the same way.
+        if ((e instanceof ProviderError && (e.status === 401 || e.status === 403)) || isQuotaError(e)) ctrl.abort();
       } finally {
         update(setId, { current: (progress.get(setId)?.current ?? []).filter((c) => c !== label(batch)) });
       }
@@ -312,7 +326,8 @@ export async function rewriteQuestion(q: Question, instruction: string, keyId?: 
   const [nq] = await callAndParse(session, buildRewritePrompt(q, instruction), { subtest: q.subtest, items: [{ topic: q.topic, difficulty: q.difficulty }], setId: q.originSetId }, ctrl.signal, async () => {});
   if (!nq) throw new Error('AI tidak mengembalikan soal.');
   await loadMath();
-  const updated = validateQuestion({ ...nq, id: q.id, starred: q.starred, locked: q.locked, createdAt: q.createdAt, updatedAt: Date.now() });
+  // A report stays until the learner withdraws it, also through a rewrite; the old rating no longer applies.
+  const updated = validateQuestion({ ...nq, id: q.id, starred: q.starred, locked: q.locked, report: q.report, passage: q.passage, createdAt: q.createdAt, updatedAt: Date.now() });
   await db.questions.put(updated);
   return updated;
 }
@@ -335,7 +350,7 @@ async function repairWith(session: ModelSession, questions: Question[], signal: 
     if (out.length !== group.length) continue;
     await loadMath();
     for (const [i, old] of group.entries()) {
-      const v = validateQuestion({ ...out[i], id: old.id, originSetId: old.originSetId, starred: old.starred, createdAt: old.createdAt, updatedAt: Date.now() });
+      const v = validateQuestion({ ...out[i], id: old.id, originSetId: old.originSetId, starred: old.starred, report: old.report, rating: old.rating, passage: old.passage, createdAt: old.createdAt, updatedAt: Date.now() });
       if (needsRepair(v)) continue;
       await db.questions.put(v);
       fixed++;
@@ -354,18 +369,20 @@ export async function repairQuestion(q: Question, keyId?: string): Promise<void>
 }
 
 /** Generate `count` new questions modelled on `q` and insert them right after it. */
-export async function moreLikeThis(setId: string, q: Question, count: number, keyId?: string): Promise<number> {
+/** New questions like `q`, added after it in the set; `easier` asks for one difficulty step down. */
+export async function moreLikeThis(setId: string, q: Question, count: number, keyId?: string, opts: { easier?: boolean } = {}): Promise<number> {
   let questions: Question[];
+  const difficulty = opts.easier ? easier(q.difficulty) : q.difficulty;
   if (q.source === 'procedural') {
-    questions = generateFigural(q.topic, q.difficulty, count);
+    questions = (await procedural()).generateProcedural(q.topic, difficulty, count);
   } else {
     const session = await openSession(keyId);
-    const items = Array.from({ length: count }, () => ({ topic: q.topic, difficulty: q.difficulty }));
+    const items = Array.from({ length: count }, () => ({ topic: q.topic, difficulty }));
     const prompt = buildPrompt({
       subtest: q.subtest,
       items,
       avoid: [q.stem],
-      instruction: `Semua soal meniru gaya, jenis, dan tingkat kesulitan soal contoh ini, tetapi dengan isi, angka, dan konteks berbeda: "${q.stem.slice(0, 600)}"`,
+      instruction: `Semua soal meniru gaya dan jenis soal contoh ini${opts.easier ? ', tetapi lebih mudah' : ', dengan tingkat kesulitan yang sama'}, dengan isi, angka, dan konteks berbeda: "${q.stem.slice(0, 600)}"`,
     });
     const ctrl = new AbortController();
     questions = await callAndParse(session, prompt, { subtest: q.subtest, items, setId }, ctrl.signal, (i, o) => addUsage(setId, i, o));

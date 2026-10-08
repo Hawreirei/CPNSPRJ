@@ -2,9 +2,12 @@ import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import { getSettings } from '../db';
 import { SUBTEST_NAMES } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
-import type { Question } from '../domain/types';
+import { fmtNum } from '../domain/describe';
+import type { DataFigure, Question } from '../domain/types';
 import { toPlain } from '../components/RichText';
-import { cellSvg, figureSvg, svgToPng } from './figureSvg';
+import { dataChartSvg } from './dataSvg';
+import { opensGroup, passageLabel } from '../domain/groups';
+import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
 import { hasStudentHeader, keyText, PACK_TITLES, type ExportMeta, type PackKind } from './exportDocx';
 
 function toBase64(bytes: Uint8Array): string {
@@ -36,12 +39,29 @@ export async function exportPdf(meta: ExportMeta, questions: Question[], pack: P
   const groups = SUBTESTS.map((s) => ({ s, items: numbered.filter((x) => x.q.subtest === s) })).filter((g) => g.items.length);
   const heading = (s: string): Content => ({ text: `${s} — ${SUBTEST_NAMES[s as keyof typeof SUBTEST_NAMES]}`, style: 'h2', margin: [0, 12, 0, 6] });
 
+  /** A data question's numbers: a real table, or the chart as an image under its title. */
+  async function dataBlock(data: DataFigure): Promise<Content> {
+    const title: Content = { text: data.title, bold: true, fontSize: 9, margin: [0, 2, 0, 2] };
+    if (data.kind !== 'table') return { stack: [title, await image(dataChartSvg(data, '#111', '#fff'), 0.7)] };
+    const head = [{ text: data.category, bold: true }, ...data.series.map((s) => ({ text: s.name, bold: true, alignment: 'right' as const }))];
+    const rows = data.labels.map((l, i) => [{ text: l }, ...data.series.map((s) => ({ text: fmtNum(s.values[i]), alignment: 'right' as const }))]);
+    return { stack: [title, { table: { headerRows: 1, body: [head, ...rows] }, layout: 'lightHorizontalLines', fontSize: 9, margin: [0, 0, 0, 4] }] };
+  }
+
   async function questionBlock(q: Question, n: number, withKey: boolean): Promise<Content> {
-    const parts: Content[] = [{ text: [{ text: `${n}. `, bold: true }, toPlain(q.stem)], margin: [0, 8, 0, 4] }];
-    if (q.figure) parts.push(await image(figureSvg(q.figure, 72, '#111')));
+    const parts: Content[] = [];
+    // A reading passage is printed once, above the first question of its group.
+    if (q.passage && opensGroup(questions, q)) {
+      parts.push({ text: `${passageLabel(questions, q)}${q.passage.title ? `: ${q.passage.title}` : ''}`, bold: true, margin: [0, 10, 0, 2] });
+      parts.push({ text: toPlain(q.passage.text), margin: [0, 0, 0, 4], alignment: 'justify' });
+    }
+    parts.push({ text: [{ text: `${n}. `, bold: true }, toPlain(q.stem)], margin: [0, 8, 0, 4] });
+    if (hasStemFigure(q.figure)) parts.push(await image(figureSvg(q.figure, 72, '#111')));
+    if (q.data) parts.push(await dataBlock(q.data));
     for (const o of q.options) {
       const isKey = withKey && (q.subtest === 'TKP' ? o.score === 5 : o.label === q.answer);
-      const body: Content = o.figure ? await image(cellSvg(o.figure, 56, '#111')) : { text: toPlain(o.text), bold: isKey };
+      const option: Content = o.figure ? await image(cellSvg(o.figure, 56, '#111')) : { text: toPlain(o.text), bold: isKey };
+      const body: Content = withKey && o.rationale ? { stack: [option, { text: o.rationale, italics: true, fontSize: 9, color: '#444444' }] } : option;
       const score = withKey && q.subtest === 'TKP' ? { text: `(skor ${o.score})`, italics: true, color: '#555555', width: 'auto' as const } : null;
       parts.push({ columns: [{ text: `${o.label}.`, width: 18, bold: isKey }, { stack: [body], width: '*' }, ...(score ? [score] : [])], columnGap: 4, margin: [14, 1, 0, 1] });
     }
