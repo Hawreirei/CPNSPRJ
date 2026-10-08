@@ -99,8 +99,10 @@ export default function SimulationHome() {
 
           <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
             <div>
-              <label className="label">Pilih set</label>
-              <select className="input" value={setId} onChange={(e) => setSetId(e.target.value)}>
+              <label className="label" htmlFor="sim-set">
+                Pilih set
+              </label>
+              <select id="sim-set" className="input" value={setId} onChange={(e) => setSetId(e.target.value)}>
                 {sets.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name} ({s.questionIds.length} soal)
@@ -110,8 +112,10 @@ export default function SimulationHome() {
             </div>
             {(!practice || practiceTimed) && (
               <div>
-                <label className="label">Durasi (menit)</label>
-                <input type="number" min={1} className="input" value={duration} onChange={(e) => setDuration(e.target.value ? Number(e.target.value) : '')} />
+                <label className="label" htmlFor="sim-duration">
+                  Durasi (menit)
+                </label>
+                <input id="sim-duration" type="number" min={1} className="input" value={duration} onChange={(e) => setDuration(e.target.value ? Number(e.target.value) : '')} />
               </div>
             )}
           </div>

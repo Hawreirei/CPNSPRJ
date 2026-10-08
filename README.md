@@ -71,11 +71,23 @@ Durasi default 100 menit. Semua angka dapat diubah di **Pengaturan** karena atur
 npm install
 npm run dev        # server pengembangan
 npm test           # unit test (vitest)
+npm run test:e2e   # uji end-to-end di browser (Playwright, memakai build produksi)
 npm run typecheck
 npm run lint
 npm run build      # build statis ke dist/
 npm run preview
 ```
+
+### Uji end-to-end
+
+`npm run test:e2e` membangun aplikasi lalu menjalankan Playwright terhadap `vite preview`, sehingga CSP, router hash, dan base relatif sama dengan yang dipakai pengguna. Sekali saja di mesin baru: `npx playwright install chromium`.
+
+- Penyedia AI tidak pernah dihubungi. `e2e/fixtures.ts` berisi Gemini tiruan yang menjawab daftar model dan pembuatan soal sesuai prompt (kunci selalu A, opsi A TKP bernilai 5). Setiap request lain ke luar `localhost` dibatalkan dan membuat tes gagal.
+- Waktu tidak ditunggu sungguhan: timer ujian, jeda cadangan otomatis, dan "besok" di Buku Kesalahan dimajukan dengan `page.clock`.
+- Simpan otomatis ke berkas memakai berkas asli di origin-private file system karena dialog pilih berkas tidak bisa tampil di browser headless.
+- Bila gagal, trace dan screenshot ada di `test-results/` (`npx playwright show-trace <trace.zip>`). Di CI (`.github/workflows/e2e.yml`) keduanya diunggah sebagai artefak.
+
+Cakupan: tambah API key → buat set → ujian (termasuk kirim otomatis saat waktu habis) → laporan & progres; unduh PDF/Word; cadangan ekspor/impor ke browser bersih, pengingat, dan simpan otomatis; Mode Latihan; Buku Kesalahan.
 
 Hasil build adalah situs statis (router berbasis hash, `base: './'`), sehingga bisa di-host di Netlify, Cloudflare Pages, GitHub Pages, dan sejenisnya tanpa konfigurasi rewrite.
 

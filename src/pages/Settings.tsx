@@ -27,8 +27,10 @@ export default function SettingsPage() {
         <h2>Tampilan & kop dokumen</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="label">Nama lembaga/bimbel (tampil di file unduhan)</label>
-            <input className="input" value={s.brandName} onChange={(e) => saveSettings({ brandName: e.target.value })} />
+            <label className="label" htmlFor="brand-name">
+              Nama lembaga/bimbel (tampil di file unduhan)
+            </label>
+            <input id="brand-name" className="input" value={s.brandName} onChange={(e) => saveSettings({ brandName: e.target.value })} />
           </div>
           <div>
             <label className="label">Logo (PNG/JPG, maks 300 KB)</label>
@@ -158,8 +160,11 @@ export default function SettingsPage() {
         <section className="space-y-3">
           <h2>Buku Kesalahan</h2>
           <div>
-            <label className="label">Batas ulangan per hari</label>
+            <label className="label" htmlFor="review-limit">
+              Batas ulangan per hari
+            </label>
             <input
+              id="review-limit"
               type="number"
               min={1}
               max={200}
