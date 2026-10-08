@@ -66,11 +66,11 @@ export const DEFAULT_SETTINGS: Settings = {
 export type PresetId = 'full' | 'twk' | 'tiu' | 'tkp' | 'mini';
 
 export const PRESETS: { id: PresetId; name: string; description: string }[] = [
-  { id: 'full', name: 'SKD Lengkap', description: 'TWK + TIU + TKP sesuai jumlah soal standar' },
-  { id: 'mini', name: 'Mini SKD', description: '10 soal per sub-tes, cocok untuk uji coba' },
-  { id: 'twk', name: 'TWK saja', description: 'Fokus wawasan kebangsaan' },
-  { id: 'tiu', name: 'Drill TIU', description: 'Verbal, numerik, logika, figural' },
-  { id: 'tkp', name: 'Drill TKP', description: 'Situasi kerja dengan skor 1–5' },
+  { id: 'mini', name: 'Latihan Singkat', description: '10 soal tiap bagian (TWK, TIU, TKP). Cocok untuk mencoba.' },
+  { id: 'full', name: 'SKD Lengkap', description: 'Seperti ujian sungguhan: TWK, TIU, dan TKP.' },
+  { id: 'twk', name: 'TWK saja', description: 'Wawasan kebangsaan: Pancasila, UUD 1945, sejarah, dll.' },
+  { id: 'tiu', name: 'TIU saja', description: 'Kemampuan verbal, hitungan, logika, dan gambar.' },
+  { id: 'tkp', name: 'TKP saja', description: 'Sikap dan perilaku dalam situasi kerja.' },
 ];
 
 export function buildPreset(id: PresetId, settings: Settings, difficulty: DifficultyChoice = 'campuran'): Blueprint {

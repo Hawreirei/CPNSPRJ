@@ -72,7 +72,7 @@ export async function chooseKeyModel(keyId: string, model: string) {
 }
 
 /** Hand model choice back to the app (newest stable recommended model). */
-export async function useAutoModel(keyId: string) {
+export async function switchToAutoModel(keyId: string) {
   await db.keys.update(keyId, { autoModel: true });
   return refreshKeyModel(keyId);
 }

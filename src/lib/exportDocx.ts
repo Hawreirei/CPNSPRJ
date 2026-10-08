@@ -1,24 +1,34 @@
 import { getSettings } from '../db';
 import { SUBTEST_NAMES } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
-import type { QSet, Question } from '../domain/types';
+import type { Question } from '../domain/types';
 import { toPlain } from '../components/RichText';
 import { cellSvg, figureSvg, svgToPng } from './figureSvg';
 
-export type PackKind = 'soal' | 'kunci' | 'pembahasan' | 'lengkap';
+export type PackKind = 'soal' | 'soal-kunci' | 'lengkap' | 'kunci' | 'pembahasan';
 
 export const PACK_TITLES: Record<PackKind, string> = {
-  soal: 'Set Soal',
+  soal: 'Soal',
+  'soal-kunci': 'Soal & Kunci Jawaban',
+  lengkap: 'Soal, Kunci & Pembahasan',
   kunci: 'Kunci Jawaban & Skor',
   pembahasan: 'Pembahasan',
-  lengkap: 'Set Soal, Kunci & Pembahasan',
 };
+
+/** What the document is about: a saved set, or questions picked from the bank. */
+export interface ExportMeta {
+  name: string;
+  durationMinutes?: number;
+}
+
+/** Packs that print the answer sheet header ("Nama: ____"). */
+export const hasStudentHeader = (p: PackKind) => p === 'soal' || p === 'soal-kunci' || p === 'lengkap';
 
 export function keyText(q: Question): string {
   return q.subtest === 'TKP' ? q.options.map((o) => `${o.label}=${o.score}`).join('  ') : (q.answer ?? '-');
 }
 
-export async function exportDocx(set: QSet, questions: Question[], pack: PackKind): Promise<Blob> {
+export async function exportDocx(meta: ExportMeta, questions: Question[], pack: PackKind): Promise<Blob> {
   const d = await import('docx');
   const { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, Footer, PageBreak } = d;
   const settings = await getSettings();
@@ -51,14 +61,15 @@ export async function exportDocx(set: QSet, questions: Question[], pack: PackKin
       out.push(new Paragraph({ children: [new ImageRun({ type, data: settings.brandLogo, transformation: { width: w, height: h } })] }));
     }
     if (settings.brandName) out.push(new Paragraph({ children: [new TextRun({ text: settings.brandName, bold: true, size: 26 })] }));
-    out.push(new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun({ text: `${title}: ${set.name}` })] }));
+    out.push(new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun({ text: `${title}: ${meta.name}` })] }));
     out.push(
       new Paragraph({
         children: [new TextRun({ text: `Tanggal: ${new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })}    Jumlah soal: ${questions.length}`, size: 20 })],
       }),
     );
-    if (pack === 'soal' || pack === 'lengkap') {
-      out.push(new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: 'Nama: ______________________    Waktu: ' + set.blueprint.durationMinutes + ' menit', size: 20 })] }));
+    if (hasStudentHeader(pack)) {
+      const waktu = meta.durationMinutes ? `    Waktu: ${meta.durationMinutes} menit` : '';
+      out.push(new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: `Nama: ______________________${waktu}`, size: 20 })] }));
     }
     return out;
   }
@@ -120,6 +131,7 @@ export async function exportDocx(set: QSet, questions: Question[], pack: PackKin
   if (pack === 'soal') body = await soalSection();
   if (pack === 'kunci') body = kunciSection();
   if (pack === 'pembahasan') body = await pembahasanSection();
+  if (pack === 'soal-kunci') body = [...(await soalSection()), new Paragraph({ children: [new PageBreak()] }), ...kunciSection()];
   if (pack === 'lengkap') {
     body = [
       ...(await soalSection()),
@@ -132,7 +144,7 @@ export async function exportDocx(set: QSet, questions: Question[], pack: PackKin
 
   const doc = new Document({
     creator: settings.brandName || 'CPNS SKD Set Builder',
-    title: `${PACK_TITLES[pack]} - ${set.name}`,
+    title: `${PACK_TITLES[pack]} - ${meta.name}`,
     styles: { default: { document: { run: { font: 'Calibri', size: 22 } } } },
     sections: [
       {

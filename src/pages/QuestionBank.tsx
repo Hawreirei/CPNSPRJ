@@ -10,6 +10,7 @@ import { normalizeText } from '../lib/id';
 import { QuestionCard, type CardMode } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
 import { Empty } from '../components/ui';
+import { DownloadDialog } from '../components/DownloadDialog';
 
 const PAGE = 30;
 
@@ -26,6 +27,7 @@ export default function QuestionBank() {
   const [limit, setLimit] = useState(PAGE);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Question | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   const filtered = useMemo(() => {
     if (!all) return [];
@@ -65,7 +67,7 @@ export default function QuestionBank() {
       durationMinutes: Math.max(5, Math.round((settings.durationMinutes * total) / 110)),
       passing: { ...settings.passing },
     };
-    const name = prompt('Nama set:', `Set dari bank · ${new Date().toLocaleDateString('id-ID')}`);
+    const name = prompt('Beri nama set baru:', `Set dari bank · ${new Date().toLocaleDateString('id-ID')}`);
     if (!name) return;
     const set = await createBankSet(name, blueprint, qs);
     nav(`/sets/${set.id}`);
@@ -83,96 +85,119 @@ export default function QuestionBank() {
     setSelected(new Set());
   }
 
+  const selectedQs = all.filter((x) => selected.has(x.id));
+  // Download the picked questions, or everything currently shown when nothing is picked.
+  const toDownload = (selectedQs.length ? selectedQs : filtered).slice().sort((a, b) => SUBTESTS.indexOf(a.subtest) - SUBTESTS.indexOf(b.subtest));
+  const moreFilters = !!(topic || diff || only);
+
   return (
     <div className="space-y-4">
-      <div>
-        <h1>Bank Soal</h1>
-        <p className="muted mt-1">
-          {all.length} soal dari semua set. Susun set baru dari bank tanpa biaya AI: pilih soal di bawah, atau gunakan "Ambil dari bank soal" di Set Baru.
-        </p>
-      </div>
-
-      <div className="card grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
-        <input className="input lg:col-span-2" placeholder="Cari teks soal…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select
-          className="input"
-          value={sub}
-          onChange={(e) => {
-            setSub(e.target.value as Subtest | '');
-            setTopic('');
-          }}
-        >
-          <option value="">Semua sub-tes</option>
-          {SUBTESTS.map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
-        <select className="input" value={topic} onChange={(e) => setTopic(e.target.value)}>
-          <option value="">Semua topik</option>
-          {(sub ? TOPICS[sub] : SUBTESTS.flatMap((s) => TOPICS[s])).map((t) => (
-            <option key={t}>{t}</option>
-          ))}
-        </select>
-        <select className="input" value={diff} onChange={(e) => setDiff(e.target.value)}>
-          <option value="">Semua kesulitan</option>
-          <option>mudah</option>
-          <option>sedang</option>
-          <option>sulit</option>
-        </select>
-        <select className="input" value={only} onChange={(e) => setOnly(e.target.value as typeof only)}>
-          <option value="">Semua</option>
-          <option value="starred">Berbintang</option>
-          <option value="flagged">Perlu dicek</option>
-        </select>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="muted">{filtered.length} cocok</span>
-        <button className="btn btn-sm" onClick={() => setSelected(new Set(filtered.map((x) => x.id)))}>
-          Pilih semua hasil
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1>Bank Soal</h1>
+          <p className="muted mt-1">Semua soal yang pernah Anda buat ({all.length} soal). Centang soal untuk diunduh atau dijadikan set baru.</p>
+        </div>
+        <button className="btn btn-primary" disabled={!toDownload.length} onClick={() => setDownloading(true)}>
+          ⬇ Unduh {selectedQs.length ? `${selectedQs.length} soal terpilih` : `${filtered.length} soal`}
         </button>
+      </div>
+
+      <div className="card space-y-3">
+        <input className="input" placeholder="Cari soal…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="flex flex-wrap items-center gap-1.5">
+          {(['', ...SUBTESTS] as const).map((s) => (
+            <button
+              key={s || 'all'}
+              onClick={() => {
+                setSub(s);
+                setTopic('');
+              }}
+              className={`rounded-full border px-3 py-1 text-xs ${sub === s ? 'border-brand-500 bg-brand-50 font-medium text-brand-700 dark:bg-slate-800 dark:text-brand-100' : 'border-slate-300 dark:border-slate-700'}`}
+            >
+              {s || 'Semua'}
+            </button>
+          ))}
+          <details className="ml-auto" open={moreFilters}>
+            <summary className="muted cursor-pointer text-xs">Filter lainnya{moreFilters ? ' (aktif)' : ''}</summary>
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              <select className="input" value={topic} onChange={(e) => setTopic(e.target.value)}>
+                <option value="">Semua topik</option>
+                {(sub ? TOPICS[sub] : SUBTESTS.flatMap((x) => TOPICS[x])).map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
+              <select className="input" value={diff} onChange={(e) => setDiff(e.target.value)}>
+                <option value="">Semua kesulitan</option>
+                <option>mudah</option>
+                <option>sedang</option>
+                <option>sulit</option>
+              </select>
+              <select className="input" value={only} onChange={(e) => setOnly(e.target.value as typeof only)}>
+                <option value="">Semua soal</option>
+                <option value="starred">Berbintang saja</option>
+                <option value="flagged">Perlu dicek saja</option>
+              </select>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="muted">{filtered.length} soal ditemukan</span>
+        {filtered.length > 0 && (
+          <button className="btn btn-sm" onClick={() => setSelected(new Set(filtered.map((x) => x.id)))}>
+            Pilih semua
+          </button>
+        )}
         {selected.size > 0 && (
           <>
             <button className="btn btn-sm" onClick={() => setSelected(new Set())}>
               Batal pilih ({selected.size})
             </button>
-            <button className="btn btn-primary btn-sm" onClick={buildFromSelection}>
-              Buat set dari {selected.size} soal
+            <button className="btn btn-sm" onClick={buildFromSelection}>
+              Jadikan set baru
             </button>
             <button className="btn btn-danger btn-sm" onClick={deleteSelected}>
               Hapus
             </button>
           </>
         )}
-        <select className="input ml-auto w-auto" value={mode} onChange={(e) => setMode(e.target.value as CardMode)}>
-          <option value="soal">Tampilkan soal</option>
-          <option value="pembahasan">Tampilkan pembahasan</option>
-        </select>
+        <label className="ml-auto flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={mode === 'pembahasan'} onChange={(e) => setMode(e.target.checked ? 'pembahasan' : 'soal')} />
+          Tampilkan jawaban & pembahasan
+        </label>
       </div>
 
       {filtered.length === 0 ? (
-        <Empty title="Tidak ada soal">Soal yang Anda buat akan otomatis masuk ke bank soal.</Empty>
+        <Empty title="Tidak ada soal">Soal yang Anda buat akan otomatis tersimpan di sini.</Empty>
       ) : (
         <div className="space-y-3">
           {filtered.slice(0, limit).map((x) => (
-            <QuestionCard
-              key={x.id}
-              q={x}
-              mode={mode}
-              actions={
-                <>
-                  <label className="btn btn-ghost btn-sm">
-                    <input type="checkbox" checked={selected.has(x.id)} onChange={() => toggle(x.id)} /> pilih
-                  </label>
-                  <button className="btn btn-ghost btn-sm" onClick={() => db.questions.update(x.id, { starred: !x.starred })}>
-                    {x.starred ? '★' : '☆'}
-                  </button>
-                  <button className="btn btn-ghost btn-sm" disabled={x.locked} onClick={() => setEditing(x)}>
-                    Edit
-                  </button>
-                </>
-              }
-            />
+            <div key={x.id} className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                className="mt-5 h-4 w-4 shrink-0"
+                checked={selected.has(x.id)}
+                onChange={() => toggle(x.id)}
+                aria-label="Pilih soal"
+              />
+              <div className="min-w-0 flex-1">
+                <QuestionCard
+                  q={x}
+                  mode={mode}
+                  actions={
+                    <>
+                      <button className="btn btn-ghost btn-sm" title={x.starred ? 'Hapus bintang' : 'Beri bintang'} onClick={() => db.questions.update(x.id, { starred: !x.starred })}>
+                        {x.starred ? '★' : '☆'}
+                      </button>
+                      <button className="btn btn-ghost btn-sm" disabled={x.locked} onClick={() => setEditing(x)}>
+                        Edit
+                      </button>
+                    </>
+                  }
+                />
+              </div>
+            </div>
           ))}
           {filtered.length > limit && (
             <button className="btn w-full" onClick={() => setLimit((l) => l + PAGE)}>
@@ -182,6 +207,14 @@ export default function QuestionBank() {
         </div>
       )}
       {editing && <QuestionEditor q={editing} onClose={() => setEditing(null)} />}
+      {downloading && (
+        <DownloadDialog
+          open
+          onClose={() => setDownloading(false)}
+          meta={{ name: `Soal pilihan ${new Date().toLocaleDateString('id-ID')}`, durationMinutes: Math.max(5, Math.round((settings.durationMinutes * toDownload.length) / 110)) }}
+          questions={toDownload}
+        />
+      )}
     </div>
   );
 }

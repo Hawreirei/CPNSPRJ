@@ -10,16 +10,25 @@ import { startGeneration } from '../engine/generator';
 import { estimatePlan, planBatches } from '../engine/plan';
 import { createAiSet, createBankSet, pickFromBank } from '../engine/sets';
 import { refreshStaleKeyModels } from '../engine/keys';
-import { PROVIDERS } from '../providers/types';
 import { keyUsage, limitsOf } from '../engine/quota';
 import { ModelSelect } from '../components/ModelSelect';
 import { fmtUsd, SubtestBadge } from '../components/ui';
+
+const DIFFICULTIES: { id: DifficultyChoice; label: string }[] = [
+  { id: 'campuran', label: 'Campuran (disarankan)' },
+  { id: 'mudah', label: 'Mudah' },
+  { id: 'sedang', label: 'Sedang' },
+  { id: 'sulit', label: 'Sulit' },
+];
+
+const fmtReset = (t: number) => new Date(t).toLocaleString('id-ID', { weekday: 'long', hour: '2-digit', minute: '2-digit' });
 
 export default function NewSet() {
   const settings = useSettings();
   const nav = useNavigate();
   const keys = useLiveQuery(() => db.keys.toArray(), []);
   const [preset, setPreset] = useState<PresetId>('mini');
+  const [difficulty, setDifficulty] = useState<DifficultyChoice>('campuran');
   const [bp, setBp] = useState<Blueprint>(() => buildPreset('mini', settings));
   const [name, setName] = useState('');
   const [keyId, setKeyId] = useState<string>('');
@@ -29,7 +38,7 @@ export default function NewSet() {
   const [msg, setMsg] = useState<string | null>(null);
 
   // Re-seed once real settings load from IndexedDB.
-  useEffect(() => setBp(buildPreset(preset, settings)), [settings]);
+  useEffect(() => setBp(buildPreset(preset, settings, difficulty)), [settings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Make sure every key's model list is available for the per-set picker (no quota used).
   useEffect(() => {
@@ -47,10 +56,17 @@ export default function NewSet() {
   const usage = useLiveQuery(async () => (key ? keyUsage(key) : undefined), [key]);
   const remaining = usage?.blockedUntil ? 0 : (usage?.remainingToday ?? null);
   const total = bp.sections.reduce((n, s) => n + s.count, 0);
+  const needsKey = est.requests > 0 && !key;
+  const missingTopics = bp.sections.some((s) => !s.topics.length);
 
   function applyPreset(id: PresetId) {
     setPreset(id);
-    setBp(buildPreset(id, settings));
+    setBp(buildPreset(id, settings, difficulty));
+  }
+
+  function applyDifficulty(d: DifficultyChoice) {
+    setDifficulty(d);
+    setBp((b) => ({ ...b, sections: b.sections.map((s) => ({ ...s, difficulty: d })) }));
   }
 
   function setSection(s: Subtest, patch: Partial<SectionSpec> | null) {
@@ -59,7 +75,7 @@ export default function NewSet() {
       let sections: SectionSpec[];
       if (patch === null) sections = b.sections.filter((x) => x.subtest !== s);
       else if (exists) sections = b.sections.map((x) => (x.subtest === s ? { ...x, ...patch } : x));
-      else sections = [...b.sections, { subtest: s, count: 10, topics: [...TOPICS[s]], difficulty: 'campuran' as DifficultyChoice, ...patch }];
+      else sections = [...b.sections, { subtest: s, count: 10, topics: [...TOPICS[s]], difficulty, ...patch }];
       sections.sort((a, c) => SUBTESTS.indexOf(a.subtest) - SUBTESTS.indexOf(c.subtest));
       return { ...b, sections };
     });
@@ -68,8 +84,8 @@ export default function NewSet() {
   const defaultName = () => `${PRESETS.find((p) => p.id === preset)?.name ?? 'Set'} · ${new Date().toLocaleDateString('id-ID')}`;
 
   async function generate() {
-    if (est.requests > 0 && !key) {
-      setMsg('Tambahkan API key dulu, atau pilih hanya topik figural yang dibuat otomatis.');
+    if (needsKey) {
+      setMsg('Tambahkan API key dulu di halaman API Key.');
       return;
     }
     setBusy(true);
@@ -82,108 +98,109 @@ export default function NewSet() {
     setBusy(true);
     const { picked, shortfall } = await pickFromBank(bp);
     if (!picked.length) {
-      setMsg('Bank soal belum memiliki soal yang cocok dengan pilihan ini.');
+      setMsg('Bank Soal belum punya soal yang cocok. Buat soal dengan AI dulu.');
       setBusy(false);
       return;
     }
-    const set = await createBankSet(name.trim() || `${defaultName()} (bank)`, bp, picked);
+    const set = await createBankSet(name.trim() || `${defaultName()} (dari bank)`, bp, picked);
     if (shortfall.length) {
-      alert(`Bank kurang: ${shortfall.map((s) => `${s.subtest} ${s.missing} soal`).join(', ')}. Set dibuat dengan ${picked.length} soal.`);
+      alert(`Soal di Bank Soal belum cukup (${shortfall.map((s) => `${s.subtest} kurang ${s.missing}`).join(', ')}). Set dibuat dengan ${picked.length} soal.`);
     }
     nav(`/sets/${set.id}`);
   }
 
+  const quotaLine = (() => {
+    if (!est.requests) return 'Tidak memakai kuota AI.';
+    if (remaining === null) return `Memakai sekitar ${est.requests} permintaan AI.`;
+    if (remaining >= est.requests) return `Memakai ${est.requests} dari ${remaining} sisa kuota gratis hari ini.`;
+    if (remaining === 0) return `Kuota gratis hari ini sudah habis. Bisa dilanjutkan ${usage ? fmtReset(usage.blockedUntil ?? usage.resetAt) : 'besok'}.`;
+    return `Butuh ${est.requests} permintaan, sisa kuota hari ini ${remaining}. Sebagian soal dibuat sekarang, sisanya bisa dilanjutkan ${usage ? fmtReset(usage.resetAt) : 'besok'}.`;
+  })();
+
   return (
-    <div className="space-y-6">
+    <div className="max-w-4xl space-y-6">
       <div>
-        <h1>Set Baru</h1>
-        <p className="muted mt-1">Pilih preset, atur sub-tes dan topik, lalu periksa rencana sebelum menghabiskan kuota API.</p>
+        <h1>Buat Soal Baru</h1>
+        <p className="muted mt-1">Pilih paket soal dan tingkat kesulitan, lalu klik "Buat Soal".</p>
       </div>
 
-      <section className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
-        {PRESETS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => applyPreset(p.id)}
-            className={`card text-left transition ${preset === p.id ? 'border-brand-500 ring-2 ring-brand-100 dark:ring-brand-700' : 'hover:border-slate-400'}`}
-          >
-            <div className="font-semibold">{p.name}</div>
-            <div className="muted mt-1 text-xs">{p.description}</div>
-          </button>
-        ))}
-      </section>
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-4">
-          {SUBTESTS.map((s) => {
-            const sec = bp.sections.find((x) => x.subtest === s);
+      <section className="space-y-2">
+        <h2>1. Pilih paket soal</h2>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {PRESETS.map((p) => {
+            const b = buildPreset(p.id, settings);
+            const n = b.sections.reduce((x, s) => x + s.count, 0);
             return (
-              <div key={s} className={`card ${sec ? '' : 'opacity-70'}`}>
-                <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={!!sec} onChange={(e) => setSection(s, e.target.checked ? {} : null)} />
-                    <SubtestBadge subtest={s} />
-                    <span className="font-semibold">{SUBTEST_NAMES[s]}</span>
-                  </label>
-                  {sec && (
-                    <div className="ml-auto flex items-center gap-2">
-                      <label className="text-xs">Jumlah</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={200}
-                        className="input w-20"
-                        value={sec.count}
-                        onChange={(e) => setSection(s, { count: Math.max(1, Number(e.target.value) || 1) })}
-                      />
-                      <select className="input w-32" value={sec.difficulty} onChange={(e) => setSection(s, { difficulty: e.target.value as DifficultyChoice })}>
-                        <option value="campuran">campuran</option>
-                        <option value="mudah">mudah</option>
-                        <option value="sedang">sedang</option>
-                        <option value="sulit">sulit</option>
-                      </select>
-                    </div>
-                  )}
+              <button
+                key={p.id}
+                onClick={() => applyPreset(p.id)}
+                className={`card text-left transition ${preset === p.id ? 'border-brand-500 ring-2 ring-brand-100 dark:ring-brand-700' : 'hover:border-slate-400'}`}
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-semibold">{p.name}</span>
+                  <span className="muted text-xs">
+                    {n} soal · {b.durationMinutes} menit
+                  </span>
                 </div>
-                {sec && (
-                  <div className="mt-3">
-                    <div className="mb-1 flex gap-3 text-xs">
-                      <button className="text-brand-600 underline" onClick={() => setSection(s, { topics: [...TOPICS[s]] })}>
-                        semua
-                      </button>
-                      <button className="text-brand-600 underline" onClick={() => setSection(s, { topics: [] })}>
-                        kosongkan
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {TOPICS[s].map((t) => {
-                        const on = sec.topics.includes(t);
-                        return (
-                          <button
-                            key={t}
-                            onClick={() => setSection(s, { topics: on ? sec.topics.filter((x) => x !== t) : [...sec.topics, t] })}
-                            className={`rounded-full border px-2.5 py-1 text-xs ${on ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-slate-800 dark:text-brand-100' : 'border-slate-300 text-slate-500 dark:border-slate-700'}`}
-                          >
-                            {t}
-                            {PROCEDURAL_TOPICS.has(t) && ' · gratis'}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {!sec.topics.length && <p className="mt-2 text-xs text-red-600">Pilih minimal satu topik.</p>}
-                  </div>
-                )}
-              </div>
+                <div className="muted mt-1 text-xs">{p.description}</div>
+              </button>
             );
           })}
+        </div>
+      </section>
 
-          <div className="card grid gap-3 sm:grid-cols-2">
+      <section className="space-y-2">
+        <h2>2. Tingkat kesulitan</h2>
+        <div className="flex flex-wrap gap-2">
+          {DIFFICULTIES.map((d) => (
+            <button
+              key={d.id}
+              onClick={() => applyDifficulty(d.id)}
+              className={`rounded-lg border px-3 py-1.5 text-sm ${difficulty === d.id ? 'border-brand-500 bg-brand-50 font-medium text-brand-700 dark:bg-slate-800 dark:text-brand-100' : 'border-slate-300 dark:border-slate-700'}`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card space-y-3">
+        <h2>3. Buat soal</h2>
+        <p className="text-sm">
+          <b>{total} soal</b> · waktu ujian {bp.durationMinutes} menit
+          {est.requests > 0 && est.minutes[1] > 0 && <> · selesai dibuat sekitar {Math.max(1, Math.round(est.minutes[0]))}–{Math.max(2, Math.round(est.minutes[1]))} menit</>}
+        </p>
+        {needsKey ? (
+          <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            Untuk membuat soal dengan AI, tambahkan API key dulu.{' '}
+            <Link className="font-medium underline" to="/keys">
+              Tambah API key
+            </Link>
+          </p>
+        ) : (
+          <p className={`text-sm ${remaining !== null && remaining < est.requests ? 'text-amber-700 dark:text-amber-300' : 'muted'}`}>{quotaLine}</p>
+        )}
+        {msg && <p className="text-sm text-red-600 dark:text-red-400">{msg}</p>}
+        <div className="flex flex-wrap gap-2">
+          <button className="btn btn-primary px-5 py-2 text-base" disabled={busy || !total || missingTopics || needsKey} onClick={generate}>
+            Buat Soal
+          </button>
+          <button className="btn" disabled={busy || !total} onClick={fromBank} title="Memakai soal yang sudah pernah dibuat. Tidak memakai kuota AI.">
+            Ambil dari Bank Soal (tanpa AI)
+          </button>
+        </div>
+      </section>
+
+      <details className="card">
+        <summary className="cursor-pointer font-medium">Sesuaikan lebih lanjut (opsional)</summary>
+        <div className="mt-4 space-y-5">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="label">Nama set</label>
               <input className="input" placeholder={defaultName()} value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div>
-              <label className="label">Durasi simulasi (menit)</label>
+              <label className="label">Waktu ujian (menit)</label>
               <input
                 type="number"
                 min={5}
@@ -192,107 +209,113 @@ export default function NewSet() {
                 onChange={(e) => setBp({ ...bp, durationMinutes: Math.max(1, Number(e.target.value) || 1) })}
               />
             </div>
-            {bp.sections.map((sec) => (
-              <div key={sec.subtest}>
-                <label className="label">Ambang batas {sec.subtest} (untuk set penuh)</label>
-                <input
-                  type="number"
-                  className="input"
-                  value={bp.passing[sec.subtest]}
-                  onChange={(e) => setBp({ ...bp, passing: { ...bp.passing, [sec.subtest]: Number(e.target.value) || 0 } })}
-                />
-              </div>
-            ))}
-            <p className="muted text-xs sm:col-span-2">
-              Ambang batas otomatis disesuaikan proporsional bila jumlah soal berbeda dari standar. Nilai default dapat diubah di Pengaturan.
-            </p>
           </div>
-        </div>
 
-        <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start">
-          <div className="card space-y-3">
-            <h2>Rencana</h2>
-            <div>
-              <label className="label">API key</label>
-              {keys?.length ? (
-                <select
-                  className="input"
-                  value={keyId}
-                  onChange={(e) => {
-                    setKeyId(e.target.value);
-                    setSetModel('');
-                  }}
-                >
-                  {keys.map((k) => (
-                    <option key={k.id} value={k.id}>
-                      {k.label} · {PROVIDERS[k.provider].name} · {k.model}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <p className="text-sm">
-                  Belum ada. <Link className="text-brand-600 underline" to="/keys">Tambah API key</Link>
-                </p>
+          <div className="space-y-3">
+            <div className="label">Jumlah soal dan topik</div>
+            {SUBTESTS.map((s) => {
+              const sec = bp.sections.find((x) => x.subtest === s);
+              return (
+                <div key={s} className={`rounded-lg border border-slate-200 p-3 dark:border-slate-800 ${sec ? '' : 'opacity-60'}`}>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={!!sec} onChange={(e) => setSection(s, e.target.checked ? {} : null)} />
+                      <SubtestBadge subtest={s} />
+                      <span className="text-sm font-medium">{SUBTEST_NAMES[s]}</span>
+                    </label>
+                    {sec && (
+                      <label className="ml-auto flex items-center gap-2 text-sm">
+                        Jumlah
+                        <input
+                          type="number"
+                          min={1}
+                          max={200}
+                          className="input w-20"
+                          value={sec.count}
+                          onChange={(e) => setSection(s, { count: Math.max(1, Number(e.target.value) || 1) })}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  {sec && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {TOPICS[s].map((t) => {
+                        const on = sec.topics.includes(t);
+                        return (
+                          <button
+                            key={t}
+                            onClick={() => setSection(s, { topics: on ? sec.topics.filter((x) => x !== t) : [...sec.topics, t] })}
+                            className={`rounded-full border px-2.5 py-1 text-xs ${on ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-slate-800 dark:text-brand-100' : 'border-slate-300 text-slate-500 dark:border-slate-700'}`}
+                          >
+                            {on ? '✓ ' : ''}
+                            {t}
+                            {PROCEDURAL_TOPICS.has(t) && ' (gratis)'}
+                          </button>
+                        );
+                      })}
+                      {!sec.topics.length && <p className="w-full text-xs text-red-600">Pilih minimal satu topik.</p>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div>
+            <div className="label">Nilai minimal lulus (ambang batas)</div>
+            <div className="flex flex-wrap gap-3">
+              {bp.sections.map((sec) => (
+                <label key={sec.subtest} className="text-sm">
+                  {sec.subtest}{' '}
+                  <input
+                    type="number"
+                    className="input inline-block w-20"
+                    value={bp.passing[sec.subtest]}
+                    onChange={(e) => setBp({ ...bp, passing: { ...bp.passing, [sec.subtest]: Number(e.target.value) || 0 } })}
+                  />
+                </label>
+              ))}
+            </div>
+            <p className="muted mt-1 text-xs">Untuk jumlah soal penuh; disesuaikan otomatis bila soalnya lebih sedikit.</p>
+          </div>
+
+          {keys && keys.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {keys.length > 1 && (
+                <div>
+                  <label className="label">API key</label>
+                  <select
+                    className="input"
+                    value={keyId}
+                    onChange={(e) => {
+                      setKeyId(e.target.value);
+                      setSetModel('');
+                    }}
+                  >
+                    {keys.map((k) => (
+                      <option key={k.id} value={k.id}>
+                        {k.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {key && (
+                <div>
+                  <label className="label">Model AI</label>
+                  <ModelSelect
+                    models={key.models ?? []}
+                    value={setModel || null}
+                    inheritOption={`Sama seperti di API Key (${key.model})`}
+                    onChange={(c) => setSetModel(c.kind === 'model' ? c.id : '')}
+                  />
+                </div>
               )}
             </div>
-            {key && (
-              <div>
-                <label className="label">Model untuk set ini</label>
-                <ModelSelect
-                  models={key.models ?? []}
-                  value={setModel || null}
-                  inheritOption={`Ikuti pengaturan key (${key.model}${key.autoModel !== false ? ', otomatis' : ''})`}
-                  onChange={(c) => setSetModel(c.kind === 'model' ? c.id : '')}
-                />
-                {!key.models?.length && (
-                  <p className="muted mt-1 text-xs">
-                    Daftar model belum dimuat. Buka <Link className="text-brand-600 underline" to="/keys">API Keys</Link> untuk memuatnya.
-                  </p>
-                )}
-              </div>
-            )}
-            <dl className="grid grid-cols-2 gap-y-1 text-sm">
-              <dt className="muted">Total soal</dt>
-              <dd className="text-right font-medium">{total}</dd>
-              <dt className="muted">Soal oleh AI</dt>
-              <dd className="text-right">{est.aiQuestions}</dd>
-              <dt className="muted">Figural gratis</dt>
-              <dd className="text-right">{est.freeQuestions}</dd>
-              <dt className="muted">Permintaan API</dt>
-              <dd className="text-right">{est.requests}</dd>
-              <dt className="muted">Token (perkiraan)</dt>
-              <dd className="text-right">~{Math.round((est.inputTokens + est.outputTokens) / 1000)}k</dd>
-              <dt className="muted">Biaya</dt>
-              <dd className="text-right">
-                {est.requests ? `${fmtUsd(est.costUsd[0])}–${fmtUsd(est.costUsd[1])}` : '$0'}
-              </dd>
-              <dt className="muted">Waktu</dt>
-              <dd className="text-right">{est.requests ? `${Math.max(1, Math.round(est.minutes[0]))}–${Math.max(1, Math.round(est.minutes[1]))} menit` : 'instan'}</dd>
-            </dl>
-            {remaining !== null && est.requests > 0 && (
-              <div
-                className={`rounded-lg p-2 text-xs ${remaining >= est.requests ? 'bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-200' : 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200'}`}
-              >
-                Kuota key hari ini: sisa <b>{remaining}</b> dari {usage!.limits.rpd} request.{' '}
-                {remaining >= est.requests
-                  ? `Cukup untuk set ini (${est.requests} request); masih bisa sekitar ${Math.floor(remaining / est.requests)} set seperti ini hari ini.`
-                  : `Set ini butuh ${est.requests} request. ${remaining} batch dikerjakan sekarang, sisanya bisa dilanjutkan setelah kuota direset (${new Date(usage!.blockedUntil ?? usage!.resetAt).toLocaleString('id-ID', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}).`}{' '}
-                Hemat kuota: naikkan "soal per request" di Pengaturan, atau ambil soal dari bank (gratis).
-              </div>
-            )}
-            <p className="muted text-xs">
-              Perkiraan kasar. Model dengan "thinking" bisa memakai token lebih banyak. Harga dapat diubah di Pengaturan. Banyak penyedia punya kuota gratis.
-            </p>
-            {msg && <p className="text-sm text-red-600">{msg}</p>}
-            <button className="btn btn-primary w-full" disabled={busy || !total || bp.sections.some((s) => !s.topics.length)} onClick={generate}>
-              Buat dengan AI
-            </button>
-            <button className="btn w-full" disabled={busy || !total} onClick={fromBank}>
-              Ambil dari bank soal (gratis)
-            </button>
-          </div>
-        </aside>
-      </div>
+          )}
+          {est.requests > 0 && <p className="muted text-xs">Perkiraan biaya jika memakai akun berbayar: {fmtUsd(est.costUsd[0])}–{fmtUsd(est.costUsd[1])}. Akun gratis tidak dikenai biaya.</p>}
+        </div>
+      </details>
     </div>
   );
 }

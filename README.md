@@ -25,7 +25,7 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 | Bank soal | Pencarian dan filter; susun set baru tanpa biaya AI |
 | Set varian | Set baru dengan topik dan kesulitan yang sama |
 | Progres | Grafik riwayat skor per sub-tes dan penguasaan topik |
-| Ekspor | Word (.docx) dan PDF (cetak): paket siswa, kunci, pembahasan, lengkap; dengan nama lembaga, tanggal, dan logo |
+| Unduh PDF / Word | Tombol **Unduh** di halaman set, atau pilih soal di Bank Soal lalu unduh. Isi: soal saja, soal + kunci jawaban, lengkap (dengan pembahasan), atau kunci saja; dengan nama lembaga, tanggal, dan logo. PDF berisi teks asli dan gambar soal figural |
 | Cadangan | Ekspor/impor JSON antar perangkat (API key tidak ikut) |
 | PWA | Bisa dipasang; set tersimpan dan simulasi berjalan offline |
 
@@ -89,7 +89,7 @@ Situs akan tersedia di `https://<username>.github.io/<nama-repo>/`. Mode "Deploy
 
 ### Stack
 
-React 19, TypeScript, Vite, Tailwind CSS v4, Dexie (IndexedDB), Zod, mathjs, KaTeX, docx, vite-plugin-pwa, @anthropic-ai/sdk.
+React 19, TypeScript, Vite, Tailwind CSS v4, Dexie (IndexedDB), Zod, mathjs, KaTeX, docx, pdfmake, vite-plugin-pwa, @anthropic-ai/sdk.
 
 ### Struktur kode
 
@@ -99,7 +99,7 @@ src/
   engine/      rencana batch & estimasi biaya, orkestrasi generasi, operasi set, simulasi, manajemen key
   providers/   adapter Gemini / OpenAI / Claude / OpenAI-compatible
   db/          skema Dexie, enkripsi key, cadangan
-  lib/         render SVG figural, ekspor Word, tema
+  lib/         render SVG figural, unduh PDF & Word, tema
   components/  komponen UI
   pages/       Dashboard, Set Baru, Set Tersimpan, Detail Set, Bank Soal, Simulasi, Laporan, Progres, API Keys, Pengaturan, Bantuan, Cetak
 ```

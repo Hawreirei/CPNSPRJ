@@ -28,8 +28,8 @@ export default function SimulationHome() {
   return (
     <div className="space-y-6">
       <div>
-        <h1>Simulasi CAT</h1>
-        <p className="muted mt-1">Kerjakan set dengan batas waktu, grid nomor soal, tandai ragu-ragu, dan kirim otomatis saat waktu habis.</p>
+        <h1>Latihan Ujian</h1>
+        <p className="muted mt-1">Kerjakan soal seperti ujian CAT sungguhan: ada batas waktu, nomor soal, tanda ragu-ragu, dan nilai langsung keluar.</p>
       </div>
       {sets.length === 0 ? (
         <Empty title="Belum ada set berisi soal">
@@ -84,7 +84,7 @@ export default function SimulationHome() {
               nav(`/cat/${a.id}`);
             }}
           >
-            Mulai simulasi
+            Mulai latihan
           </button>
         </div>
       )}

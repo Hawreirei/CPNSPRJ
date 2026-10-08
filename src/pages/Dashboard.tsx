@@ -23,8 +23,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1>Dashboard</h1>
-        <p className="muted mt-1">Bangun set latihan SKD dengan AI, lalu uji diri lewat simulasi CAT.</p>
+        <h1>Beranda</h1>
+        <p className="muted mt-1">Buat soal latihan SKD dengan AI, unduh sebagai PDF/Word, atau latihan langsung seperti ujian CAT.</p>
       </div>
 
       {data.keys === 0 && (
@@ -32,25 +32,25 @@ export default function Dashboard() {
           <h2>Mulai dalam 3 langkah</h2>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">
             <li>
-              Tambahkan API key Anda sendiri (Gemini, OpenAI, Claude, atau OpenAI-compatible) di <Link className="text-brand-600 underline" to="/keys">API Keys</Link>.
+              Buat API key gratis di Google AI Studio, lalu tempel di halaman <Link className="text-brand-600 underline" to="/keys">API Key</Link>.
             </li>
             <li>
-              Buka <Link className="text-brand-600 underline" to="/new">Set Baru</Link>, pilih preset <b>Mini SKD</b> untuk uji coba murah.
+              Buka <Link className="text-brand-600 underline" to="/new">Buat Soal</Link>, pilih <b>Latihan Singkat</b>, lalu klik Buat Soal.
             </li>
-            <li>Tinjau soal, lalu jalankan simulasi CAT.</li>
+            <li>Unduh soalnya sebagai PDF/Word, atau langsung kerjakan di Latihan Ujian.</li>
           </ol>
-          <p className="muted mt-2">Tanpa API key pun Anda bisa membuat soal TIU figural (dibuat otomatis oleh aplikasi).</p>
+          <p className="muted mt-2">Soal TIU bergambar bisa dibuat tanpa API key.</p>
         </div>
       )}
 
       {inProgress && (
         <div className="card flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="font-semibold">Simulasi belum selesai</div>
+            <div className="font-semibold">Latihan ujian belum selesai</div>
             <div className="muted">{inProgress.setName}</div>
           </div>
           <Link className="btn btn-primary" to={`/cat/${inProgress.id}`}>
-            Lanjutkan simulasi
+            Lanjutkan
           </Link>
         </div>
       )}
@@ -58,7 +58,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Set tersimpan" value={data.setCount} />
         <Stat label="Soal di bank" value={data.questions} hint={data.flagged ? `${data.flagged} perlu dicek` : undefined} />
-        <Stat label="Simulasi selesai" value={finished.length} />
+        <Stat label="Latihan selesai" value={finished.length} />
         <Stat
           label="Skor terakhir"
           value={last?.result ? `${last.result.total}/${last.result.maxTotal}` : '—'}
@@ -68,10 +68,10 @@ export default function Dashboard() {
 
       <div className="flex flex-wrap gap-2">
         <Link className="btn btn-primary" to="/new">
-          + Set baru
+          + Buat soal
         </Link>
         <Link className="btn" to="/simulation">
-          Mulai simulasi
+          Latihan ujian
         </Link>
         <Link className="btn" to="/bank">
           Bank soal

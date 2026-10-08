@@ -11,8 +11,8 @@ export default function Help() {
             model stabil terbaru, dan otomatis pindah ke model pengganti bila model lama dihentikan penyedia.
           </li>
           <li>
-            <b>Set Baru</b>: pilih preset, sub-tes, topik, jumlah, dan kesulitan. Panel Rencana menampilkan jumlah permintaan, perkiraan biaya, dan waktu sebelum Anda
-            memulai.
+            <b>Buat Soal</b>: pilih paket (misalnya Latihan Singkat atau SKD Lengkap) dan tingkat kesulitan, lalu klik Buat Soal. Topik dan jumlah soal bisa
+            diatur di "Sesuaikan lebih lanjut".
           </li>
           <li>
             <b>Tinjau</b>: tab Soal, Kunci & Skor, Pembahasan. Soal bertanda "perlu dicek" sebaiknya diperiksa. Tiap soal bisa diedit, ditulis ulang, dikunci,
@@ -22,7 +22,12 @@ export default function Help() {
             <b>Simulasi CAT</b>: timer, grid nomor, ragu-ragu, kirim otomatis. Laporan menampilkan skor per sub-tes terhadap ambang batas dan topik lemah.
           </li>
           <li>
-            <b>Bank Soal</b>: semua soal tersimpan dan bisa dipakai ulang untuk set baru tanpa biaya AI.
+            <b>Bank Soal</b>: semua soal tersimpan dan bisa dipakai ulang untuk set baru tanpa AI. Centang soal lalu klik Unduh untuk mendapatkan file
+            PDF/Word.
+          </li>
+          <li>
+            <b>Unduh PDF / Word</b>: di halaman set atau Bank Soal, klik Unduh, pilih format (PDF atau Word) dan isinya (soal saja, soal + kunci, atau
+            lengkap dengan pembahasan).
           </li>
         </ol>
       </section>
@@ -91,7 +96,7 @@ export default function Help() {
             "soal per request" di Pengaturan.
           </li>
           <li>
-            <b>Kuota free tier habis</b>: atur batas kuota key di halaman API Keys (preset "Gemini free tier"). Aplikasi menunggu sendiri saat batas per
+            <b>Kuota free tier habis</b>: atur batas kuota key di halaman API Key → Lainnya (preset "Gemini free tier"). Aplikasi menunggu sendiri saat batas per
             menit tercapai dan berhenti saat kuota harian habis; buka set lalu klik Lanjutkan setelah kuota direset. Soal dari bank soal dan soal figural tidak
             memakai kuota.
           </li>

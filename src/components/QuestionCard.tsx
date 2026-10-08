@@ -27,9 +27,7 @@ export function QuestionCard({
         <SubtestBadge subtest={q.subtest} />
         <Badge>{q.topic}</Badge>
         <Badge>{q.difficulty}</Badge>
-        {q.starred && <Badge tone="amber">★ berbintang</Badge>}
-        {q.locked && <Badge tone="blue">terkunci</Badge>}
-        {q.source === 'procedural' && <Badge tone="green">figural otomatis</Badge>}
+        {q.locked && <Badge tone="blue">🔒 terkunci</Badge>}
         {warn && showFlags && <Badge tone="amber">perlu dicek</Badge>}
         <div className="ml-auto flex flex-wrap gap-1">{actions}</div>
       </div>
@@ -79,7 +77,8 @@ export function QuestionCard({
         </div>
       )}
 
-      {showFlags && <FlagList flags={q.flags} />}
+      {/* Only problems worth acting on; purely informational notes stay hidden. */}
+      {showFlags && <FlagList flags={q.flags.filter((f) => f.severity === 'warn' || f.kind === 'math-corrected')} />}
     </article>
   );
 }

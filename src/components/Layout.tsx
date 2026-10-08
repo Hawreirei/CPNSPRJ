@@ -4,13 +4,13 @@ import { Disclaimer } from './Disclaimer';
 import { useUpdateWaiting } from '../lib/pwa';
 
 const NAV = [
-  { to: '/', label: 'Dashboard', end: true },
-  { to: '/new', label: 'Set Baru' },
-  { to: '/sets', label: 'Set Tersimpan' },
+  { to: '/', label: 'Beranda', end: true },
+  { to: '/new', label: 'Buat Soal' },
+  { to: '/sets', label: 'Set Saya' },
   { to: '/bank', label: 'Bank Soal' },
-  { to: '/simulation', label: 'Simulasi CAT' },
-  { to: '/progress', label: 'Progres' },
-  { to: '/keys', label: 'API Keys' },
+  { to: '/simulation', label: 'Latihan Ujian' },
+  { to: '/progress', label: 'Progres Belajar' },
+  { to: '/keys', label: 'API Key' },
   { to: '/settings', label: 'Pengaturan' },
   { to: '/help', label: 'Bantuan' },
 ];
