@@ -2,6 +2,7 @@ import { completeAnthropic, listAnthropicModels } from './anthropic';
 import { getJson, postJson } from './http';
 import { ProviderError } from './types';
 import type { LlmRequest, LlmResponse, ProviderConfig } from './types';
+import type { ModelInfo } from '../domain/types';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const OPENAI_BASE = 'https://api.openai.com/v1';
@@ -89,25 +90,39 @@ export async function complete(cfg: ProviderConfig, req: LlmRequest): Promise<Ll
   }
 }
 
-export async function listModels(cfg: ProviderConfig): Promise<string[]> {
+/** All models the key can call, with display names where the provider gives them. */
+export async function listModelInfo(cfg: ProviderConfig): Promise<ModelInfo[]> {
   switch (cfg.provider) {
     case 'gemini': {
-      const d = (await getJson(`${GEMINI_BASE}/models?pageSize=200`, { 'x-goog-api-key': cfg.apiKey })) as {
-        models?: { name: string; supportedGenerationMethods?: string[] }[];
-      };
-      return (d.models ?? [])
-        .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
-        .map((m) => m.name.replace(/^models\//, ''));
+      const out: ModelInfo[] = [];
+      let pageToken = '';
+      // Gemini pages its list; follow every page so no model is missing.
+      for (let page = 0; page < 10; page++) {
+        const d = (await getJson(`${GEMINI_BASE}/models?pageSize=1000${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`, {
+          'x-goog-api-key': cfg.apiKey,
+        })) as { models?: { name: string; displayName?: string; supportedGenerationMethods?: string[] }[]; nextPageToken?: string };
+        for (const m of d.models ?? []) {
+          if (m.supportedGenerationMethods && !m.supportedGenerationMethods.includes('generateContent')) continue;
+          out.push({ id: m.name.replace(/^models\//, ''), label: m.displayName });
+        }
+        if (!d.nextPageToken) break;
+        pageToken = d.nextPageToken;
+      }
+      return out;
     }
     case 'openai':
     case 'compat': {
       const base = cfg.provider === 'openai' ? OPENAI_BASE : trimSlash(cfg.baseUrl ?? '');
-      const d = (await getJson(`${base}/models`, { authorization: `Bearer ${cfg.apiKey}` })) as { data?: { id: string }[] };
-      return (d.data ?? []).map((m) => m.id);
+      const d = (await getJson(`${base}/models`, { authorization: `Bearer ${cfg.apiKey}` })) as { data?: { id: string; name?: string }[] };
+      return (d.data ?? []).map((m) => ({ id: m.id, label: m.name }));
     }
     case 'anthropic':
       return listAnthropicModels(cfg);
   }
+}
+
+export async function listModels(cfg: ProviderConfig): Promise<string[]> {
+  return (await listModelInfo(cfg)).map((m) => m.id);
 }
 
 export { PROVIDERS, DEFAULT_PRICES, FALLBACK_PRICE, ProviderError } from './types';

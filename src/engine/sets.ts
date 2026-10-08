@@ -19,9 +19,9 @@ function newSet(partial: Pick<QSet, 'name' | 'blueprint' | 'source'> & Partial<Q
   };
 }
 
-export async function createAiSet(name: string, blueprint: Blueprint, keyId?: string): Promise<QSet> {
+export async function createAiSet(name: string, blueprint: Blueprint, keyId?: string, model?: string): Promise<QSet> {
   const settings = await getSettings();
-  const set = newSet({ name, blueprint, source: 'ai', keyId, batches: planBatches(blueprint, settings.questionsPerRequest) });
+  const set = newSet({ name, blueprint, source: 'ai', keyId, model, batches: planBatches(blueprint, settings.questionsPerRequest) });
   await db.sets.add(set);
   return set;
 }

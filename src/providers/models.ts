@@ -14,7 +14,7 @@ export interface RankedModel {
 }
 
 /** Non-text or special-purpose models that cannot write question sets. */
-const NOT_TEXT = /(embed|tts|audio|realtime|live|image|imagen|veo|whisper|dall-?e|transcribe|search|moderation|computer|codex|instruct|aqa|gemma|learnlm|robotics|native|vision|guard|rerank|ocr|deep-research|chat-latest)/i;
+const NOT_TEXT = /(antigravity|agent|embed|tts|audio|realtime|live|image|imagen|veo|whisper|dall-?e|transcribe|search|moderation|computer|codex|instruct|aqa|gemma|learnlm|robotics|native|vision|guard|rerank|ocr|deep-research|chat-latest)/i;
 /** Labels that mean "may change or disappear without notice". */
 const UNSTABLE = /(preview|exp\b|experimental|-exp-|beta|alpha|thinking-exp)/i;
 
@@ -115,6 +115,14 @@ export function groupModels(ids: string[]): ModelGroup[] {
       label: 'Lainnya',
       ids: ranked
         .filter((m) => m.tier === 'other' && !NOT_TEXT.test(bare(m.id)) && !aliases.includes(m.id))
+        .map((m) => m.id)
+        .sort(),
+    },
+    {
+      // Shown, not hidden: the user decides. These usually can't write question sets.
+      label: 'Khusus (gambar, audio, agen, dll. — mungkin tidak cocok untuk membuat soal)',
+      ids: ranked
+        .filter((m) => NOT_TEXT.test(bare(m.id)) && !aliases.includes(m.id))
         .map((m) => m.id)
         .sort(),
     },

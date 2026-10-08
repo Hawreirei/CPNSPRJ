@@ -1,8 +1,8 @@
 import { db } from '../db';
 import { decryptSecret, encryptSecret } from '../db/crypto';
 import { uid } from '../lib/id';
-import type { ApiKeyRecord, KeyLimits, ProviderId } from '../domain/types';
-import { listModels, pickRecommendedModel } from '../providers';
+import type { ApiKeyRecord, KeyLimits, ModelInfo, ProviderId } from '../domain/types';
+import { listModelInfo, pickRecommendedModel } from '../providers';
 import type { ProviderConfig } from '../providers';
 
 export async function addKey(input: { provider: ProviderId; label: string; apiKey: string; model: string; baseUrl?: string; autoModel?: boolean; modelCheckedAt?: number; limits?: KeyLimits }) {
@@ -57,6 +57,25 @@ export async function providerConfig(keyId?: string): Promise<ProviderConfig> {
 }
 
 const RECHECK_MS = 7 * 24 * 3600 * 1000;
+const LIST_TTL_MS = 24 * 3600 * 1000;
+
+/** Fetch and cache the key's model list (no model change). Listing uses no generation quota. */
+export async function loadKeyModels(keyId: string): Promise<ModelInfo[]> {
+  const models = await listModelInfo(await providerConfig(keyId));
+  await db.keys.update(keyId, { models, modelsFetchedAt: Date.now() });
+  return models;
+}
+
+/** Pick `model` by hand: stop automatic switching for this key. */
+export async function chooseKeyModel(keyId: string, model: string) {
+  await db.keys.update(keyId, { model, autoModel: false });
+}
+
+/** Hand model choice back to the app (newest stable recommended model). */
+export async function useAutoModel(keyId: string) {
+  await db.keys.update(keyId, { autoModel: true });
+  return refreshKeyModel(keyId);
+}
 
 /**
  * Re-read the account's model list and switch to the newest stable recommended
@@ -71,8 +90,10 @@ export async function refreshKeyModel(
   const cfg = await providerConfig(keyId);
   let list: string[] | null = null;
   try {
+    const models = await listModelInfo(cfg);
+    await db.keys.update(keyId, { models, modelsFetchedAt: Date.now() });
     // A model the provider just rejected may still be listed; never pick it again.
-    list = (await listModels(cfg)).filter((m) => m !== opts.exclude && m.replace(/^models\//, '') !== opts.exclude);
+    list = models.map((m) => m.id).filter((m) => m !== opts.exclude && m.replace(/^models\//, '') !== opts.exclude);
   } catch (e) {
     if (!opts.hint) throw e;
   }
@@ -83,20 +104,31 @@ export async function refreshKeyModel(
   return { model, changed: model !== rec.model };
 }
 
-/** Refresh auto-managed keys whose model hasn't been checked for a week (model listing uses no generation quota). */
+/**
+ * Keep model lists fresh (daily) for every key, and move auto-managed keys to
+ * the newest stable model weekly. Manually chosen models are never changed.
+ */
 export async function refreshStaleKeyModels(): Promise<void> {
   const keys = await db.keys.toArray();
+  const now = Date.now();
   await Promise.all(
-    keys
-      .filter((k) => k.autoModel !== false && (!k.modelCheckedAt || Date.now() - k.modelCheckedAt > RECHECK_MS))
-      .map((k) => refreshKeyModel(k.id).catch(() => undefined)),
+    keys.map((k) => {
+      if (k.autoModel !== false && (!k.modelCheckedAt || now - k.modelCheckedAt > RECHECK_MS)) return refreshKeyModel(k.id).catch(() => undefined);
+      if (!k.modelsFetchedAt || now - k.modelsFetchedAt > LIST_TTL_MS) return loadKeyModels(k.id).catch(() => undefined);
+      return undefined;
+    }),
   );
 }
 
 /** Config for a generation run; refreshes an auto-managed model if it has not been checked recently. */
-export async function freshProviderConfig(keyId?: string): Promise<ProviderConfig & { keyId: string; autoModel: boolean }> {
+export async function freshProviderConfig(
+  keyId?: string,
+  modelOverride?: string,
+): Promise<ProviderConfig & { keyId: string; autoModel: boolean }> {
   const rec = await resolveKey(keyId);
   if (!rec) throw new Error('Belum ada API key. Tambahkan di halaman API Keys.');
+  // A model picked for this set is used as-is and never switched behind the user's back.
+  if (modelOverride) return { ...(await providerConfig(rec.id)), model: modelOverride, keyId: rec.id, autoModel: false };
   if (rec.autoModel !== false && (!rec.modelCheckedAt || Date.now() - rec.modelCheckedAt > RECHECK_MS)) {
     try {
       await refreshKeyModel(rec.id);

@@ -112,6 +112,8 @@ export interface QSet {
   source: 'ai' | 'bank' | 'variant' | 'remedial';
   batches: PlanBatch[];
   keyId?: string;
+  /** Model chosen for this set; overrides the key's model when set. */
+  model?: string;
   usage: { inputTokens: number; outputTokens: number; requests: number };
   createdAt: number;
   updatedAt: number;
@@ -174,9 +176,18 @@ export interface ApiKeyRecord {
   createdAt: number;
   /** Self-imposed rate limits matching the key's plan (0 = no limit). */
   limits?: KeyLimits;
+  /** Cached model list from the provider (with display names when the provider gives them). */
+  models?: ModelInfo[];
+  modelsFetchedAt?: number;
   /** When true, the app keeps `model` on the newest stable recommended model. */
   autoModel?: boolean;
   modelCheckedAt?: number;
+}
+
+export interface ModelInfo {
+  id: string;
+  /** Provider's display name, e.g. "Gemini 3.5 Flash". */
+  label?: string;
 }
 
 export interface KeyLimits {

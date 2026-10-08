@@ -38,7 +38,10 @@ Gemini, OpenAI, Anthropic Claude, dan endpoint OpenAI-compatible (misal OpenRout
 - Saat key disimpan, aplikasi membaca daftar model akun Anda dan memilih model **stabil dengan versi terbaru** di kelas seimbang: Gemini Flash, GPT mini, atau Claude Sonnet. Model preview/eksperimental dan model non-teks (embedding, gambar, audio) dilewati.
 - Pilihan dicek ulang tiap 7 hari sebelum generasi.
 - Bila penyedia menolak model karena sudah dihentikan (misal 404), aplikasi berpindah ke model stabil terbaru lalu mengulang permintaan.
-- Mode manual tetap tersedia per key, dengan daftar model yang dikelompokkan: direkomendasikan, hemat, paling kuat, alias "latest", dan preview.
+- **Bebas memilih model.** Semua model di akun ditampilkan dengan nama dari penyedia, misalnya "Gemini 3.5 Flash (gemini-3.5-flash)", dan dikelompokkan: direkomendasikan, hemat, paling kuat, alias "latest", preview, lainnya, dan khusus. Model khusus seperti agen atau audio tetap ditampilkan, hanya ditempatkan paling akhir.
+  - Memilih model tertentu mengubah key ke mode manual: model itu dipakai apa adanya dan tidak diganti otomatis.
+  - Opsi "Otomatis" di urutan pertama mengembalikan pemilihan ke aplikasi.
+  - Model juga bisa dipilih per set di halaman Set Baru, tanpa mengubah pengaturan key.
 
 **Hemat kuota free tier.** Free tier sangat terbatas (Gemini misalnya 5 request/menit dan 20 request/hari), jadi aplikasi:
 

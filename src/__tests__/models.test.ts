@@ -55,10 +55,10 @@ describe('model selection', () => {
     expect(pickRecommendedModel(['meta/llama-x', 'openai/gpt-5.4-mini:free'])).toBe('openai/gpt-5.4-mini:free');
   });
 
-  it('groups models for the picker and hides non-text models', () => {
+  it('groups every model for the picker, special-purpose ones last instead of hidden', () => {
     const groups = groupModels(['gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-embedding-001', 'gemini-flash-latest', 'gemini-3.5-flash-lite']);
     const all = groups.flatMap((g) => g.ids);
-    expect(all).not.toContain('gemini-embedding-001');
+    expect(groups[groups.length - 1]).toEqual({ label: expect.stringContaining('Khusus'), ids: ['gemini-embedding-001'] });
     expect(groups[0]).toEqual({ label: expect.stringContaining('Direkomendasikan'), ids: ['gemini-3.5-flash'] });
     expect(all).toContain('gemini-3-flash-preview');
     expect(all).toContain('gemini-flash-latest');
@@ -76,5 +76,37 @@ describe('model selection', () => {
     expect(familyPrice('gemini-4-flash')).toBeDefined();
     expect(familyPrice('gpt-6-mini')).toBeDefined();
     expect(familyPrice('mystery-model')).toBeUndefined();
+  });
+
+  it("offers every model from a real Gemini account list (user screenshot, Oct 2026)", () => {
+    const ids = [
+      'antigravity-preview-09-2026',
+      'antigravity-preview-latest',
+      'deep-research-max-preview-04-2026',
+      'deep-research-preview-04-2026',
+      'deep-research-pro-preview-12-2025',
+      'gemini-2.5-computer-use-preview-10-2025',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-2.5-pro',
+      'gemini-3-flash-preview',
+      'gemini-3.1-flash-lite',
+      'gemini-3.1-flash-lite-preview',
+      'gemini-3.1-pro-preview',
+      'gemini-3.1-pro-preview-customtools',
+      'gemini-3.5-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-transcribe',
+      'gemini-3.6-flash',
+      'gemini-3.7-flash',
+      'gemini-3.8-flash',
+    ];
+    const groups = groupModels(ids);
+    // Nothing is dropped: the user can pick any of them.
+    expect(groups.flatMap((g) => g.ids).sort()).toEqual([...ids].sort());
+    expect(groups[0].ids.slice(0, 3)).toEqual(['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash']);
+    expect(pickRecommendedModel(ids)).toBe('gemini-3.8-flash');
+    const special = groups.find((g) => g.label.startsWith('Khusus'))!.ids;
+    expect(special).toEqual(expect.arrayContaining(['antigravity-preview-latest', 'deep-research-preview-04-2026', 'gemini-3.5-transcribe', 'gemini-2.5-computer-use-preview-10-2025']));
   });
 });

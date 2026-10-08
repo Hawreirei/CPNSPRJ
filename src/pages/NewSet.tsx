@@ -9,8 +9,10 @@ import type { Blueprint, DifficultyChoice, SectionSpec, Subtest } from '../domai
 import { startGeneration } from '../engine/generator';
 import { estimatePlan, planBatches } from '../engine/plan';
 import { createAiSet, createBankSet, pickFromBank } from '../engine/sets';
+import { refreshStaleKeyModels } from '../engine/keys';
 import { PROVIDERS } from '../providers/types';
 import { keyUsage, limitsOf } from '../engine/quota';
+import { ModelSelect } from '../components/ModelSelect';
 import { fmtUsd, SubtestBadge } from '../components/ui';
 
 export default function NewSet() {
@@ -21,11 +23,18 @@ export default function NewSet() {
   const [bp, setBp] = useState<Blueprint>(() => buildPreset('mini', settings));
   const [name, setName] = useState('');
   const [keyId, setKeyId] = useState<string>('');
+  /** Model for this set only; empty = follow the key's setting. */
+  const [setModel, setSetModel] = useState<string>('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   // Re-seed once real settings load from IndexedDB.
   useEffect(() => setBp(buildPreset(preset, settings)), [settings]);
+
+  // Make sure every key's model list is available for the per-set picker (no quota used).
+  useEffect(() => {
+    void refreshStaleKeyModels();
+  }, []);
 
   useEffect(() => {
     if (!keyId && keys?.length) setKeyId((keys.find((k) => k.isDefault) ?? keys[0]).id);
@@ -33,7 +42,8 @@ export default function NewSet() {
 
   const key = keys?.find((k) => k.id === keyId);
   const batches = useMemo(() => planBatches(bp, settings.questionsPerRequest), [bp, settings.questionsPerRequest]);
-  const est = useMemo(() => estimatePlan(batches, key?.model ?? '', settings, key ? limitsOf(key) : undefined), [batches, key, settings]);
+  const effectiveModel = setModel || key?.model || '';
+  const est = useMemo(() => estimatePlan(batches, effectiveModel, settings, key ? limitsOf(key) : undefined), [batches, effectiveModel, key, settings]);
   const usage = useLiveQuery(async () => (key ? keyUsage(key) : undefined), [key]);
   const remaining = usage?.blockedUntil ? 0 : (usage?.remainingToday ?? null);
   const total = bp.sections.reduce((n, s) => n + s.count, 0);
@@ -63,7 +73,7 @@ export default function NewSet() {
       return;
     }
     setBusy(true);
-    const set = await createAiSet(name.trim() || defaultName(), bp, key?.id);
+    const set = await createAiSet(name.trim() || defaultName(), bp, key?.id, setModel || undefined);
     void startGeneration(set.id);
     nav(`/sets/${set.id}`);
   }
@@ -205,7 +215,14 @@ export default function NewSet() {
             <div>
               <label className="label">API key</label>
               {keys?.length ? (
-                <select className="input" value={keyId} onChange={(e) => setKeyId(e.target.value)}>
+                <select
+                  className="input"
+                  value={keyId}
+                  onChange={(e) => {
+                    setKeyId(e.target.value);
+                    setSetModel('');
+                  }}
+                >
                   {keys.map((k) => (
                     <option key={k.id} value={k.id}>
                       {k.label} · {PROVIDERS[k.provider].name} · {k.model}
@@ -218,6 +235,22 @@ export default function NewSet() {
                 </p>
               )}
             </div>
+            {key && (
+              <div>
+                <label className="label">Model untuk set ini</label>
+                <ModelSelect
+                  models={key.models ?? []}
+                  value={setModel || null}
+                  inheritOption={`Ikuti pengaturan key (${key.model}${key.autoModel !== false ? ', otomatis' : ''})`}
+                  onChange={(c) => setSetModel(c.kind === 'model' ? c.id : '')}
+                />
+                {!key.models?.length && (
+                  <p className="muted mt-1 text-xs">
+                    Daftar model belum dimuat. Buka <Link className="text-brand-600 underline" to="/keys">API Keys</Link> untuk memuatnya.
+                  </p>
+                )}
+              </div>
+            )}
             <dl className="grid grid-cols-2 gap-y-1 text-sm">
               <dt className="muted">Total soal</dt>
               <dd className="text-right font-medium">{total}</dd>
