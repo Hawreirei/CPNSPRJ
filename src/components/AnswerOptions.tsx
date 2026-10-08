@@ -50,7 +50,10 @@ export function AnswerOptions({
             >
               {o.label}
             </span>
-            <span className="flex-1 pt-0.5">{o.figure ? <CellView cell={o.figure} /> : <RichText text={o.text} />}</span>
+            <span className="flex-1 pt-0.5">
+              {o.figure ? <CellView cell={o.figure} /> : <RichText text={o.text} />}
+              {revealed && o.rationale && <span className="mt-0.5 block text-xs text-slate-600 dark:text-slate-400">{o.rationale}</span>}
+            </span>
             {revealed && q.subtest === 'TKP' && <Badge tone={o.score === 5 ? 'green' : 'slate'}>{o.score}</Badge>}
           </button>
         );

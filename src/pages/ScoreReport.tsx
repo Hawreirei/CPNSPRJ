@@ -13,6 +13,7 @@ import { createRemedialSet } from '../engine/sets';
 import { Recommendations, TimingCard, TkpCard, UnsureCard } from '../components/Analysis';
 import { fmtSec } from '../engine/analytics';
 import { QuestionCard } from '../components/QuestionCard';
+import { opensGroup, passageLabel } from '../domain/groups';
 import { FeedbackDialog } from '../components/FeedbackDialog';
 import { Badge, Empty, fmtDate, ProgressBar, SubtestBadge } from '../components/ui';
 
@@ -49,6 +50,7 @@ export default function ScoreReport() {
   const reviewList = questions
     .map((q, i) => ({ q, i }))
     .filter(({ q }) => review === 'all' || (review === 'wrong' && !isCorrect(q, a.answers[q.id])));
+  const shownQuestions = reviewList.map((x) => x.q);
 
   return (
     <div className="space-y-6">
@@ -185,6 +187,8 @@ export default function ScoreReport() {
                 index={i}
                 mode="pembahasan"
                 showFlags={false}
+                passage={opensGroup(shownQuestions, q) ? 'open' : 'closed'}
+                passageLabel={passageLabel(questions, q)}
                 onFeedback={() => setFeedbackFor(q)}
                 actions={
                   <Badge tone={isCorrect(q, ans) ? 'green' : 'red'}>

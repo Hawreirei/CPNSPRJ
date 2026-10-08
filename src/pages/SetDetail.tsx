@@ -11,6 +11,7 @@ import { QuestionCard, type CardMode } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
 import { FeedbackDialog } from '../components/FeedbackDialog';
 import { answerStats } from '../domain/quality';
+import { opensGroup, passageLabel } from '../domain/groups';
 import { DownloadDialog } from '../components/DownloadDialog';
 import { Badge, Empty, ProgressBar } from '../components/ui';
 
@@ -43,6 +44,7 @@ export default function SetDetail() {
     .map((q, i) => ({ q, i }))
     .filter(({ q }) => (sub === 'all' || q.subtest === sub) && (filter === 'all' || (filter === 'flagged' ? q.flags.some((f) => f.severity === 'warn') : q.starred)));
 
+  const shownQuestions = shown.map((x) => x.q);
   const unchecked = questions.filter(needsCrossCheck);
   const describe = (r: CrossCheckResult) =>
     `${r.checked} soal diperiksa silang, ${r.mismatched} berbeda jawaban${r.mismatched ? ' (ditandai "perlu dicek")' : ''}.` +
@@ -159,6 +161,9 @@ export default function SetDetail() {
               q={q}
               index={i}
               mode={mode}
+              // The passage in full above the first shown question of its group, folded on the rest.
+              passage={opensGroup(shownQuestions, q) ? 'open' : 'closed'}
+              passageLabel={passageLabel(questions, q)}
               stats={stats.get(q.id)}
               onFeedback={() => setFeedbackFor(q)}
               actions={

@@ -3,7 +3,8 @@ import { computeResult } from '../domain/scoring';
 import { filterQuestions, UNTIMED, type QuestionFilter } from '../domain/practice';
 import { SUBTESTS } from '../domain/types';
 import type { Attempt, AttemptMode, Question } from '../domain/types';
-import { shuffle, uid } from '../lib/id';
+import { uid } from '../lib/id';
+import { shuffleUnits } from '../domain/groups';
 import { recordMistakes } from './review';
 import { passingForSet } from './sets';
 
@@ -24,7 +25,8 @@ export async function startAttempt(
   if (mode === 'practice') questions = filterQuestions(questions, opts.filter);
   if (!questions.length) throw new Error('Tidak ada soal yang cocok dengan pilihan ini.');
   if (opts.shuffleQuestions) {
-    questions = SUBTESTS.flatMap((s) => shuffle(questions.filter((q) => q.subtest === s)));
+    // A reading passage's questions move as one block, in their own order.
+    questions = SUBTESTS.flatMap((s) => shuffleUnits(questions.filter((q) => q.subtest === s)));
   }
   const now = Date.now();
   const attempt: Attempt = {

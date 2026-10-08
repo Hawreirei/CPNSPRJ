@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { wrongRate, type AnswerStats } from '../domain/quality';
 import type { Question } from '../domain/types';
 import { StemMedia } from './DataView';
+import { PassageView } from './PassageView';
 import { CellView } from './FigureView';
 import { RichText } from './RichText';
 import { Badge, FlagList, SubtestBadge } from './ui';
@@ -16,6 +17,8 @@ export function QuestionCard({
   showFlags = true,
   stats,
   onFeedback,
+  passage = 'closed',
+  passageLabel,
 }: {
   q: Question;
   index?: number;
@@ -26,6 +29,9 @@ export function QuestionCard({
   stats?: AnswerStats;
   /** Offers "rate or report" under the explanation. */
   onFeedback?: () => void;
+  /** How to show a reading passage: in full (first question of its group), folded, or not at all (print). */
+  passage?: 'open' | 'closed' | 'hidden';
+  passageLabel?: string;
 }) {
   const warn = q.flags.some((f) => f.severity === 'warn');
   const rate = wrongRate(stats);
@@ -57,6 +63,7 @@ export function QuestionCard({
 
       {mode !== 'kunci' && (
         <>
+          {q.passage && passage !== 'hidden' && <PassageView passage={q.passage} label={passageLabel} mode={passage} />}
           <div className="leading-relaxed">
             <RichText text={q.stem} />
           </div>
@@ -72,6 +79,7 @@ export function QuestionCard({
                   <span className="w-5 shrink-0 font-semibold">{o.label}.</span>
                   <span className="flex-1">
                     {o.figure ? <CellView cell={o.figure} /> : <RichText text={o.text} />}
+                    {mode === 'pembahasan' && o.rationale && <span className="mt-0.5 block text-xs text-slate-600 dark:text-slate-400">{o.rationale}</span>}
                   </span>
                   {mode === 'pembahasan' && q.subtest === 'TKP' && <Badge tone={o.score === 5 ? 'green' : 'slate'}>{o.score}</Badge>}
                 </li>

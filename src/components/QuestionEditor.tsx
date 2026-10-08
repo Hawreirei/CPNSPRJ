@@ -21,8 +21,19 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
     try {
       await loadMath();
       const report = withdrawReport ? undefined : draft.report;
-      const next = validateQuestion({ ...draft, report, options, hash: hashText(draft.stem), updatedAt: Date.now() });
-      await db.questions.put(next);
+      const passage = draft.passage ? { ...draft.passage, text: draft.passage.text.trim() } : undefined;
+      const hash = hashText((passage?.text ?? '') + draft.stem);
+      const next = validateQuestion({ ...draft, report, passage, options, hash, updatedAt: Date.now() });
+      await db.transaction('rw', db.questions, async () => {
+        await db.questions.put(next);
+        // The passage is shared: an edit to it applies to every question of the group.
+        if (passage && passage.text !== q.passage?.text) {
+          await db.questions.filter((x) => x.passage?.id === passage.id && x.id !== q.id).modify((x) => {
+            x.passage = passage;
+            x.hash = hashText(passage.text + x.stem);
+          });
+        }
+      });
       onClose();
     } catch (e) {
       setError(`Gagal menyimpan: ${e instanceof Error ? e.message : String(e)}`);
@@ -54,6 +65,14 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
             </select>
           </div>
         </div>
+        {draft.passage && (
+          <div>
+            <label className="label" htmlFor="qe-passage">
+              Wacana (berlaku untuk semua soal dalam grupnya)
+            </label>
+            <textarea id="qe-passage" className="input min-h-40" value={draft.passage.text} onChange={(e) => set('passage', { ...draft.passage!, text: e.target.value })} />
+          </div>
+        )}
         <div>
           <label className="label" htmlFor="qe-stem">
             Soal (gunakan $...$ untuk rumus)

@@ -26,6 +26,14 @@ export interface Figure {
   cells: (FigureCell | null)[];
 }
 
+export interface Passage {
+  id: string;
+  title?: string;
+  text: string;
+  /** The group's questions in reading order; the database returns them in no particular order. */
+  questionIds?: string[];
+}
+
 export interface DataSeries {
   name: string;
   values: number[];
@@ -49,6 +57,8 @@ export interface QuestionOption {
   text: string;
   /** TWK/TIU: 5 for the correct option, 0 otherwise. TKP: 1-5. */
   score: number;
+  /** TKP: why this option earns its score (asked for on hard questions). */
+  rationale?: string;
   figure?: FigureCell;
 }
 
@@ -102,6 +112,11 @@ export interface Question {
   figure?: Figure;
   /** TIU data analysis: the numbers the question is about, shown as a table or a chart. */
   data?: DataFigure;
+  /**
+   * A reading text shared by a group of questions. Each question in the group carries the same
+   * passage (same id), so every view and export has it without a lookup.
+   */
+  passage?: Passage;
   flags: Flag[];
   locked: boolean;
   starred: boolean;

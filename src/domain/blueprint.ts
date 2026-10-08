@@ -48,6 +48,8 @@ export const TOPICS: Record<Subtest, string[]> = {
 
 /** Topics generated in-app (no AI cost, always verifiable): figural, and data analysis from tables and charts. */
 export const PROCEDURAL_TOPICS = new Set(['Deret Figural', 'Analogi Figural', 'Matriks Figural', 'Transformasi Figural', 'Figural Berbeda', 'Analisis Data']);
+/** Reading comprehension: two or more of these in a section are written as passages with several questions each. */
+export const PASSAGE_TOPIC = 'Pemahaman Bacaan';
 /** Topics whose answers are checked with mathjs. */
 export const NUMERIC_TOPICS = new Set(['Aritmetika', 'Deret Angka', 'Soal Cerita', 'Perbandingan Kuantitatif']);
 

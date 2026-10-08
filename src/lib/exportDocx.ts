@@ -5,6 +5,7 @@ import { fmtNum } from '../domain/dataAnalysis';
 import type { DataFigure, Question } from '../domain/types';
 import { toPlain } from '../components/RichText';
 import { dataChartSvg } from './dataSvg';
+import { opensGroup, passageLabel } from '../domain/groups';
 import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
 
 export type PackKind = 'soal' | 'soal-kunci' | 'lengkap' | 'kunci' | 'pembahasan';
@@ -91,6 +92,11 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
 
   async function questionBlock(q: Question, n: number, withKey: boolean): Promise<Child[]> {
     const out: Child[] = [];
+    // A reading passage is printed once, above the first question of its group.
+    if (q.passage && opensGroup(questions, q)) {
+      out.push(new Paragraph({ spacing: { before: 240 }, keepNext: true, children: [new TextRun({ text: `${passageLabel(questions, q)}${q.passage.title ? `: ${q.passage.title}` : ''}`, bold: true })] }));
+      out.push(new Paragraph({ keepNext: true, alignment: AlignmentType.JUSTIFIED, children: text(q.passage.text) }));
+    }
     out.push(new Paragraph({ spacing: { before: 200 }, keepNext: true, children: [new TextRun({ text: `${n}. `, bold: true }), ...text(q.stem)] }));
     if (hasStemFigure(q.figure)) out.push(new Paragraph({ keepNext: true, children: [await image(figureSvg(q.figure, 72, '#111'))] }));
     if (q.data) out.push(...(await dataBlock(q.data)));
@@ -99,6 +105,7 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
       const suffix = withKey && q.subtest === 'TKP' ? [new TextRun({ text: `  (skor ${o.score})`, italics: true, color: '555555' })] : [];
       const isKey = withKey && q.subtest !== 'TKP' && o.label === q.answer;
       out.push(new Paragraph({ indent: { left: 360 }, keepNext: true, children: [new TextRun({ text: `${o.label}. `, bold: isKey }), ...runs, ...suffix] }));
+      if (withKey && o.rationale) out.push(new Paragraph({ indent: { left: 720 }, keepNext: true, children: text(o.rationale, { italics: true, size: 18, color: '444444' }) }));
     }
     return out;
   }

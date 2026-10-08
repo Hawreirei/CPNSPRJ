@@ -12,6 +12,7 @@ const aiOption = z.object({
   label: label.optional(),
   text: z.string().min(1),
   score: z.coerce.number().optional(),
+  rationale: z.string().optional().nullable(),
 });
 
 const aiQuestion = z.object({
@@ -109,6 +110,7 @@ export function parseAiQuestions(text: string, ctx: { subtest: Subtest; items: B
       label: OPTION_LABELS[i],
       text: o.text.trim(),
       score: ctx.subtest === 'TKP' ? Math.round(o.score ?? 0) : 0,
+      ...(ctx.subtest === 'TKP' && o.rationale?.trim() ? { rationale: o.rationale.trim() } : {}),
       origLabel: o.label,
     }));
     let answer: OptionLabel | undefined;
@@ -140,6 +142,43 @@ export function parseAiQuestions(text: string, ctx: { subtest: Subtest; items: B
       updatedAt: now,
     } satisfies Question;
   });
+}
+
+const aiPassage = z.object({
+  title: z.string().optional().nullable(),
+  text: z.string().min(80, 'wacana terlalu pendek'),
+  questions: z.array(z.unknown()),
+});
+
+/**
+ * Parse reading passages and their questions. Unlike single questions, nothing is salvaged: each
+ * passage must come back with exactly the number of questions asked for, or the reply is refused
+ * and requested again, so a passage never reaches a set with questions missing or misplaced.
+ */
+export function parseAiPassages(text: string, ctx: { items: BatchItem[]; sizes: number[]; setId?: string }): Question[] {
+  let raw: unknown;
+  try {
+    raw = (extractJson(text) as { passages?: unknown }).passages;
+  } catch {
+    raw = undefined;
+  }
+  if (!Array.isArray(raw)) throw new Error('Respons AI tidak berisi wacana.');
+  if (raw.length !== ctx.sizes.length) throw new Error(`AI mengirim ${raw.length} wacana, diminta ${ctx.sizes.length}.`);
+  const out: Question[] = [];
+  let k = 0;
+  raw.forEach((p, i) => {
+    const r = aiPassage.safeParse(p);
+    if (!r.success) throw new Error(`Wacana ${i + 1} tidak valid: ${r.error.issues[0].message}.`);
+    const want = ctx.sizes[i];
+    const slots = ctx.items.slice(k, k + want);
+    const qs = parseAiQuestions(JSON.stringify({ questions: r.data.questions }), { subtest: 'TIU', items: slots, setId: ctx.setId });
+    if (r.data.questions.length !== want || qs.length !== want) throw new Error(`Wacana ${i + 1} berisi ${qs.length} soal valid, diminta ${want}.`);
+    const passage = { id: uid(), text: r.data.text.trim(), ...(r.data.title?.trim() ? { title: r.data.title.trim() } : {}), questionIds: qs.map((q) => q.id) };
+    // The same question can sensibly follow two different passages, so the passage is part of its identity.
+    out.push(...qs.map((q) => ({ ...q, passage, hash: hashText(passage.text + q.stem) })));
+    k += want;
+  });
+  return out;
 }
 
 const checkAnswer = z.object({

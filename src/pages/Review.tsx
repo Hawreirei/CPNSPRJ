@@ -9,6 +9,7 @@ import { backfillFromHistory, gradeReview, removeReview, setReasonTags } from '.
 import { addDays, dueQueue, fmtDue, fmtInterval, isDue, nextInterval, reviewedToday } from '../engine/srs';
 import { AnswerOptions, FeedbackBanner } from '../components/AnswerOptions';
 import { StemMedia } from '../components/DataView';
+import { PassageView } from '../components/PassageView';
 import { Explanation } from '../components/QuestionCard';
 import { FeedbackDialog } from '../components/FeedbackDialog';
 import { RichText } from '../components/RichText';
@@ -223,6 +224,7 @@ function ReviewCard({ q, item, onGrade }: { q: Question; item: ReviewItem; onGra
         {item.lapses > 0 && <Badge tone="amber">terlupa {item.lapses}×</Badge>}
         {item.reps > 0 && <Badge>ulangan ke-{item.reps + 1}</Badge>}
       </div>
+      {q.passage && <PassageView passage={q.passage} />}
       <div className="text-[15px] leading-relaxed">
         <RichText text={q.stem} />
       </div>
@@ -365,6 +367,7 @@ function Notebook({ items, now }: { items: ReviewItem[]; now: number }) {
                 <RichText text={q.stem} />
               </span>
             </summary>
+            {q.passage && <PassageView passage={q.passage} mode="closed" />}
             <StemMedia q={q} />
             <AnswerOptions q={q} revealed onAnswer={() => {}} />
             <Explanation q={q} onFeedback={() => setFeedbackFor(q)} />

@@ -6,6 +6,8 @@ import { attemptQuestions, finishAttempt } from '../engine/attempts';
 import { attemptMode } from '../domain/practice';
 import { CellView } from '../components/FigureView';
 import { StemMedia } from '../components/DataView';
+import { PassageView } from '../components/PassageView';
+import { passageLabel } from '../domain/groups';
 import { RichText } from '../components/RichText';
 import { Modal, SubtestBadge } from '../components/ui';
 
@@ -182,6 +184,8 @@ export default function Simulation() {
             <SubtestBadge subtest={q.subtest} />
             {isFlagged && <span className="badge bg-amber-100 text-amber-800">ragu-ragu</span>}
           </div>
+          {/* Every question of a passage group shows the passage, so it stays in view while moving through the group. */}
+          {q.passage && <PassageView passage={q.passage} label={passageLabel(questions, q)} />}
           <div className="text-[15px] leading-relaxed">
             <RichText text={q.stem} />
           </div>

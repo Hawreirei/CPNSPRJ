@@ -1,4 +1,4 @@
-import { PROCEDURAL_TOPICS } from '../domain/blueprint';
+import { PASSAGE_TOPIC, PROCEDURAL_TOPICS } from '../domain/blueprint';
 import { DEFAULT_PRICES, FALLBACK_PRICE } from '../providers/types';
 import { familyPrice } from '../providers/models';
 import { uid } from '../lib/id';
@@ -7,6 +7,16 @@ import type { BatchItem, Blueprint, Difficulty, KeyLimits, PlanBatch, Settings, 
 const MIX: Difficulty[] = ['sedang', 'mudah', 'sedang', 'sulit', 'sedang', 'mudah', 'sulit', 'sedang', 'sedang', 'mudah'];
 
 export const isProcedural = (b: Pick<PlanBatch, 'items'>) => b.items.length > 0 && b.items.every((i) => PROCEDURAL_TOPICS.has(i.topic));
+
+/** Questions per reading passage, and the most passage questions asked for in one request. */
+export const PASSAGE_SIZE = 3;
+const PASSAGE_BATCH = 9;
+
+/** A batch written as reading passages with several questions each. A lone reading question stays a normal one. */
+export const isPassageBatch = (b: Pick<PlanBatch, 'items'>) => b.items.length >= 2 && b.items.every((i) => i.topic === PASSAGE_TOPIC);
+
+/** How a passage batch's questions are split over passages: 2 to 4 each, as even as possible (5 → 3 + 2). */
+export const passageSizes = (count: number) => balancedSizes(count, PASSAGE_SIZE);
 
 /** Split `n` items into the fewest chunks of at most `size`, with sizes as even as possible (30 by 20 → 15+15). */
 export function balancedSizes(n: number, size: number): number[] {
@@ -20,16 +30,25 @@ export function balancedSizes(n: number, size: number): number[] {
 export function chunkItems(subtest: Subtest, items: BatchItem[], batchSize: number, basedOn?: string[]): PlanBatch[] {
   const batches: PlanBatch[] = [];
   const procedural = items.filter((i) => PROCEDURAL_TOPICS.has(i.topic));
-  const ai = items.filter((i) => !PROCEDURAL_TOPICS.has(i.topic));
   const groups = new Map<string, BatchItem[]>();
   for (const it of procedural) groups.set(`${it.topic}|${it.difficulty}`, [...(groups.get(`${it.topic}|${it.difficulty}`) ?? []), it]);
   for (const g of groups.values()) batches.push({ id: uid(), subtest, items: g, count: g.length, status: 'pending' });
-  let i = 0;
-  for (const n of balancedSizes(ai.length, batchSize)) {
-    const chunk = ai.slice(i, i + n);
-    batches.push({ id: uid(), subtest, items: chunk, count: chunk.length, status: 'pending', basedOn: basedOn?.slice(i, i + n) });
-    i += n;
-  }
+  // Keep each AI item paired with the question it imitates (variant sets) while splitting.
+  const ai = items.flatMap((it, k) => (PROCEDURAL_TOPICS.has(it.topic) ? [] : [{ it, based: basedOn?.[k] }]));
+  const reading = ai.filter((x) => x.it.topic === PASSAGE_TOPIC);
+  const passages = reading.length >= 2 ? reading : [];
+  const rest = ai.filter((x) => !passages.includes(x));
+  const push = (list: typeof ai, size: number) => {
+    let i = 0;
+    for (const n of balancedSizes(list.length, size)) {
+      const chunk = list.slice(i, i + n);
+      batches.push({ id: uid(), subtest, items: chunk.map((x) => x.it), count: n, status: 'pending', ...(basedOn ? { basedOn: chunk.map((x) => x.based!) } : {}) });
+      i += n;
+    }
+  };
+  push(rest, batchSize);
+  // Passages go in their own requests: their questions must come back together.
+  push(passages, Math.min(PASSAGE_BATCH, batchSize));
   return batches;
 }
 
