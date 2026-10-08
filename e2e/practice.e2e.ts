@@ -1,4 +1,26 @@
+import type { Page } from '@playwright/test';
 import { expect, keyAndSet, KEY, test } from './fixtures';
+
+/** Answers stored for the open attempt, read straight from IndexedDB. */
+function storedAnswers(page: Page) {
+  const id = page.url().split('/').pop()!;
+  return page.evaluate(
+    (attemptId) =>
+      new Promise<number>((resolve, reject) => {
+        const open = indexedDB.open('cpns-skd-builder');
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const get = open.result.transaction('attempts').objectStore('attempts').get(attemptId);
+          get.onerror = () => reject(get.error);
+          get.onsuccess = () => {
+            open.result.close();
+            resolve(Object.keys(get.result?.answers ?? {}).length);
+          };
+        };
+      }),
+    id,
+  );
+}
 
 test('practice shows the key after each answer, locks it, and stays off the exam charts', async ({ page }) => {
   await keyAndSet(page);
@@ -27,7 +49,8 @@ test('practice shows the key after each answer, locks it, and stays off the exam
   await page.keyboard.press(KEY.toLowerCase());
   await expect(page.getByText('Benar. +5')).toBeVisible();
 
-  // Survives a reload.
+  // Survives a reload. The screen updates before the answer is written, so wait for the write first.
+  await expect.poll(() => storedAnswers(page)).toBe(2);
   await page.reload();
   await expect(page.getByText('Benar. +5')).toBeVisible();
   await expect(page.getByText('Benar 1 / 2')).toBeVisible();

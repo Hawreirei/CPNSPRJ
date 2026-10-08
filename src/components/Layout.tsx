@@ -48,7 +48,7 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
-        <div className="px-4 py-3 text-[11px] text-slate-400" title={__BUILD_TIME__}>
+        <div className="px-4 py-3 text-[11px] text-slate-500 dark:text-slate-400" title={__BUILD_TIME__}>
           Versi {__APP_VERSION__} · {new Date(__BUILD_TIME__).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
         </div>
       </aside>
@@ -76,7 +76,7 @@ function Brand() {
       <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-7 w-7" />
       <div className="leading-tight">
         <div className="text-sm font-bold">SKD Set Builder</div>
-        <div className="text-[11px] text-slate-500">Latihan CPNS</div>
+        <div className="text-[11px] text-slate-500 dark:text-slate-400">Latihan CPNS</div>
       </div>
     </div>
   );

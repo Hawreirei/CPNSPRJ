@@ -25,3 +25,29 @@ export function setTheme(theme: Theme) {
 export function watchSystemTheme() {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme());
 }
+
+/** Root font size; every size in the app is in rem, so the whole interface scales with it. */
+export type TextSize = 'normal' | 'besar' | 'sangat-besar';
+const TEXT_SCALE: Record<TextSize, string> = { normal: '100%', besar: '112.5%', 'sangat-besar': '125%' };
+
+export function getTextSize(): TextSize {
+  try {
+    const v = localStorage.getItem('textSize') as TextSize | null;
+    return v && v in TEXT_SCALE ? v : 'normal';
+  } catch {
+    return 'normal';
+  }
+}
+
+export function applyTextSize(size: TextSize = getTextSize()) {
+  document.documentElement.style.fontSize = TEXT_SCALE[size];
+}
+
+export function setTextSize(size: TextSize) {
+  try {
+    localStorage.setItem('textSize', size);
+  } catch {
+    /* ignore */
+  }
+  applyTextSize(size);
+}

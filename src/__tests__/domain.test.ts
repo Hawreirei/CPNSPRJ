@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { computeResult, scoreQuestion, weakTopics } from '../domain/scoring';
-import { parseNumeric, evaluateExpression } from '../domain/numeric';
+import { loadMath, parseNumeric, evaluateExpression } from '../domain/numeric';
 import { checkTkp, explainedOption, validateQuestion } from '../domain/validators';
 import { generateFigural, generateFiguralAnalogy, generateFiguralSeries } from '../domain/figural';
 import { extractJson, parseAiQuestions } from '../domain/schemas';
@@ -8,6 +8,9 @@ import { buildPrompt } from '../domain/prompts';
 import { planBatches, estimatePlan, isProcedural } from '../engine/plan';
 import { buildPreset, DEFAULT_SETTINGS, scaledPassing } from '../domain/blueprint';
 import type { OptionLabel, Question } from '../domain/types';
+
+// mathjs loads on demand in the app; validation needs it loaded first.
+beforeAll(() => loadMath());
 
 function mkQ(partial: Partial<Question>): Question {
   return {

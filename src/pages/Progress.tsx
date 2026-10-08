@@ -4,20 +4,26 @@ import { db, useSettings } from '../db';
 import { SUBTEST_NAMES } from '../domain/blueprint';
 import { attemptMode, examAttempts } from '../domain/practice';
 import { SUBTESTS } from '../domain/types';
-import type { Subtest } from '../domain/types';
+import type { Question, Subtest } from '../domain/types';
+import { examSeries, MIN_EXAMS_FOR_PROJECTION, reasonSummary, topicMovers, trend } from '../engine/analytics';
 import { ScoreTrend } from '../components/ScoreTrend';
 import { Badge, Empty, ProgressBar, SubtestBadge } from '../components/ui';
 
 export default function Progress() {
   const settings = useSettings();
   const attempts = useLiveQuery(() => db.attempts.orderBy('startedAt').filter((a) => !!a.result).toArray(), []);
+  const reasons = useLiveQuery(async () => {
+    const reviews = (await db.reviews.toArray()).filter((r) => r.reasonTags.length);
+    const qs = (await db.questions.bulkGet(reviews.map((r) => r.questionId))).filter((q): q is Question => !!q);
+    return reasonSummary(reviews, new Map(qs.map((q) => [q.id, q.subtest])));
+  }, []);
   if (!attempts) return null;
   if (!attempts.length) {
     return (
       <div className="space-y-4">
         <h1>Progres</h1>
         <Empty title="Belum ada simulasi selesai">
-          <Link className="text-brand-600 underline" to="/simulation">
+          <Link className="text-brand-600 dark:text-brand-300 underline" to="/simulation">
             Mulai simulasi
           </Link>{' '}
           untuk melihat riwayat skor dan penguasaan topik.
@@ -29,15 +35,12 @@ export default function Progress() {
   // Practice reveals the key as you go, so only exams are comparable on the score chart.
   const exams = examAttempts(attempts);
   const practiceCount = attempts.length - exams.length;
-  // Only full-length sub-tests are comparable on the raw-score chart; partial ones are rescaled to the full maximum.
-  const series = (s: Subtest) =>
-    exams.flatMap((a) => {
-      const r = a.result!.perSubtest.find((p) => p.subtest === s);
-      if (!r) return [];
-      const fullMax = settings.counts[s] * 5;
-      const value = r.max === fullMax ? r.score : Math.round((r.score / r.max) * fullMax);
-      return [{ label: `${new Date(a.startedAt).toLocaleDateString('id-ID')} · ${a.setName}`, value, max: fullMax }];
-    });
+  // Partial sets are rescaled to the full maximum so every exam sits on the same chart.
+  const bySubtest = examSeries(attempts, settings.counts);
+  const series = (s: Subtest) => bySubtest[s].map((p) => ({ label: `${new Date(p.at).toLocaleDateString('id-ID')} · ${p.setName}`, value: p.value, max: p.max }));
+  const moves = topicMovers(attempts);
+  const improved = moves.filter((m) => m.delta >= 0.1).sort((x, y) => y.delta - x.delta).slice(0, 3);
+  const declined = moves.filter((m) => m.delta <= -0.1).sort((x, y) => x.delta - y.delta).slice(0, 3);
 
   // Topic mastery: recency-weighted share of max score across all attempts. Practice counts too:
   // each answer is given before its explanation is shown.
@@ -71,6 +74,56 @@ export default function Progress() {
         ))}
       </div>
 
+      {exams.length > 0 && (
+        <section className="card space-y-3">
+          <h2>Tren</h2>
+          <ul className="space-y-1.5 text-sm">
+            {SUBTESTS.map((s) => {
+              const t = trend(
+                bySubtest[s].map((p) => p.value),
+                settings.counts[s] * 5,
+              );
+              if (!t) return null;
+              const step = Math.round(Math.abs(t.slope));
+              return (
+                <li key={s} className="flex flex-wrap items-baseline gap-x-2">
+                  <SubtestBadge subtest={s} />
+                  <span>
+                    {t.n < 2 ? 'Baru 1 ujian.' : step < 1 ? 'Stabil.' : t.slope > 0 ? `Naik rata-rata ${step} poin per ujian.` : `Turun rata-rata ${step} poin per ujian.`}
+                  </span>
+                  <span className="muted">
+                    {t.projection
+                      ? `Perkiraan kasar ujian berikutnya: ${t.projection.low}–${t.projection.high} (ambang ${settings.passing[s]}, dari ${t.n} ujian).`
+                      : `Perkiraan muncul setelah ${MIN_EXAMS_FOR_PROJECTION} ujian.`}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {(improved.length > 0 || declined.length > 0) && (
+            <div className="grid gap-3 text-sm sm:grid-cols-2">
+              <TopicMoves title="Paling membaik" moves={improved} />
+              <TopicMoves title="Paling menurun" moves={declined} />
+            </div>
+          )}
+          <p className="muted text-xs">Perubahan topik: ujian terakhir dibanding rata-rata ujian sebelumnya yang memuat topik itu.</p>
+        </section>
+      )}
+
+      {reasons && reasons.length > 0 && (
+        <section className="card space-y-2">
+          <h2>Alasan salah tersering</h2>
+          <div className="flex flex-wrap gap-1.5">
+            {reasons.slice(0, 6).map((r) => (
+              <span key={r.subtest + r.tag} className="flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-xs dark:border-slate-700">
+                <SubtestBadge subtest={r.subtest} /> {r.label} <b className="tabular-nums">{r.count}</b>
+              </span>
+            ))}
+          </div>
+          <p className="muted text-xs">Dari tag yang Anda pilih saat mengulang soal di Buku Kesalahan.</p>
+        </section>
+      )}
+
       <section className="card">
         <h2>Penguasaan topik</h2>
         <p className="muted mb-3 text-xs">Rata-rata tertimbang dari ujian dan latihan (yang terbaru lebih berbobot). Di bawah 60% ditandai lemah.</p>
@@ -96,7 +149,7 @@ export default function Progress() {
         <h2 className="mb-2">Riwayat skor</h2>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs text-slate-500">
+            <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
               <th className="py-1 pr-3">Tanggal</th>
               <th className="pr-3">Set</th>
               {SUBTESTS.map((s) => (
@@ -133,6 +186,27 @@ export default function Progress() {
           </tbody>
         </table>
       </section>
+    </div>
+  );
+}
+
+function TopicMoves({ title, moves }: { title: string; moves: ReturnType<typeof topicMovers> }) {
+  if (!moves.length) return <div />;
+  return (
+    <div>
+      <div className="mb-1 font-medium">{title}</div>
+      <ul className="space-y-1">
+        {moves.map((m) => (
+          <li key={m.subtest + m.topic} className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5">
+              <SubtestBadge subtest={m.subtest} /> {m.topic}
+            </span>
+            <span className={`tabular-nums ${m.delta > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {Math.round(m.previousPct * 100)}% → {Math.round(m.latestPct * 100)}%
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

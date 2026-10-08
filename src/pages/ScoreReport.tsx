@@ -9,10 +9,10 @@ import { mistakesInAttempt } from '../engine/srs';
 import { attemptQuestions } from '../engine/attempts';
 import { startGeneration } from '../engine/generator';
 import { createRemedialSet } from '../engine/sets';
+import { Recommendations, TimingCard, TkpCard, UnsureCard } from '../components/Analysis';
+import { fmtSec } from '../engine/analytics';
 import { QuestionCard } from '../components/QuestionCard';
 import { Badge, Empty, fmtDate, ProgressBar, SubtestBadge } from '../components/ui';
-
-const fmtSec = (ms: number) => (ms >= 60000 ? `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}d` : `${Math.round(ms / 1000)}d`);
 
 export default function ScoreReport() {
   const { attemptId = '' } = useParams();
@@ -35,7 +35,6 @@ export default function ScoreReport() {
   const weak = weakTopics(r.topics);
   const durationMs = (a.finishedAt ?? a.endsAt) - a.startedAt;
   const practice = attemptMode(a) === 'practice';
-  const timed = questions.map((q) => ({ q, ms: a.timeSpent[q.id] ?? 0 })).sort((x, y) => y.ms - x.ms);
 
   async function remedial() {
     setBusy(true);
@@ -83,7 +82,7 @@ export default function ScoreReport() {
         {inNotebook > 0 && (
           <p className="mt-2 text-sm">
             {inNotebook} soal yang salah, kosong, atau ragu-ragu masuk{' '}
-            <Link className="text-brand-600 underline" to="/review">
+            <Link className="text-brand-600 dark:text-brand-300 underline" to="/review">
               Buku Kesalahan
             </Link>{' '}
             untuk diulang terjadwal.
@@ -110,6 +109,8 @@ export default function ScoreReport() {
           </div>
         ))}
       </div>
+
+      <Recommendations a={a} questions={questions} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="card">
@@ -148,21 +149,12 @@ export default function ScoreReport() {
             </>
           )}
         </section>
-        <section className="card">
-          <h2>Waktu per soal</h2>
-          <p className="muted mt-1 text-sm">Rata-rata {fmtSec(durationMs / Math.max(1, questions.length))} per soal.</p>
-          <div className="mt-2 text-sm font-medium">Paling lama:</div>
-          <ul className="mt-1 space-y-1 text-sm">
-            {timed.slice(0, 5).map(({ q, ms }) => (
-              <li key={q.id} className="flex justify-between gap-2">
-                <span className="truncate">
-                  No. {questions.indexOf(q) + 1} · {q.topic}
-                </span>
-                <span className="shrink-0">{fmtSec(ms)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TimingCard a={a} questions={questions} practice={practice} />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <UnsureCard a={a} questions={questions} />
+        <TkpCard a={a} questions={questions} />
       </div>
 
       <section className="space-y-3">

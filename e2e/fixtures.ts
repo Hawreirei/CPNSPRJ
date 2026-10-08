@@ -16,10 +16,17 @@ const NUMERIC_TOPICS = new Set(['Aritmetika', 'Deret Angka', 'Soal Cerita', 'Per
 const LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
 
 export interface GeminiMock {
-  /** generateContent calls received. */
+  /** generateContent calls received for writing questions. */
   generateCalls: number;
   /** Questions returned, per sub-test. */
   served: Record<'TWK' | 'TIU' | 'TKP', number>;
+  /** generateContent calls received from the cross-checker. */
+  checkCalls: number;
+  /**
+   * The checker's answer to question `no` (1-based) of a check request for `subtest`.
+   * Defaults to the key (A; option A also scores 5 in TKP), i.e. agreement.
+   */
+  checkAnswer: (subtest: string, no: number, stem: string) => string;
 }
 
 let serial = 0;
@@ -65,7 +72,7 @@ export function fakeQuestions(prompt: string) {
 }
 
 export async function mockGemini(page: Page): Promise<GeminiMock> {
-  const stats: GeminiMock = { generateCalls: 0, served: { TWK: 0, TIU: 0, TKP: 0 } };
+  const stats: GeminiMock = { generateCalls: 0, served: { TWK: 0, TIU: 0, TKP: 0 }, checkCalls: 0, checkAnswer: () => 'A' };
   await page.route(`https://${GEMINI_HOST}/**`, async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -80,9 +87,18 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
       });
     }
     if (req.method() === 'POST' && url.pathname.endsWith(':generateContent')) {
+      const body = req.postDataJSON() as { systemInstruction: { parts: { text: string }[] }; contents: { parts: { text: string }[] }[] };
+      const prompt = body.contents[0].parts[0].text;
+      if (body.systemInstruction.parts[0].text.includes('penguji')) {
+        stats.checkCalls++;
+        const subtest = /Untuk setiap soal (TWK|TIU|TKP)/.exec(prompt)?.[1] ?? '';
+        const answers = [...prompt.matchAll(/^(\d+)\. (.*)$/gm)].map(([, no, stem]) => ({ no: Number(no), answer: stats.checkAnswer(subtest, Number(no), stem), reason: `alasan uji ${no}` }));
+        return route.fulfill({
+          json: { candidates: [{ content: { parts: [{ text: JSON.stringify({ answers }) }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 800, candidatesTokenCount: 60 * answers.length } },
+        });
+      }
       stats.generateCalls++;
-      const body = req.postDataJSON() as { contents: { parts: { text: string }[] }[] };
-      const { subtest, questions } = fakeQuestions(body.contents[0].parts[0].text);
+      const { subtest, questions } = fakeQuestions(prompt);
       stats.served[subtest] += questions.length;
       return route.fulfill({
         json: {
@@ -124,9 +140,14 @@ export { expect };
 
 /* ------------------------------------------------------------------ flows */
 
-export async function addGeminiKey(page: Page) {
+/** `unlimited` picks the paid-plan quota, for tests that send more than the free tier's 5 requests a minute. */
+export async function addGeminiKey(page: Page, { unlimited = false } = {}) {
   await page.goto('#/keys');
   await page.getByPlaceholder('AIza…').fill('AIza-e2e-fake-key');
+  if (unlimited) {
+    await page.getByText('Pengaturan lanjutan (opsional)').click();
+    await page.getByRole('combobox').filter({ has: page.getByRole('option', { name: /Tanpa batas/ }) }).selectOption({ label: 'Tanpa batas (akun berbayar)' });
+  }
   await page.getByRole('button', { name: 'Simpan', exact: true }).click();
   // The picked model shows up in the key's model selector.
   await expect(page.locator('option', { hasText: FAKE_MODEL }).first()).toBeAttached();

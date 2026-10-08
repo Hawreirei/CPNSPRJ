@@ -1,17 +1,16 @@
 import { useSyncExternalStore } from 'react';
 import { db, getSettings } from '../db';
 import { generateFigural } from '../domain/figural';
-import { buildPrompt, buildRepairPrompt, buildRewritePrompt, SYSTEM_PROMPT } from '../domain/prompts';
-import { parseAiQuestions } from '../domain/schemas';
+import { buildPrompt, buildRepairPrompt, buildRewritePrompt } from '../domain/prompts';
 import { SUBTESTS } from '../domain/types';
-import { validateQuestion } from '../domain/validators';
-import { complete, isModelUnavailable, ProviderError, suggestedReplacement } from '../providers';
-import type { ProviderConfig } from '../providers';
-import type { ApiKeyRecord, FlagKind, PlanBatch, QSet, Question } from '../domain/types';
+import { loadMath, validateQuestion } from '../domain/validators';
+import { ProviderError } from '../providers';
+import type { FlagKind, PlanBatch, QSet, Question } from '../domain/types';
 import { uid } from '../lib/id';
 import { batchLabel, isProcedural } from './plan';
-import { freshProviderConfig, providerConfig, refreshKeyModel, resolveKey } from './keys';
-import { isLimited, keyUsage, limitsOf, markDayExhausted, QuotaExhaustedError, releaseRequest, reserveRequest } from './quota';
+import { isLimited, keyUsage, limitsOf, QuotaExhaustedError } from './quota';
+import { CROSS_CHECK_KINDS, isCrossCheckable, openCheckerSession, runCrossCheck } from './crosscheck';
+import { callAndParse, openSession, type ModelSession } from './session';
 
 export interface GenProgress {
   setId: string;
@@ -100,124 +99,6 @@ async function addUsage(setId: string, inputTokens: number, outputTokens: number
   });
 }
 
-/** Provider config shared by one run; swapped in place if the model is retired mid-run. */
-interface ModelSession {
-  cfg: ProviderConfig;
-  keyId: string;
-  autoModel: boolean;
-  key: Pick<ApiKeyRecord, 'id' | 'provider' | 'limits'>;
-  swapped?: Promise<void>;
-  onSwap?: (from: string, to: string) => void;
-  onWait?: (ms: number, reason: string) => void;
-}
-
-async function openSession(keyId?: string, modelOverride?: string): Promise<ModelSession> {
-  const { keyId: id, autoModel, ...cfg } = await freshProviderConfig(keyId, modelOverride);
-  const rec = (await resolveKey(id))!;
-  return { cfg, keyId: id, autoModel, key: { id: rec.id, provider: rec.provider, limits: rec.limits } };
-}
-
-/** Rough input-token count used for the per-minute token limit. */
-const estimateTokens = (text: string) => Math.ceil(text.length / 3.5);
-const MAX_RATE_WAITS = 6;
-
-/** Switch to the newest stable model once per session when the provider says the current one is gone. */
-async function swapModel(s: ModelSession, errorMessage = ''): Promise<boolean> {
-  if (!s.autoModel) return false;
-  if (!s.swapped) {
-    const from = s.cfg.model;
-    s.swapped = (async () => {
-      const { model } = await refreshKeyModel(s.keyId, { exclude: from, hint: suggestedReplacement(errorMessage) });
-      s.cfg = await providerConfig(s.keyId);
-      if (model !== from) s.onSwap?.(from, model);
-    })();
-    try {
-      await s.swapped;
-    } catch {
-      return false;
-    }
-    return s.cfg.model !== from;
-  }
-  await s.swapped.catch(() => undefined);
-  return true;
-}
-
-/** Call the model and parse; retries on parse or transient errors and recovers from a retired model. */
-async function callAndParse(
-  session: ModelSession,
-  prompt: string,
-  ctx: Parameters<typeof parseAiQuestions>[1],
-  signal: AbortSignal,
-  onUsage: (i: number, o: number) => Promise<void>,
-): Promise<Question[]> {
-  let lastErr: unknown;
-  let triedSwap = false;
-  let rateWaits = 0;
-  // A limited daily quota makes every retry expensive: allow one retry instead of two.
-  const maxAttempts = limitsOf(session.key).rpd ? 2 : 3;
-  const est = estimateTokens(SYSTEM_PROMPT + prompt);
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-    const model = session.cfg.model;
-    // Throws QuotaExhaustedError when today's quota is used up; waits for the minute window otherwise.
-    const slot = await reserveRequest(session.key, est, { signal, onWait: session.onWait });
-    try {
-      const res = await complete(session.cfg, { system: SYSTEM_PROMPT, prompt, signal });
-      await onUsage(res.inputTokens, res.outputTokens);
-      return parseAiQuestions(res.text, ctx);
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') throw e;
-      lastErr = e;
-      if (e instanceof ProviderError && e.status === 429) {
-        // Rejected by a rate limit: the provider didn't count it, so neither do we.
-        await releaseRequest(slot);
-        if (e.quotaScope === 'day') {
-          throw new QuotaExhaustedError(await markDayExhausted(session.key));
-        }
-        if (rateWaits++ < MAX_RATE_WAITS) {
-          const wait = Math.min(Math.max(e.retryAfterMs ?? 60_000, 5_000), 5 * 60_000);
-          session.onWait?.(wait, 'server meminta menunggu (429)');
-          await sleep(wait, signal);
-          attempt--;
-          continue;
-        }
-        throw e;
-      }
-      if (e instanceof ProviderError && e.status === undefined) await releaseRequest(slot);
-      if (e instanceof ProviderError && !triedSwap && isModelUnavailable(e.status, e.message)) {
-        triedSwap = true;
-        // Another worker may already have swapped; otherwise refresh from the live list.
-        if (session.cfg.model !== model || (await swapModel(session, e.message))) {
-          attempt--;
-          continue;
-        }
-        if (!session.autoModel) {
-          // The user picked this model: don't switch it silently, explain instead.
-          const hint = suggestedReplacement(e.message);
-          throw new ProviderError(
-            `Model ${model} yang Anda pilih sudah tidak tersedia untuk key ini.${hint ? ` Penyedia menyarankan ${hint}.` : ''} Pilih model lain di halaman API Keys (atau "Otomatis"), lalu klik Lanjutkan.`,
-            { status: e.status },
-          );
-        }
-      }
-      const retryable = !(e instanceof ProviderError) || e.retryable;
-      if (!retryable) break;
-      await sleep(1500 * 2 ** attempt, signal);
-    }
-  }
-  throw lastErr;
-}
-
-function sleep(ms: number, signal: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
-    const t = setTimeout(resolve, ms);
-    signal.addEventListener('abort', () => {
-      clearTimeout(t);
-      reject(new DOMException('Aborted', 'AbortError'));
-    });
-  });
-}
-
 async function runBatch(set: QSet, batch: PlanBatch, session: ModelSession | null, hashes: Set<string>, signal: AbortSignal) {
   let questions: Question[];
   if (isProcedural(batch)) {
@@ -234,6 +115,7 @@ async function runBatch(set: QSet, batch: PlanBatch, session: ModelSession | nul
     questions = await callAndParse(session, prompt, { subtest: batch.subtest, items: batch.items, setId: set.id }, signal, (i, o) => addUsage(set.id, i, o));
     questions = questions.slice(0, batch.count);
   }
+  await loadMath();
   const validated = questions.map((q) => {
     const v = validateQuestion({ ...q, originSetId: set.id }, hashes);
     hashes.add(v.hash);
@@ -387,6 +269,29 @@ export async function startGeneration(setId: string): Promise<void> {
     }
   }
 
+  // Optional second opinion on the new questions, after any repair, from another model.
+  const cc = settings.crossCheck;
+  if (cc?.enabled && session && !quotaStop && !ctrl.signal.aborted) {
+    const candidates = ((await db.questions.bulkGet(producedIds)).filter(Boolean) as Question[]).filter(isCrossCheckable);
+    if (candidates.length) {
+      update(setId, { current: ['Memeriksa silang'] });
+      try {
+        const checker = await openCheckerSession(cc, set.keyId);
+        checker.onWait = session.onWait;
+        log(setId, 'info', `Memeriksa silang ${candidates.length} soal dengan ${checker.cfg.model}…`);
+        const r = await runCrossCheck(checker, candidates, ctrl.signal, (i, o) => addUsage(setId, i, o));
+        log(
+          setId,
+          'info',
+          `Pemeriksa silang: ${r.checked} soal diperiksa, ${r.mismatched} berbeda jawaban (ditandai "perlu dicek").` +
+            (r.pending ? ` ${r.pending} soal belum diperiksa karena kuota habis; periksa nanti dari halaman set.` : ''),
+        );
+      } catch (e) {
+        if ((e as Error).name !== 'AbortError') log(setId, 'info', `Pemeriksa silang dilewati: ${(e as Error).message}`);
+      }
+    }
+  }
+
   controllers.delete(setId);
   const final = await db.sets.get(setId);
   const allDone = final?.batches.every((b) => b.status === 'done');
@@ -406,6 +311,7 @@ export async function rewriteQuestion(q: Question, instruction: string, keyId?: 
   const ctrl = new AbortController();
   const [nq] = await callAndParse(session, buildRewritePrompt(q, instruction), { subtest: q.subtest, items: [{ topic: q.topic, difficulty: q.difficulty }], setId: q.originSetId }, ctrl.signal, async () => {});
   if (!nq) throw new Error('AI tidak mengembalikan soal.');
+  await loadMath();
   const updated = validateQuestion({ ...nq, id: q.id, starred: q.starred, locked: q.locked, createdAt: q.createdAt, updatedAt: Date.now() });
   await db.questions.put(updated);
   return updated;
@@ -427,6 +333,7 @@ async function repairWith(session: ModelSession, questions: Question[], signal: 
     const out = await callAndParse(session, buildRepairPrompt(subtest, group), { subtest, items, setId: group[0].originSetId }, signal, onUsage);
     // Answers are matched to questions by position, so a partial reply can't be trusted.
     if (out.length !== group.length) continue;
+    await loadMath();
     for (const [i, old] of group.entries()) {
       const v = validateQuestion({ ...out[i], id: old.id, originSetId: old.originSetId, starred: old.starred, createdAt: old.createdAt, updatedAt: Date.now() });
       if (needsRepair(v)) continue;
@@ -464,6 +371,7 @@ export async function moreLikeThis(setId: string, q: Question, count: number, ke
     questions = await callAndParse(session, prompt, { subtest: q.subtest, items, setId }, ctrl.signal, (i, o) => addUsage(setId, i, o));
   }
   const hashes = await knownHashes();
+  await loadMath();
   const validated = questions.slice(0, count).map((x) => validateQuestion(x, hashes));
   await appendToSet(setId, validated, q.id);
   return validated.length;
@@ -484,9 +392,11 @@ export async function revalidateStored() {
     return;
   }
   const qs = await db.questions.filter((q) => q.subtest !== 'TKP' && q.source !== 'procedural' && !q.locked).toArray();
+  if (qs.length) await loadMath();
   const changed = qs.flatMap((q) => {
     const v = validateQuestion(q);
-    const next = { ...v, flags: [...v.flags, ...q.flags.filter((f) => f.kind === 'duplicate')] };
+    // Flags from outside the validator (duplicates, a second model's opinion) survive re-checking.
+    const next = { ...v, flags: [...v.flags, ...q.flags.filter((f) => f.kind === 'duplicate' || CROSS_CHECK_KINDS.has(f.kind))] };
     return JSON.stringify(next.flags) !== JSON.stringify(q.flags) || next.answer !== q.answer ? [next] : [];
   });
   if (changed.length) await db.questions.bulkPut(changed);

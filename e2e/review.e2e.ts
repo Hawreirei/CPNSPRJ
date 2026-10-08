@@ -59,7 +59,8 @@ test('mistakes go to the notebook and come back on schedule', async ({ page }) =
   await page.getByRole('tab', { name: /Semua catatan/ }).click();
   await page.getByLabel('Alasan salah').selectOption({ label: 'Salah konsep' });
   await expect(page.getByText('1 soal', { exact: true })).toBeVisible();
-  const row = page.locator('details');
+  const row = page.locator('main article');
+  await expect(row).toHaveCount(1);
   await expect(row).toContainText('ulang besok');
   await expect(row).toContainText('terlupa 1×');
 

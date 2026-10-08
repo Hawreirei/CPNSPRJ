@@ -69,7 +69,7 @@ export default function Review() {
                 role="tab"
                 aria-selected={tab === id}
                 onClick={() => setParams(id === 'ulang' ? {} : { tab: id }, { replace: true })}
-                className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${tab === id ? 'border-brand-500 text-brand-700 dark:text-brand-100' : 'border-transparent text-slate-500'}`}
+                className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${tab === id ? 'border-brand-500 text-brand-700 dark:text-brand-100' : 'border-transparent text-slate-500 dark:text-slate-400'}`}
               >
                 {label}
               </button>
@@ -285,7 +285,7 @@ function ReasonTags({ item }: { item: ReviewItem }) {
               type="button"
               aria-pressed={on}
               onClick={() => toggle(t.id)}
-              className={`rounded-full border px-2.5 py-0.5 text-xs ${on ? 'border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200' : 'border-slate-300 text-slate-500 dark:border-slate-700'}`}
+              className={`rounded-full border px-2.5 py-0.5 text-xs ${on ? 'border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200' : 'border-slate-300 text-slate-500 dark:text-slate-400 dark:border-slate-700'}`}
             >
               {t.label}
             </button>
@@ -334,36 +334,38 @@ function Notebook({ items, now }: { items: ReviewItem[]; now: number }) {
       </div>
       {rows.length === 0 && <p className="muted">Tidak ada catatan yang cocok.</p>}
       {rows.map(({ r, q }) => (
-        <details key={r.questionId} className="card">
-          <summary className="cursor-pointer list-none space-y-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <SubtestBadge subtest={q.subtest} />
-              <Badge>{q.topic}</Badge>
-              <Badge tone={isDue(r, now) ? 'amber' : 'slate'}>ulang {fmtDue(r.due, now)}</Badge>
-              {r.lapses > 0 && <Badge tone="red">terlupa {r.lapses}×</Badge>}
-              {r.reasonTags.map((t) => (
-                <Badge key={t} tone="amber">
-                  {TAG_LABEL[t]}
-                </Badge>
-              ))}
-              <button
-                className="btn btn-ghost btn-sm ml-auto"
-                onClick={async (e) => {
-                  e.preventDefault();
-                  if (confirm('Hapus soal ini dari Buku Kesalahan? Soal tetap ada di bank soal.')) await removeReview(r.questionId);
-                }}
-              >
-                Sudah paham, hapus
-              </button>
-            </div>
-            <div className="line-clamp-2 text-sm leading-relaxed">
-              <RichText text={q.stem} />
-            </div>
-          </summary>
-          {q.figure && <FigureView figure={q.figure} />}
-          <AnswerOptions q={q} revealed onAnswer={() => {}} />
-          <Explanation q={q} />
-        </details>
+        <article key={r.questionId} className="card space-y-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <SubtestBadge subtest={q.subtest} />
+            <Badge>{q.topic}</Badge>
+            <Badge tone={isDue(r, now) ? 'amber' : 'slate'}>ulang {fmtDue(r.due, now)}</Badge>
+            {r.lapses > 0 && <Badge tone="red">terlupa {r.lapses}×</Badge>}
+            {r.reasonTags.map((t) => (
+              <Badge key={t} tone="amber">
+                {TAG_LABEL[t]}
+              </Badge>
+            ))}
+            {/* Outside the <summary>: a button inside it would be a control nested in a control. */}
+            <button
+              className="btn btn-ghost btn-sm ml-auto"
+              onClick={async () => {
+                if (confirm('Hapus soal ini dari Buku Kesalahan? Soal tetap ada di bank soal.')) await removeReview(r.questionId);
+              }}
+            >
+              Sudah paham, hapus
+            </button>
+          </div>
+          <details>
+            <summary className="cursor-pointer text-sm leading-relaxed">
+              <span className="line-clamp-2 inline">
+                <RichText text={q.stem} />
+              </span>
+            </summary>
+            {q.figure && <FigureView figure={q.figure} />}
+            <AnswerOptions q={q} revealed onAnswer={() => {}} />
+            <Explanation q={q} />
+          </details>
+        </article>
       ))}
     </div>
   );

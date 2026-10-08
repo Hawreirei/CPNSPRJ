@@ -27,6 +27,9 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      # Uses the build from the step above.
+      - name: Startup bundle budget
+        run: npm run check:bundle
       - name: Upload report, traces and screenshots
         if: failure()
         uses: actions/upload-artifact@v4

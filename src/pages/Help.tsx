@@ -26,6 +26,10 @@ export default function Help() {
             dan Anda bisa memilih topik tertentu. Hasil latihan tidak masuk grafik skor ujian di Progres. Dari Laporan Skor, klik "Latih ulang topik ini".
           </li>
           <li>
+            <b>Rencana belajar</b>: di Pengaturan, isi waktu belajar per hari dan, bila sudah ada, tanggal ujian. Beranda lalu menampilkan hitung mundur,
+            target hari ini, dan kesiapan Anda dibanding skor target. Jadwal simulasi mingguan bisa diunduh ke kalender (.ics).
+          </li>
+          <li>
             <b>Buku Kesalahan</b>: soal yang salah, kosong, atau ditandai ragu-ragu masuk otomatis. Setiap hari buka "Ulangan hari ini", jawab soalnya, lihat
             pembahasan, lalu nilai seberapa ingat Anda (Lupa, Sulit, Baik, Mudah). Soal yang mudah diingat makin jarang muncul; yang terlupa muncul lagi
             besok. Batas ulangan per hari bisa diubah di Pengaturan.
@@ -56,6 +60,10 @@ export default function Help() {
             <b>TKP</b>: setiap opsi wajib berskor 1–5, tidak boleh ada dua opsi berbagi skor tertinggi.
           </li>
           <li>
+            <b>Pemeriksa silang (opsional, di Pengaturan)</b>: model AI lain menjawab soal tanpa melihat kunci. Bila berbeda, soal ditandai "perlu dicek" dengan
+            alasannya. Dua model bisa sama-sama keliru, jadi ini menambah kepercayaan, bukan jaminan.
+          </li>
+          <li>
             <b>TWK</b>: setiap soal harus memiliki rujukan (sila, pasal UUD, fakta sejarah). Soal tanpa rujukan atau yang ditandai AI "kurang yakin" diberi tanda untuk
             dicek ke sumber resmi.
           </li>
@@ -68,6 +76,15 @@ export default function Help() {
           <li>TWK & TIU: jawaban benar 5, salah atau kosong 0.</li>
           <li>TKP: setiap opsi bernilai 1–5, tidak ada jawaban "salah".</li>
           <li>Lulus bila setiap sub-tes mencapai ambang batasnya. Untuk set yang lebih pendek dari standar, ambang batas diskalakan proporsional.</li>
+        </ul>
+      </section>
+
+      <section className="card space-y-2">
+        <h2>Aksesibilitas</h2>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Ujian, latihan, dan ulangan bisa dikerjakan hanya dengan keyboard: A–E memilih jawaban, ← → pindah soal, Tab ke tombol lain.</li>
+          <li>Ukuran teks bisa diperbesar di Pengaturan → Tampilan (Besar atau Sangat besar).</li>
+          <li>Bila "kurangi gerakan" aktif di sistem Anda, animasi dan transisi dimatikan.</li>
         </ul>
       </section>
 

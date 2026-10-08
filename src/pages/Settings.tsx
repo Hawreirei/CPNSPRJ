@@ -3,15 +3,18 @@ import { useRef, useState } from 'react';
 import { db, saveSettings, useSettings } from '../db';
 import { getBackupState, importBackup } from '../db/backup';
 import { fmtAgo } from '../domain/backupReminder';
+import { CrossCheckEditor } from '../components/CrossCheckEditor';
+import { StudyPlanEditor } from '../components/StudyPlanEditor';
 import { autoBackupNow, chooseBackupFile, downloadBackup, isAutoBackupSupported, stopAutoBackup } from '../lib/autoBackup';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
 import { DEFAULT_PRICES } from '../providers/types';
-import { getTheme, setTheme, type Theme } from '../lib/theme';
+import { getTextSize, getTheme, setTextSize, setTheme, type TextSize, type Theme } from '../lib/theme';
 
 export default function SettingsPage() {
   const s = useSettings();
   const [theme, setThemeState] = useState<Theme>(getTheme());
+  const [textSize, setTextSizeState] = useState<TextSize>(getTextSize());
   const [msg, setMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const num = (v: string, min = 0) => Math.max(min, Number(v) || 0);
@@ -33,10 +36,13 @@ export default function SettingsPage() {
             <input id="brand-name" className="input" value={s.brandName} onChange={(e) => saveSettings({ brandName: e.target.value })} />
           </div>
           <div>
-            <label className="label">Logo (PNG/JPG, maks 300 KB)</label>
+            <label className="label" htmlFor="brand-logo">
+              Logo (PNG/JPG, maks 300 KB)
+            </label>
             <div className="flex items-center gap-2">
               {s.brandLogo && <img src={s.brandLogo} alt="Logo" className="h-8" />}
               <input
+                id="brand-logo"
                 type="file"
                 accept="image/png,image/jpeg"
                 className="text-sm"
@@ -57,8 +63,11 @@ export default function SettingsPage() {
             </div>
           </div>
           <div>
-            <label className="label">Tema</label>
+            <label className="label" htmlFor="theme">
+              Tema
+            </label>
             <select
+              id="theme"
               className="input"
               value={theme}
               onChange={(e) => {
@@ -71,7 +80,35 @@ export default function SettingsPage() {
               <option value="dark">Gelap</option>
             </select>
           </div>
+          <div>
+            <label className="label" htmlFor="text-size">
+              Ukuran teks
+            </label>
+            <select
+              id="text-size"
+              className="input"
+              value={textSize}
+              onChange={(e) => {
+                setTextSize(e.target.value as TextSize);
+                setTextSizeState(e.target.value as TextSize);
+              }}
+            >
+              <option value="normal">Normal</option>
+              <option value="besar">Besar</option>
+              <option value="sangat-besar">Sangat besar</option>
+            </select>
+          </div>
         </div>
+      </section>
+
+      <section className="card space-y-3">
+        <h2>Rencana belajar</h2>
+        <StudyPlanEditor settings={s} />
+      </section>
+
+      <section className="card space-y-3">
+        <h2>Pemeriksa silang (opsional)</h2>
+        <CrossCheckEditor settings={s} />
       </section>
 
       <section className="card space-y-3">
@@ -117,7 +154,7 @@ export default function SettingsPage() {
           <div className="overflow-x-auto">
             <table className="text-sm">
               <thead>
-                <tr className="text-left text-xs text-slate-500">
+                <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
                   <th className="pr-4">Sub-tes</th>
                   <th className="pr-4">Jumlah soal</th>
                   <th className="pr-4">Skor maks.</th>
@@ -142,8 +179,10 @@ export default function SettingsPage() {
           </div>
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="label">Durasi SKD penuh (menit)</label>
-              <input type="number" className="input w-28" value={s.durationMinutes} onChange={(e) => saveSettings({ durationMinutes: num(e.target.value, 1) })} />
+              <label className="label" htmlFor="full-duration">
+                Durasi SKD penuh (menit)
+              </label>
+              <input id="full-duration" type="number" className="input w-28" value={s.durationMinutes} onChange={(e) => saveSettings({ durationMinutes: num(e.target.value, 1) })} />
             </div>
             <button
               className="btn"
@@ -180,8 +219,11 @@ export default function SettingsPage() {
           <h2>Pembuatan soal oleh AI</h2>
           <div className="flex flex-wrap gap-3">
             <div>
-              <label className="label">Soal per request</label>
+              <label className="label" htmlFor="per-request">
+                Soal per request
+              </label>
               <input
+                id="per-request"
                 type="number"
                 min={3}
                 max={25}
@@ -191,8 +233,10 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="label">Permintaan paralel</label>
-              <input type="number" min={1} max={4} className="input w-28" value={s.concurrency} onChange={(e) => saveSettings({ concurrency: Math.min(4, num(e.target.value, 1)) })} />
+              <label className="label" htmlFor="concurrency">
+                Permintaan paralel
+              </label>
+              <input id="concurrency" type="number" min={1} max={4} className="input w-28" value={s.concurrency} onChange={(e) => saveSettings({ concurrency: Math.min(4, num(e.target.value, 1)) })} />
             </div>
           </div>
           <p className="muted text-xs">

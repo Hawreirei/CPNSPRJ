@@ -23,12 +23,15 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 | Simulasi CAT | Timer (default 100 menit), grid nomor, ragu-ragu, pintasan keyboard, kirim otomatis, bisa dilanjutkan setelah refresh |
 | Buku Kesalahan | Soal yang salah, kosong, atau ragu-ragu dari ujian dan latihan masuk otomatis, lalu diulang terjadwal (spaced repetition SM-2): jawab dulu, lihat pembahasan, nilai diri Lupa/Sulit/Baik/Mudah. Batas ulangan per hari, tag alasan salah, daftar semua catatan dengan filter |
 | Mode Latihan | Kunci, skor TKP, dan pembahasan tampil langsung setelah menjawab; jawaban terkunci setelah dipilih; pilih topik tertentu; timer opsional. Tidak masuk grafik skor ujian di Progres |
-| Laporan skor | Skor per sub-tes vs ambang batas, topik lemah, waktu per soal, tinjau jawaban, set latihan topik lemah (bank dulu, AI bila kurang) |
+| Laporan skor | Skor per sub-tes vs ambang batas, maksimal 3 saran konkret dengan tautan ke latihan, topik lemah, analisis waktu (rata-rata, soal lama, waktu di soal salah), ketepatan tanda ragu-ragu, kemungkinan tebakan, pola jawaban TKP, tinjau jawaban, set latihan topik lemah (bank dulu, AI bila kurang) |
+| Pemeriksa silang (opsional) | Setelah soal dibuat, model AI lain menjawab soal TWK, TIU non-hitungan, dan TKP tanpa melihat kunci. Jawaban berbeda ditandai "perlu dicek" beserta alasannya; kunci tidak diubah otomatis. Bisa dijalankan juga untuk soal lama dari halaman set. Menambah permintaan AI, ditampilkan di panel rencana |
 | Bank soal | Pencarian dan filter; susun set baru tanpa biaya AI |
 | Set varian | Set baru dengan topik dan kesulitan yang sama |
-| Progres | Grafik riwayat skor per sub-tes dan penguasaan topik |
+| Rencana belajar | Tanggal ujian (opsional), waktu belajar per hari, hari simulasi mingguan, dan skor target. Beranda menampilkan hitung mundur, target hari ini (ulangan Buku Kesalahan, latihan topik lemah, simulasi mingguan) dan kesiapan menurut ujian terakhir. Jadwal bisa diunduh sebagai berkas kalender `.ics` |
+| Progres | Grafik riwayat skor per sub-tes, tren dan perkiraan kasar ujian berikutnya (mulai 3 ujian), topik paling membaik/menurun, alasan salah tersering dari Buku Kesalahan, penguasaan topik |
 | Unduh PDF / Word | Tombol **Unduh** di halaman set, atau pilih soal di Bank Soal lalu unduh. Isi: soal saja, soal + kunci jawaban, lengkap (dengan pembahasan), atau kunci saja; dengan nama lembaga, tanggal, dan logo. PDF berisi teks asli dan gambar soal figural |
 | Cadangan | Ekspor/impor JSON antar perangkat (API key tidak ikut). Beranda mengingatkan bila cadangan terakhir lebih dari 7 hari atau sudah ada 3 set baru. Di Chrome/Edge desktop, cadangan bisa disimpan otomatis ke satu berkas pilihan setiap ada perubahan |
+| Aksesibilitas | Bisa dipakai penuh dengan keyboard (fokus pindah ke judul soal, status tiap nomor dibacakan), cincin fokus jelas, kontras teks memenuhi WCAG AA di tema terang dan gelap, tombol nomor soal 44px di ponsel, menghormati "kurangi gerakan" sistem, dan pilihan ukuran teks (Normal/Besar/Sangat besar). Diperiksa otomatis dengan axe di uji e2e |
 | PWA | Bisa dipasang; set tersimpan dan simulasi berjalan offline |
 
 ## Penyedia AI
@@ -86,6 +89,8 @@ npm run preview
 - Waktu tidak ditunggu sungguhan: timer ujian, jeda cadangan otomatis, dan "besok" di Buku Kesalahan dimajukan dengan `page.clock`.
 - Simpan otomatis ke berkas memakai berkas asli di origin-private file system karena dialog pilih berkas tidak bisa tampil di browser headless.
 - Bila gagal, trace dan screenshot ada di `test-results/` (`npx playwright show-trace <trace.zip>`). Di CI (`.github/workflows/e2e.yml`) keduanya diunggah sebagai artefak.
+
+Aksesibilitas diperiksa dengan axe (`@axe-core/playwright`) di semua halaman utama dan dialog, tema terang dan gelap; tes gagal bila ada pelanggaran WCAG A/AA tingkat serius atau kritis.
 
 Cakupan: tambah API key → buat set → ujian (termasuk kirim otomatis saat waktu habis) → laporan & progres; unduh PDF/Word; cadangan ekspor/impor ke browser bersih, pengingat, dan simpan otomatis; Mode Latihan; Buku Kesalahan.
 

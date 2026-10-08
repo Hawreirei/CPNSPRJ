@@ -141,3 +141,22 @@ export function parseAiQuestions(text: string, ctx: { subtest: Subtest; items: B
     } satisfies Question;
   });
 }
+
+const checkAnswer = z.object({
+  no: z.coerce.number().int().positive(),
+  answer: label,
+  reason: z.string().optional().nullable(),
+});
+
+/** A cross-check reply: answer and reason by question number (1-based). Invalid entries are dropped. */
+export function parseCrossCheck(text: string): Map<number, { answer: OptionLabel; reason: string }> {
+  const parsed = extractJson(text) as { answers?: unknown; questions?: unknown };
+  const list = Array.isArray(parsed.answers) ? parsed.answers : Array.isArray(parsed.questions) ? parsed.questions : [];
+  const out = new Map<number, { answer: OptionLabel; reason: string }>();
+  for (const raw of list) {
+    const r = checkAnswer.safeParse(raw);
+    if (r.success && !out.has(r.data.no)) out.set(r.data.no, { answer: r.data.answer as OptionLabel, reason: r.data.reason?.trim() ?? '' });
+  }
+  if (!out.size) throw new Error('Respons pemeriksa tidak berisi jawaban yang valid.');
+  return out;
+}

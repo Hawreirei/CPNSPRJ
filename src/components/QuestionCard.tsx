@@ -29,6 +29,12 @@ export function QuestionCard({
         <Badge>{q.difficulty}</Badge>
         {q.locked && <Badge tone="blue">🔒 terkunci</Badge>}
         {warn && showFlags && <Badge tone="amber">perlu dicek</Badge>}
+        {showFlags && q.flags.some((f) => f.kind === 'cross-checked') && (
+          <span title={q.flags.find((f) => f.kind === 'cross-checked')?.message}>
+            <Badge tone="green">✓ diperiksa silang</Badge>
+          </span>
+        )}
+        {showFlags && q.flags.some((f) => f.kind === 'cross-check-pending') && <Badge>belum diperiksa silang</Badge>}
         <div className="ml-auto flex flex-wrap gap-1">{actions}</div>
       </div>
 
@@ -78,11 +84,11 @@ export function Explanation({ q }: { q: Question }) {
         <RichText text={q.explanation || '—'} />
       </div>
       {q.reference && (
-        <div className="mt-2 text-xs text-slate-500">
+        <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
           Rujukan: <RichText text={q.reference} />
         </div>
       )}
-      {q.subtest === 'TKP' && <p className="mt-2 text-xs text-slate-500">Skor TKP adalah rasional berbasis nilai pelayanan publik, bukan kunci resmi.</p>}
+      {q.subtest === 'TKP' && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Skor TKP adalah rasional berbasis nilai pelayanan publik, bukan kunci resmi.</p>}
     </div>
   );
 }

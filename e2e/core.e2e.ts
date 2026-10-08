@@ -9,6 +9,8 @@ test('API key, generate a set, take the exam, and see the report and progress', 
   expect(gemini.served.TKP).toBe(10);
   expect(gemini.served.TIU).toBeGreaterThan(0);
   expect(gemini.served.TIU).toBeLessThanOrEqual(10);
+  // Cross-checking is off unless switched on.
+  expect(gemini.checkCalls).toBe(0);
   await expect(page.getByText('perlu dicek')).toHaveCount(0);
 
   // Start the exam from the set's own page.
