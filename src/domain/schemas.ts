@@ -26,7 +26,6 @@ const aiQuestion = z.object({
   mathExpression: z.string().optional().nullable(),
 });
 
-const aiPayload = z.object({ questions: z.array(aiQuestion).min(1) });
 
 /** Pull the first JSON object out of a model reply (handles ```json fences and chatter). */
 export function extractJson(text: string): unknown {
@@ -42,10 +41,68 @@ export function extractJson(text: string): unknown {
   return Array.isArray(parsed) ? { questions: parsed } : parsed;
 }
 
+/**
+ * Recover the complete question objects from a reply that was cut off
+ * (e.g. hit the output-token limit), so a paid request is not wasted.
+ */
+export function salvageQuestions(text: string): unknown[] {
+  const anchor = text.search(/"questions"\s*:\s*\[/);
+  let i = anchor >= 0 ? text.indexOf('[', anchor) + 1 : text.indexOf('[') + 1;
+  if (i <= 0) return [];
+  const out: unknown[] = [];
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  let objStart = -1;
+  for (; i < text.length; i++) {
+    const c = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c === '\\') escaped = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    else if (c === '{') {
+      if (depth === 0) objStart = i;
+      depth++;
+    } else if (c === '}') {
+      depth--;
+      if (depth === 0 && objStart >= 0) {
+        try {
+          out.push(JSON.parse(text.slice(objStart, i + 1)));
+        } catch {
+          /* skip malformed object */
+        }
+        objStart = -1;
+      }
+    } else if (c === ']' && depth === 0) break;
+  }
+  return out;
+}
+
+function rawQuestions(text: string): unknown[] {
+  try {
+    const parsed = extractJson(text) as { questions?: unknown };
+    if (Array.isArray(parsed?.questions)) return parsed.questions;
+  } catch {
+    /* fall through to salvage */
+  }
+  return salvageQuestions(text);
+}
+
+/**
+ * Parse the model's questions. Invalid or truncated entries are dropped
+ * individually; the caller re-requests whatever is missing.
+ */
 export function parseAiQuestions(text: string, ctx: { subtest: Subtest; items: BatchItem[]; setId?: string }): Question[] {
-  const payload = aiPayload.parse(extractJson(text));
+  const valid = rawQuestions(text)
+    .map((raw, idx) => ({ parsed: aiQuestion.safeParse(raw), idx }))
+    .filter((x) => x.parsed.success)
+    .map((x) => ({ q: x.parsed.data!, idx: x.idx }));
+  if (!valid.length) throw new Error('Respons AI tidak berisi soal yang valid.');
   const now = Date.now();
-  return payload.questions.map((q, idx) => {
+  return valid.map(({ q, idx }) => {
     // Topic/difficulty come from the requested slot, not the model's echo, so a set keeps its blueprint.
     const slot = ctx.items[idx] ?? ctx.items.find((i) => i.topic === q.topic) ?? ctx.items[0];
     const options = q.options.slice(0, 5).map((o, i) => ({

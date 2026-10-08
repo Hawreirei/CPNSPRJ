@@ -57,8 +57,8 @@ export const DEFAULT_SETTINGS: Settings = {
   passing: { TWK: 65, TIU: 80, TKP: 166 },
   counts: { TWK: 30, TIU: 35, TKP: 45 },
   durationMinutes: 100,
-  batchSize: 5,
-  concurrency: 2,
+  questionsPerRequest: 20,
+  concurrency: 1,
   brandName: '',
   priceOverrides: {},
 };

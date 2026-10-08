@@ -71,15 +71,25 @@ export default function SettingsPage() {
         <h2>Generasi AI</h2>
         <div className="flex flex-wrap gap-3">
           <div>
-            <label className="label">Soal per permintaan</label>
-            <input type="number" min={1} max={10} className="input w-28" value={s.batchSize} onChange={(e) => saveSettings({ batchSize: Math.min(10, num(e.target.value, 1)) })} />
+            <label className="label">Soal per request</label>
+            <input
+              type="number"
+              min={3}
+              max={25}
+              className="input w-28"
+              value={s.questionsPerRequest}
+              onChange={(e) => saveSettings({ questionsPerRequest: Math.min(25, num(e.target.value, 3)) })}
+            />
           </div>
           <div>
             <label className="label">Permintaan paralel</label>
             <input type="number" min={1} max={4} className="input w-28" value={s.concurrency} onChange={(e) => saveSettings({ concurrency: Math.min(4, num(e.target.value, 1)) })} />
           </div>
         </div>
-        <p className="muted text-xs">Batch kecil lebih andal; paralel lebih cepat tetapi lebih mudah terkena batas kuota (rate limit) pada akun gratis.</p>
+        <p className="muted text-xs">
+          Makin banyak soal per request, makin sedikit request yang dipakai. Ini penting untuk free tier: dengan 20 soal per request, SKD lengkap butuh sekitar 7
+          request. Bila respons sering terpotong, turunkan ke 10–15. Untuk key dengan batas per menit, permintaan selalu dijalankan satu per satu.
+        </p>
         <details>
           <summary className="cursor-pointer text-sm font-medium">Harga model untuk perkiraan biaya (USD per 1 juta token)</summary>
           <table className="mt-2 text-sm">

@@ -2,11 +2,19 @@ import { PROCEDURAL_TOPICS } from '../domain/blueprint';
 import { DEFAULT_PRICES, FALLBACK_PRICE } from '../providers/types';
 import { familyPrice } from '../providers/models';
 import { uid } from '../lib/id';
-import type { BatchItem, Blueprint, Difficulty, PlanBatch, Settings, Subtest } from '../domain/types';
+import type { BatchItem, Blueprint, Difficulty, KeyLimits, PlanBatch, Settings, Subtest } from '../domain/types';
 
 const MIX: Difficulty[] = ['sedang', 'mudah', 'sedang', 'sulit', 'sedang', 'mudah', 'sulit', 'sedang', 'sedang', 'mudah'];
 
 export const isProcedural = (b: Pick<PlanBatch, 'items'>) => b.items.length > 0 && b.items.every((i) => PROCEDURAL_TOPICS.has(i.topic));
+
+/** Split `n` items into the fewest chunks of at most `size`, with sizes as even as possible (30 by 20 → 15+15). */
+export function balancedSizes(n: number, size: number): number[] {
+  if (n <= 0) return [];
+  const chunks = Math.ceil(n / Math.max(1, size));
+  const base = Math.floor(n / chunks);
+  return Array.from({ length: chunks }, (_, i) => base + (i < n % chunks ? 1 : 0));
+}
 
 /** Chunk items into batches: procedural topics alone (no AI), the rest mixed up to `batchSize`. */
 export function chunkItems(subtest: Subtest, items: BatchItem[], batchSize: number, basedOn?: string[]): PlanBatch[] {
@@ -16,9 +24,11 @@ export function chunkItems(subtest: Subtest, items: BatchItem[], batchSize: numb
   const groups = new Map<string, BatchItem[]>();
   for (const it of procedural) groups.set(`${it.topic}|${it.difficulty}`, [...(groups.get(`${it.topic}|${it.difficulty}`) ?? []), it]);
   for (const g of groups.values()) batches.push({ id: uid(), subtest, items: g, count: g.length, status: 'pending' });
-  for (let i = 0; i < ai.length; i += batchSize) {
-    const chunk = ai.slice(i, i + batchSize);
-    batches.push({ id: uid(), subtest, items: chunk, count: chunk.length, status: 'pending', basedOn: basedOn?.slice(i, i + batchSize) });
+  let i = 0;
+  for (const n of balancedSizes(ai.length, batchSize)) {
+    const chunk = ai.slice(i, i + n);
+    batches.push({ id: uid(), subtest, items: chunk, count: chunk.length, status: 'pending', basedOn: basedOn?.slice(i, i + n) });
+    i += n;
   }
   return batches;
 }
@@ -43,7 +53,7 @@ export function batchLabel(b: PlanBatch): string {
   return `${b.subtest} · ${topics.length > 2 ? `${topics.slice(0, 2).join(', ')} +${topics.length - 2}` : topics.join(', ')} (${b.count})`;
 }
 
-const OUT_PER_Q = { TWK: 420, TIU: 420, TKP: 650 } as const;
+export const OUT_PER_Q = { TWK: 420, TIU: 420, TKP: 650 } as const;
 const IN_PER_REQ = 1300;
 
 export interface PlanEstimate {
@@ -56,7 +66,12 @@ export interface PlanEstimate {
   minutes: [number, number];
 }
 
-export function estimatePlan(batches: PlanBatch[], model: string, settings: Pick<Settings, 'concurrency' | 'priceOverrides'>): PlanEstimate {
+export function estimatePlan(
+  batches: PlanBatch[],
+  model: string,
+  settings: Pick<Settings, 'concurrency' | 'priceOverrides'>,
+  limits?: KeyLimits,
+): PlanEstimate {
   const pending = batches.filter((b) => b.status !== 'done');
   const ai = pending.filter((b) => !isProcedural(b));
   const aiQuestions = ai.reduce((n, b) => n + b.count, 0);
@@ -64,8 +79,11 @@ export function estimatePlan(batches: PlanBatch[], model: string, settings: Pick
   const outputTokens = ai.reduce((n, b) => n + b.count * OUT_PER_Q[b.subtest], 0);
   const price = settings.priceOverrides[model] ?? DEFAULT_PRICES[model] ?? familyPrice(model) ?? FALLBACK_PRICE;
   const cost = (inputTokens * price.input + outputTokens * price.output) / 1e6;
-  const conc = Math.max(1, settings.concurrency);
-  const secs = outputTokens / 80 / conc;
+  // Rate-limited keys run one request at a time and may wait for the per-minute window.
+  const conc = limits?.rpm ? 1 : Math.max(1, settings.concurrency);
+  const perRequestSecs = ai.length ? outputTokens / 80 / ai.length : 0;
+  const pacedSecs = limits?.rpm ? Math.max(perRequestSecs, 60 / limits.rpm) : perRequestSecs;
+  const secs = (ai.length * pacedSecs) / conc;
   // Upper bound: reasoning models may spend 1-3x extra output on hidden thinking.
   return {
     requests: ai.length,

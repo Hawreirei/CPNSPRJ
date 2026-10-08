@@ -1,8 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { db } from '../db';
-import type { ApiKeyRecord, ProviderId } from '../domain/types';
+import type { ApiKeyRecord, KeyLimits, ProviderId } from '../domain/types';
 import { addKey, deleteKey, providerConfig, refreshKeyModel, setDefaultKey } from '../engine/keys';
+import { clearQuotaBlock, defaultLimits, keyUsage, LIMIT_PRESETS, limitsOf, releaseRequest, reserveRequest } from '../engine/quota';
 import { complete, groupModels, listModels, pickRecommendedModel, PROVIDERS } from '../providers';
 import type { ProviderConfig } from '../providers';
 import { Badge, fmtDate } from '../components/ui';
@@ -43,6 +44,47 @@ function ModelPicker({ value, onChange, models, suggestions, disabled }: { value
   );
 }
 
+function LimitsEditor({ value, onChange }: { value: KeyLimits; onChange: (l: KeyLimits) => void }) {
+  const preset = LIMIT_PRESETS.find((p) => p.limits.rpm === value.rpm && p.limits.tpm === value.tpm && p.limits.rpd === value.rpd)?.id ?? 'custom';
+  const field = (k: keyof KeyLimits, labelText: string) => (
+    <label className="text-xs">
+      <span className="label">{labelText}</span>
+      <input
+        type="number"
+        min={0}
+        className="input w-28"
+        value={value[k]}
+        onChange={(e) => onChange({ ...value, [k]: Math.max(0, Number(e.target.value) || 0) })}
+      />
+    </label>
+  );
+  return (
+    <div className="space-y-2">
+      <select
+        className="input"
+        value={preset}
+        onChange={(e) => {
+          const p = LIMIT_PRESETS.find((x) => x.id === e.target.value);
+          if (p) onChange({ ...p.limits });
+        }}
+      >
+        {LIMIT_PRESETS.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
+        ))}
+        <option value="custom">Kustom</option>
+      </select>
+      <div className="flex flex-wrap gap-2">
+        {field('rpm', 'Request / menit')}
+        {field('tpm', 'Token input / menit')}
+        {field('rpd', 'Request / hari')}
+      </div>
+      <p className="muted text-xs">Isi sesuai halaman batas kuota di dasbor penyedia (0 = tanpa batas). Aplikasi tidak akan mengirim lebih dari batas ini.</p>
+    </div>
+  );
+}
+
 export default function ApiKeys() {
   const keys = useLiveQuery(() => db.keys.orderBy('provider').toArray(), []);
   const [provider, setProvider] = useState<ProviderId>('gemini');
@@ -51,6 +93,7 @@ export default function ApiKeys() {
   const [baseUrl, setBaseUrl] = useState('');
   const [model, setModel] = useState(PROVIDERS.gemini.defaultModel);
   const [autoModel, setAutoModel] = useState(true);
+  const [limits, setLimits] = useState<KeyLimits>(defaultLimits('gemini'));
   const [models, setModels] = useState<string[]>([]);
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -61,6 +104,7 @@ export default function ApiKeys() {
   function changeProvider(p: ProviderId) {
     setProvider(p);
     setModel(PROVIDERS[p].defaultModel);
+    setLimits(defaultLimits(p));
     setModels([]);
     setStatus(null);
   }
@@ -167,6 +211,10 @@ export default function ApiKeys() {
               </p>
             </div>
           </div>
+          <div className="sm:col-span-2">
+            <label className="label">Batas kuota key ini</label>
+            <LimitsEditor value={limits} onChange={setLimits} />
+          </div>
         </div>
         {status && <p className={`text-sm ${status.ok ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{status.msg}</p>}
         <div className="flex gap-2">
@@ -180,7 +228,7 @@ export default function ApiKeys() {
               })
             }
           >
-            Uji koneksi
+            Uji koneksi (1 request)
           </button>
           <button
             className="btn btn-primary"
@@ -189,7 +237,7 @@ export default function ApiKeys() {
               run(async () => {
                 const r = autoModel ? await discover() : { model, checked: false, note: '' };
                 if (!r.model) throw new Error('Pilih model terlebih dahulu.');
-                await addKey({ provider, label: label || info.name, apiKey, model: r.model, baseUrl, autoModel, modelCheckedAt: r.checked ? Date.now() : undefined });
+                await addKey({ provider, label: label || info.name, apiKey, model: r.model, baseUrl, autoModel, modelCheckedAt: r.checked ? Date.now() : undefined, limits });
                 setApiKey('');
                 setLabel('');
                 setStatus({ ok: true, msg: `Key disimpan (terenkripsi) dengan model ${r.model}.${r.note ? ' ' + r.note : ''}` });
@@ -224,7 +272,10 @@ function KeyRow({ k }: { k: ApiKeyRecord }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [editLimits, setEditLimits] = useState(false);
   const auto = k.autoModel !== false;
+  const usage = useLiveQuery(() => keyUsage(k), [k]);
+  const limits = limitsOf(k);
 
   async function act(fn: () => Promise<string>) {
     setBusy(true);
@@ -255,7 +306,22 @@ function KeyRow({ k }: { k: ApiKeyRecord }) {
               Jadikan default
             </button>
           )}
-          <button className="btn btn-sm" disabled={busy} onClick={() => act(async () => testConnection(await providerConfig(k.id)))}>
+          <button
+            className="btn btn-sm"
+            disabled={busy}
+            title="Memakai 1 request dari kuota"
+            onClick={() =>
+              act(async () => {
+                const slot = await reserveRequest(k, 200);
+                try {
+                  return await testConnection(await providerConfig(k.id));
+                } catch (e) {
+                  await releaseRequest(slot);
+                  throw e;
+                }
+              })
+            }
+          >
             Uji
           </button>
           <button className="btn btn-sm btn-danger" onClick={() => confirm(`Hapus key "${k.label}"?`) && deleteKey(k.id)}>
@@ -296,6 +362,29 @@ function KeyRow({ k }: { k: ApiKeyRecord }) {
           otomatis
         </label>
       </div>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="muted">Kuota:</span>
+        {usage && limits.rpd ? (
+          <Badge tone={usage.remainingToday === 0 || usage.blockedUntil ? 'red' : usage.remainingToday! <= 5 ? 'amber' : 'green'}>
+            hari ini {usage.today}/{limits.rpd} request
+          </Badge>
+        ) : (
+          <Badge>tanpa batas harian</Badge>
+        )}
+        {limits.rpm > 0 && <span className="muted">maks {limits.rpm}/menit</span>}
+        {usage && limits.rpd > 0 && (
+          <span className="muted">reset {new Date(usage.blockedUntil ?? usage.resetAt).toLocaleString('id-ID', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+        )}
+        {usage?.blockedUntil && (
+          <button className="btn btn-sm" onClick={() => clearQuotaBlock(k.id)} title="Gunakan bila kuota sudah ditambah atau dicatat keliru">
+            Buka blokir
+          </button>
+        )}
+        <button className="btn btn-ghost btn-sm" onClick={() => setEditLimits((v) => !v)}>
+          {editLimits ? 'Tutup' : 'Ubah batas'}
+        </button>
+      </div>
+      {editLimits && <LimitsEditor value={limits} onChange={(l) => db.keys.update(k.id, { limits: l })} />}
       {msg && <div className="text-xs">{msg}</div>}
     </div>
   );

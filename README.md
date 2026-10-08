@@ -40,6 +40,14 @@ Gemini, OpenAI, Anthropic Claude, dan endpoint OpenAI-compatible (misal OpenRout
 - Bila penyedia menolak model karena sudah dihentikan (misal 404), aplikasi berpindah ke model stabil terbaru lalu mengulang permintaan.
 - Mode manual tetap tersedia per key, dengan daftar model yang dikelompokkan: direkomendasikan, hemat, paling kuat, alias "latest", dan preview.
 
+**Hemat kuota free tier.** Free tier sangat terbatas (Gemini misalnya 5 request/menit dan 20 request/hari), jadi aplikasi:
+
+- Meminta **20 soal per request** secara default, dibagi rata. SKD lengkap (110 soal) cukup sekitar 7 request dan Mini SKD 3 request, sehingga satu key gratis bisa membuat sekitar 2 set lengkap per hari. Nilainya bisa diubah di Pengaturan.
+- Menyimpan **batas kuota per key** (preset "Gemini free tier", "tanpa batas", atau kustom) dan menghitung pemakaian sendiri. Aplikasi menunggu bila batas per menit tercapai, dan berhenti rapi bila kuota harian habis; set bisa dilanjutkan setelah reset (Gemini: tengah malam waktu Pasifik).
+- Membaca waktu tunggu dan jenis kuota dari error 429. Request yang ditolak tidak dihitung, dan tidak ada percobaan ulang beruntun yang menghabiskan kuota.
+- Tidak membuang request: soal yang lengkap dari respons yang terpotong tetap disimpan, dan hanya soal yang kurang yang diminta ulang. Soal figural (gratis) dikerjakan lebih dulu.
+- Panel rencana menampilkan sisa kuota hari ini dan berapa set yang masih bisa dibuat.
+
 API key dienkripsi AES-GCM dengan kunci perangkat non-extractable (WebCrypto) di IndexedDB. Enkripsi ini melindungi data tersimpan, tetapi tidak melindungi dari kode berbahaya yang berjalan di halaman (misal ekstensi browser). Build produksi memasang Content-Security-Policy yang ketat.
 
 ## Struktur SKD (dapat diubah)

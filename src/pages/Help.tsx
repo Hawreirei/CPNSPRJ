@@ -87,7 +87,13 @@ export default function Help() {
             <b>Gagal menghubungi (CORS)</b>: beberapa endpoint OpenAI-compatible menolak akses dari browser. Gunakan penyedia yang mendukung CORS (misal OpenRouter).
           </li>
           <li>
-            <b>Respons terpotong / JSON tidak valid</b>: kecilkan "soal per permintaan". Batch yang gagal bisa dicoba lagi dengan tombol Lanjutkan.
+            <b>Respons terpotong / JSON tidak valid</b>: soal yang lengkap tetap disimpan dan sisanya diminta ulang otomatis. Bila sering terjadi, kecilkan
+            "soal per request" di Pengaturan.
+          </li>
+          <li>
+            <b>Kuota free tier habis</b>: atur batas kuota key di halaman API Keys (preset "Gemini free tier"). Aplikasi menunggu sendiri saat batas per
+            menit tercapai dan berhenti saat kuota harian habis; buka set lalu klik Lanjutkan setelah kuota direset. Soal dari bank soal dan soal figural tidak
+            memakai kuota.
           </li>
         </ul>
       </section>

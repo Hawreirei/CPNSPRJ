@@ -21,7 +21,7 @@ function newSet(partial: Pick<QSet, 'name' | 'blueprint' | 'source'> & Partial<Q
 
 export async function createAiSet(name: string, blueprint: Blueprint, keyId?: string): Promise<QSet> {
   const settings = await getSettings();
-  const set = newSet({ name, blueprint, source: 'ai', keyId, batches: planBatches(blueprint, settings.batchSize) });
+  const set = newSet({ name, blueprint, source: 'ai', keyId, batches: planBatches(blueprint, settings.questionsPerRequest) });
   await db.sets.add(set);
   return set;
 }
@@ -76,8 +76,8 @@ export async function createVariantSet(source: QSet): Promise<QSet> {
     const figural = qs.filter((q) => q.source === 'procedural');
     const ai = qs.filter((q) => q.source !== 'procedural');
     const items = (list: Question[]) => list.map((q) => ({ topic: q.topic, difficulty: q.difficulty }));
-    batches.push(...chunkItems(s, items(figural), settings.batchSize));
-    batches.push(...chunkItems(s, items(ai), settings.batchSize, ai.map((q) => q.id)));
+    batches.push(...chunkItems(s, items(figural), settings.questionsPerRequest));
+    batches.push(...chunkItems(s, items(ai), settings.questionsPerRequest, ai.map((q) => q.id)));
   }
   const set = newSet({ name: `${source.name} (varian)`, blueprint: source.blueprint, source: 'variant', keyId: source.keyId, batches });
   await db.sets.add(set);
@@ -98,7 +98,7 @@ export async function createRemedialSet(weak: TopicResult[], perTopic = 5, attem
     const missing = perTopic - take.length;
     if (missing > 0) needed[t.subtest].push(...Array.from({ length: missing }, () => ({ topic: t.topic, difficulty: 'sedang' as const })));
   }
-  for (const s of SUBTESTS) batches.push(...chunkItems(s, needed[s], settings.batchSize));
+  for (const s of SUBTESTS) batches.push(...chunkItems(s, needed[s], settings.questionsPerRequest));
   const counts: Record<Subtest, number> = { TWK: 0, TIU: 0, TKP: 0 };
   for (const t of weak) counts[t.subtest] += perTopic;
   const blueprint: Blueprint = {

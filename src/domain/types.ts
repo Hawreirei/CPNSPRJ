@@ -172,16 +172,35 @@ export interface ApiKeyRecord {
   iv: Uint8Array<ArrayBuffer>;
   isDefault: boolean;
   createdAt: number;
+  /** Self-imposed rate limits matching the key's plan (0 = no limit). */
+  limits?: KeyLimits;
   /** When true, the app keeps `model` on the newest stable recommended model. */
   autoModel?: boolean;
   modelCheckedAt?: number;
+}
+
+export interface KeyLimits {
+  /** Requests per minute. */
+  rpm: number;
+  /** Input tokens per minute. */
+  tpm: number;
+  /** Requests per day. */
+  rpd: number;
+}
+
+export interface RequestLog {
+  id?: number;
+  keyId: string;
+  at: number;
+  inputTokens: number;
 }
 
 export interface Settings {
   passing: Record<Subtest, number>;
   counts: Record<Subtest, number>;
   durationMinutes: number;
-  batchSize: number;
+  /** Questions requested per AI call. Larger = fewer requests (better for free tiers). */
+  questionsPerRequest: number;
   concurrency: number;
   brandName: string;
   brandLogo?: string;

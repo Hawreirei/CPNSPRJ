@@ -20,14 +20,22 @@ export interface LlmResponse {
   outputTokens: number;
 }
 
+/** Which rate-limit window a 429 refers to: wait it out (minute) or stop for the day. */
+export type QuotaScope = 'minute' | 'day';
+
 export class ProviderError extends Error {
   status?: number;
   retryable: boolean;
-  constructor(message: string, opts: { status?: number; retryable?: boolean } = {}) {
+  /** Server-suggested wait before retrying (Retry-After header or Gemini RetryInfo). */
+  retryAfterMs?: number;
+  quotaScope?: QuotaScope;
+  constructor(message: string, opts: { status?: number; retryable?: boolean; retryAfterMs?: number; quotaScope?: QuotaScope } = {}) {
     super(message);
     this.name = 'ProviderError';
     this.status = opts.status;
     this.retryable = opts.retryable ?? false;
+    this.retryAfterMs = opts.retryAfterMs;
+    this.quotaScope = opts.quotaScope;
   }
 }
 

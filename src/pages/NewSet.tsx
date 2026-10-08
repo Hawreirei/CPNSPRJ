@@ -10,6 +10,7 @@ import { startGeneration } from '../engine/generator';
 import { estimatePlan, planBatches } from '../engine/plan';
 import { createAiSet, createBankSet, pickFromBank } from '../engine/sets';
 import { PROVIDERS } from '../providers/types';
+import { keyUsage, limitsOf } from '../engine/quota';
 import { fmtUsd, SubtestBadge } from '../components/ui';
 
 export default function NewSet() {
@@ -31,8 +32,10 @@ export default function NewSet() {
   }, [keys, keyId]);
 
   const key = keys?.find((k) => k.id === keyId);
-  const batches = useMemo(() => planBatches(bp, settings.batchSize), [bp, settings.batchSize]);
-  const est = useMemo(() => estimatePlan(batches, key?.model ?? '', settings), [batches, key, settings]);
+  const batches = useMemo(() => planBatches(bp, settings.questionsPerRequest), [bp, settings.questionsPerRequest]);
+  const est = useMemo(() => estimatePlan(batches, key?.model ?? '', settings, key ? limitsOf(key) : undefined), [batches, key, settings]);
+  const usage = useLiveQuery(async () => (key ? keyUsage(key) : undefined), [key]);
+  const remaining = usage?.blockedUntil ? 0 : (usage?.remainingToday ?? null);
   const total = bp.sections.reduce((n, s) => n + s.count, 0);
 
   function applyPreset(id: PresetId) {
@@ -233,6 +236,17 @@ export default function NewSet() {
               <dt className="muted">Waktu</dt>
               <dd className="text-right">{est.requests ? `${Math.max(1, Math.round(est.minutes[0]))}–${Math.max(1, Math.round(est.minutes[1]))} menit` : 'instan'}</dd>
             </dl>
+            {remaining !== null && est.requests > 0 && (
+              <div
+                className={`rounded-lg p-2 text-xs ${remaining >= est.requests ? 'bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-200' : 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200'}`}
+              >
+                Kuota key hari ini: sisa <b>{remaining}</b> dari {usage!.limits.rpd} request.{' '}
+                {remaining >= est.requests
+                  ? `Cukup untuk set ini (${est.requests} request); masih bisa sekitar ${Math.floor(remaining / est.requests)} set seperti ini hari ini.`
+                  : `Set ini butuh ${est.requests} request. ${remaining} batch dikerjakan sekarang, sisanya bisa dilanjutkan setelah kuota direset (${new Date(usage!.blockedUntil ?? usage!.resetAt).toLocaleString('id-ID', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}).`}{' '}
+                Hemat kuota: naikkan "soal per request" di Pengaturan, atau ambil soal dari bank (gratis).
+              </div>
+            )}
             <p className="muted text-xs">
               Perkiraan kasar. Model dengan "thinking" bisa memakai token lebih banyak. Harga dapat diubah di Pengaturan. Banyak penyedia punya kuota gratis.
             </p>

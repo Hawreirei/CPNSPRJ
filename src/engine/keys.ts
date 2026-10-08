@@ -1,11 +1,11 @@
 import { db } from '../db';
 import { decryptSecret, encryptSecret } from '../db/crypto';
 import { uid } from '../lib/id';
-import type { ApiKeyRecord, ProviderId } from '../domain/types';
+import type { ApiKeyRecord, KeyLimits, ProviderId } from '../domain/types';
 import { listModels, pickRecommendedModel } from '../providers';
 import type { ProviderConfig } from '../providers';
 
-export async function addKey(input: { provider: ProviderId; label: string; apiKey: string; model: string; baseUrl?: string; autoModel?: boolean; modelCheckedAt?: number }) {
+export async function addKey(input: { provider: ProviderId; label: string; apiKey: string; model: string; baseUrl?: string; autoModel?: boolean; modelCheckedAt?: number; limits?: KeyLimits }) {
   const { cipher, iv } = await encryptSecret(input.apiKey.trim());
   const hasDefault = (await db.keys.count()) > 0;
   const rec: ApiKeyRecord = {
@@ -19,6 +19,7 @@ export async function addKey(input: { provider: ProviderId; label: string; apiKe
     isDefault: !hasDefault,
     createdAt: Date.now(),
     autoModel: input.autoModel ?? true,
+    limits: input.limits,
     modelCheckedAt: input.modelCheckedAt,
   };
   await db.keys.add(rec);
