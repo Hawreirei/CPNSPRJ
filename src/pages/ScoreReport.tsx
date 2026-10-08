@@ -5,6 +5,7 @@ import { db } from '../db';
 import { isCorrect, scoreQuestion, weakTopics } from '../domain/scoring';
 import { SUBTEST_NAMES } from '../domain/blueprint';
 import { attemptMode } from '../domain/practice';
+import { mistakesInAttempt } from '../engine/srs';
 import { attemptQuestions } from '../engine/attempts';
 import { startGeneration } from '../engine/generator';
 import { createRemedialSet } from '../engine/sets';
@@ -18,14 +19,18 @@ export default function ScoreReport() {
   const nav = useNavigate();
   const data = useLiveQuery(async () => {
     const a = await db.attempts.get(attemptId);
-    return a ? { a, questions: await attemptQuestions(a) } : null;
+    if (!a) return null;
+    const questions = await attemptQuestions(a);
+    // Counted from the notebook itself, so attempts finished before it existed show nothing.
+    const inNotebook = (await db.reviews.bulkGet(mistakesInAttempt(questions, a.answers, a.flagged))).filter(Boolean).length;
+    return { a, questions, inNotebook };
   }, [attemptId]);
   const [review, setReview] = useState<'none' | 'wrong' | 'all'>('none');
   const [busy, setBusy] = useState(false);
 
   if (data === undefined) return null;
   if (!data?.a.result) return <Empty title="Hasil tidak ditemukan" />;
-  const { a, questions } = data;
+  const { a, questions, inNotebook } = data;
   const r = a.result!;
   const weak = weakTopics(r.topics);
   const durationMs = (a.finishedAt ?? a.endsAt) - a.startedAt;
@@ -75,6 +80,15 @@ export default function ScoreReport() {
             ? 'Hasil latihan: kunci tampil setiap selesai menjawab, jadi skor ini tidak masuk grafik skor ujian di Progres.'
             : 'Kelulusan SKD mensyaratkan setiap sub-tes mencapai ambang batasnya masing-masing.'}
         </p>
+        {inNotebook > 0 && (
+          <p className="mt-2 text-sm">
+            {inNotebook} soal yang salah, kosong, atau ragu-ragu masuk{' '}
+            <Link className="text-brand-600 underline" to="/review">
+              Buku Kesalahan
+            </Link>{' '}
+            untuk diulang terjadwal.
+          </p>
+        )}
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">

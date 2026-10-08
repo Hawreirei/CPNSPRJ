@@ -4,7 +4,8 @@ import { db } from '../db';
 import { attemptMode, feedback, isTimed } from '../domain/practice';
 import type { Attempt, OptionLabel, Question } from '../domain/types';
 import { attemptQuestions, finishAttempt } from '../engine/attempts';
-import { CellView, FigureView } from '../components/FigureView';
+import { AnswerOptions, FeedbackBanner } from '../components/AnswerOptions';
+import { FigureView } from '../components/FigureView';
 import { Explanation } from '../components/QuestionCard';
 import { RichText } from '../components/RichText';
 import { Badge, Modal, SubtestBadge } from '../components/ui';
@@ -205,39 +206,7 @@ export default function Practice() {
             <RichText text={q.stem} />
           </div>
           {q.figure && <FigureView figure={q.figure} />}
-          {/* Keyed per question so the previous answer's colors never fade over the next question. */}
-          <div key={q.id} className="mt-4 space-y-2">
-            {q.options.map((o) => {
-              const sel = chosen === o.label;
-              const isBest = !!fb && fb.best.includes(o.label);
-              const tone = !fb
-                ? 'border-slate-200 hover:border-slate-400 dark:border-slate-700'
-                : isBest
-                  ? 'border-green-500 bg-green-50 dark:bg-green-950'
-                  : sel
-                    ? q.subtest === 'TKP'
-                      ? 'border-sky-500 bg-sky-50 dark:bg-sky-950'
-                      : 'border-red-500 bg-red-50 dark:bg-red-950'
-                    : 'border-slate-200 opacity-70 dark:border-slate-700';
-              return (
-                <button
-                  key={o.label}
-                  onClick={() => answer(o.label)}
-                  disabled={!!fb}
-                  aria-pressed={sel}
-                  className={`flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm transition disabled:cursor-default ${tone}`}
-                >
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${sel ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-400'}`}
-                  >
-                    {o.label}
-                  </span>
-                  <span className="flex-1 pt-0.5">{o.figure ? <CellView cell={o.figure} /> : <RichText text={o.text} />}</span>
-                  {fb && q.subtest === 'TKP' && <Badge tone={o.score === 5 ? 'green' : 'slate'}>{o.score}</Badge>}
-                </button>
-              );
-            })}
-          </div>
+          <AnswerOptions q={q} chosen={chosen} revealed={!!fb} onAnswer={answer} />
 
           {fb && (
             <div aria-live="polite">
@@ -300,22 +269,6 @@ export default function Practice() {
           </button>
         </div>
       </Modal>
-    </div>
-  );
-}
-
-function FeedbackBanner({ q, answer }: { q: Question; answer: OptionLabel }) {
-  const fb = feedback(q, answer);
-  if (q.subtest === 'TKP') {
-    return (
-      <div className={`mt-4 rounded-lg px-3 py-2 text-sm font-medium ${fb.correct ? 'bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200' : 'bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200'}`}>
-        {fb.correct ? 'Skor 5 dari 5. Pilihan terbaik.' : `Skor ${fb.score} dari 5. Pilihan terbaik: ${fb.best.join(', ') || '—'}.`}
-      </div>
-    );
-  }
-  return (
-    <div className={`mt-4 rounded-lg px-3 py-2 text-sm font-medium ${fb.correct ? 'bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200' : 'bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200'}`}>
-      {fb.correct ? 'Benar. +5' : `Kurang tepat. Jawaban yang benar: ${fb.best.join(', ') || '—'}.`}
     </div>
   );
 }

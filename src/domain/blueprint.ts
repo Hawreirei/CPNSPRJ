@@ -59,6 +59,7 @@ export const DEFAULT_SETTINGS: Settings = {
   durationMinutes: 100,
   questionsPerRequest: 20,
   concurrency: 1,
+  reviewDailyLimit: 20,
   brandName: '',
   priceOverrides: {},
 };

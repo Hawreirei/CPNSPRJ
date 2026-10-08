@@ -21,6 +21,7 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 | TIU figural | Deret dan analogi gambar dibuat oleh aplikasi (SVG) dari aturan pasti: gratis dan kuncinya selalu benar |
 | Kontrol soal | Edit, tulis ulang dengan AI, kunci, bintangi, pindah, hapus, "Serupa+" |
 | Simulasi CAT | Timer (default 100 menit), grid nomor, ragu-ragu, pintasan keyboard, kirim otomatis, bisa dilanjutkan setelah refresh |
+| Buku Kesalahan | Soal yang salah, kosong, atau ragu-ragu dari ujian dan latihan masuk otomatis, lalu diulang terjadwal (spaced repetition SM-2): jawab dulu, lihat pembahasan, nilai diri Lupa/Sulit/Baik/Mudah. Batas ulangan per hari, tag alasan salah, daftar semua catatan dengan filter |
 | Mode Latihan | Kunci, skor TKP, dan pembahasan tampil langsung setelah menjawab; jawaban terkunci setelah dipilih; pilih topik tertentu; timer opsional. Tidak masuk grafik skor ujian di Progres |
 | Laporan skor | Skor per sub-tes vs ambang batas, topik lemah, waktu per soal, tinjau jawaban, set latihan topik lemah (bank dulu, AI bila kurang) |
 | Bank soal | Pencarian dan filter; susun set baru tanpa biaya AI |

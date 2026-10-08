@@ -1,25 +1,30 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { db } from '../db';
+import { db, useSettings } from '../db';
 import { attemptMode, attemptPath, examAttempts } from '../domain/practice';
+import { dueQueue, isDue } from '../engine/srs';
 import { Badge, Stat, fmtDate } from '../components/ui';
 
 export default function Dashboard() {
+  const settings = useSettings();
   const data = useLiveQuery(async () => {
-    const [sets, questions, keys, attempts] = await Promise.all([
+    const [sets, questions, keys, attempts, reviews] = await Promise.all([
       db.sets.orderBy('updatedAt').reverse().limit(5).toArray(),
       db.questions.count(),
       db.keys.count(),
       db.attempts.orderBy('startedAt').reverse().toArray(),
+      db.reviews.toArray(),
     ]);
     const setCount = await db.sets.count();
     const flagged = await db.questions.filter((q) => q.flags.some((f) => f.severity === 'warn')).count();
-    return { sets, setCount, questions, keys, attempts, flagged };
+    return { sets, setCount, questions, keys, attempts, flagged, reviews, now: Date.now() };
   });
   if (!data) return null;
   const finished = data.attempts.filter((a) => a.result);
   const last = examAttempts(finished)[0];
   const inProgress = data.attempts.find((a) => !a.finishedAt);
+  const reviewToday = dueQueue(data.reviews, data.now, settings.reviewDailyLimit).length;
+  const reviewDue = data.reviews.filter((r) => isDue(r, data.now)).length;
 
   return (
     <div className="space-y-6">
@@ -52,6 +57,22 @@ export default function Dashboard() {
           </div>
           <Link className="btn btn-primary" to={attemptPath(inProgress)}>
             Lanjutkan
+          </Link>
+        </div>
+      )}
+
+      {data.reviews.length > 0 && (
+        <div className="card flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="font-semibold">Ulangan hari ini: {reviewToday} soal</div>
+            <div className="muted text-sm">
+              {reviewToday > 0
+                ? `Dari Buku Kesalahan${reviewDue > reviewToday ? ` (${reviewDue} jatuh tempo, batas harian ${settings.reviewDailyLimit})` : ''}.`
+                : 'Selesai untuk hari ini. Soal berikutnya muncul sesuai jadwal.'}
+            </div>
+          </div>
+          <Link className={`btn ${reviewToday > 0 ? 'btn-primary' : ''}`} to={reviewToday > 0 ? '/review' : '/review?tab=semua'}>
+            {reviewToday > 0 ? 'Mulai ulangan' : 'Lihat Buku Kesalahan'}
           </Link>
         </div>
       )}

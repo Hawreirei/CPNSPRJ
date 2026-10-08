@@ -4,6 +4,7 @@ import { filterQuestions, UNTIMED, type QuestionFilter } from '../domain/practic
 import { SUBTESTS } from '../domain/types';
 import type { Attempt, AttemptMode, Question } from '../domain/types';
 import { shuffle, uid } from '../lib/id';
+import { recordMistakes } from './review';
 import { passingForSet } from './sets';
 
 export async function startAttempt(
@@ -55,6 +56,11 @@ export async function finishAttempt(id: string): Promise<Attempt | undefined> {
   const questions = await attemptQuestions(a);
   const result = computeResult(questions, a.answers, a.passing);
   const finishedAt = Math.min(Date.now(), a.endsAt);
-  await db.attempts.update(id, { result, finishedAt });
+  // One transaction, so an attempt is never marked finished without its mistakes in the notebook.
+  // Runs once per attempt: the early return above skips attempts that already have a result.
+  await db.transaction('rw', [db.attempts, db.reviews], async () => {
+    await db.attempts.update(id, { result, finishedAt });
+    await recordMistakes(a, questions);
+  });
   return { ...a, result, finishedAt };
 }

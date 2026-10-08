@@ -26,6 +26,11 @@ export default function Help() {
             dan Anda bisa memilih topik tertentu. Hasil latihan tidak masuk grafik skor ujian di Progres. Dari Laporan Skor, klik "Latih ulang topik ini".
           </li>
           <li>
+            <b>Buku Kesalahan</b>: soal yang salah, kosong, atau ditandai ragu-ragu masuk otomatis. Setiap hari buka "Ulangan hari ini", jawab soalnya, lihat
+            pembahasan, lalu nilai seberapa ingat Anda (Lupa, Sulit, Baik, Mudah). Soal yang mudah diingat makin jarang muncul; yang terlupa muncul lagi
+            besok. Batas ulangan per hari bisa diubah di Pengaturan.
+          </li>
+          <li>
             <b>Bank Soal</b>: semua soal tersimpan dan bisa dipakai ulang untuk set baru tanpa AI. Centang soal lalu klik Unduh untuk mendapatkan file
             PDF/Word.
           </li>

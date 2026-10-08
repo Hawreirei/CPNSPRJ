@@ -14,6 +14,7 @@ import SettingsPage from './pages/Settings';
 import Help from './pages/Help';
 import PrintView from './pages/PrintView';
 import Practice from './pages/Practice';
+import Review from './pages/Review';
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="bank" element={<QuestionBank />} />
           <Route path="simulation" element={<SimulationHome />} />
           <Route path="results/:attemptId" element={<ScoreReport />} />
+          <Route path="review" element={<Review />} />
           <Route path="progress" element={<Progress />} />
           <Route path="keys" element={<ApiKeys />} />
           <Route path="settings" element={<SettingsPage />} />

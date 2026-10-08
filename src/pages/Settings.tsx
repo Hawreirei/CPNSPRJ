@@ -72,7 +72,7 @@ export default function SettingsPage() {
 
       <section className="card space-y-3">
         <h2>Cadangan data</h2>
-        <p className="muted text-sm">Simpan semua set, bank soal, dan riwayat latihan ke satu file, lalu pulihkan di perangkat lain. API key tidak ikut tersimpan.</p>
+        <p className="muted text-sm">Simpan semua set, bank soal, riwayat latihan, dan Buku Kesalahan ke satu file, lalu pulihkan di perangkat lain. API key tidak ikut tersimpan.</p>
         <div className="flex flex-wrap gap-2">
           <button className="btn btn-primary" onClick={async () => downloadBlob(await exportBackup(), `skd-backup-${new Date().toISOString().slice(0, 10)}.json`)}>
             Unduh cadangan
@@ -91,7 +91,7 @@ export default function SettingsPage() {
               if (!f) return;
               try {
                 const r = await importBackup(f);
-                setMsg(`Dipulihkan: ${r.sets} set, ${r.questions} soal, ${r.attempts} simulasi.`);
+                setMsg(`Dipulihkan: ${r.sets} set, ${r.questions} soal, ${r.attempts} simulasi, ${r.reviews} catatan Buku Kesalahan.`);
               } catch (err) {
                 setMsg(`Gagal: ${(err as Error).message}`);
               }
@@ -148,6 +148,22 @@ export default function SettingsPage() {
           <p className="muted text-xs">
             Ambang batas berbeda per tahun dan formasi. Cocokkan dengan pengumuman resmi KemenPANRB/BKN terbaru. Perubahan berlaku untuk set baru.
           </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2>Buku Kesalahan</h2>
+          <div>
+            <label className="label">Batas ulangan per hari</label>
+            <input
+              type="number"
+              min={1}
+              max={200}
+              className="input w-28"
+              value={s.reviewDailyLimit}
+              onChange={(e) => saveSettings({ reviewDailyLimit: Math.min(200, num(e.target.value, 1)) })}
+            />
+          </div>
+          <p className="muted text-xs">Jumlah soal yang ditawarkan untuk diulang setiap hari. Sisa soal yang jatuh tempo menunggu hari berikutnya.</p>
         </section>
 
         <section className="space-y-3">
