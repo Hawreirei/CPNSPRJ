@@ -6,6 +6,7 @@ import { loadMath, validateQuestion } from '../domain/validators';
 import type { Difficulty, OptionLabel, Question } from '../domain/types';
 import { Modal } from './ui';
 import { errorText } from '../engine/storage';
+import { clampGraded, isGraded, keyedScore } from '../domain/examPackage';
 
 export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => void }) {
   const settings = useSettings();
@@ -17,7 +18,7 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
   async function save() {
     const options = draft.options.map((o) => ({
       ...o,
-      score: draft.subtest === 'TKP' ? Math.max(1, Math.min(5, Math.round(o.score))) : o.label === draft.answer ? 5 : 0,
+      score: isGraded(draft.subtest) ? clampGraded(draft.subtest, o.score) : keyedScore(draft.subtest, o.label === draft.answer),
     }));
     try {
       await loadMath();
@@ -81,10 +82,10 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
           <textarea id="qe-stem" className="input min-h-28" value={draft.stem} onChange={(e) => set('stem', e.target.value)} />
         </div>
         <div className="space-y-2">
-          <div className="label">{draft.subtest === 'TKP' ? 'Opsi dan skor (1–5)' : 'Opsi (pilih kunci jawaban)'}</div>
+          <div className="label">{isGraded(draft.subtest) ? 'Opsi dan skor (1–5)' : 'Opsi (pilih kunci jawaban)'}</div>
           {draft.options.map((o, i) => (
             <div key={o.label} className="flex items-center gap-2">
-              {draft.subtest === 'TKP' ? (
+              {isGraded(draft.subtest) ? (
                 <input
                   type="number"
                   min={1}

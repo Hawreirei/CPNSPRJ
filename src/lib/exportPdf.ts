@@ -9,6 +9,7 @@ import { dataChartSvg } from './dataSvg';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
 import { hasStudentHeader, keyText, PACK_TITLES, type ExportMeta, type PackKind } from './exportDocx';
+import { isGraded, isTopOption } from '../domain/examPackage';
 
 function toBase64(bytes: Uint8Array): string {
   let bin = '';
@@ -59,14 +60,14 @@ export async function exportPdf(meta: ExportMeta, questions: Question[], pack: P
     if (hasStemFigure(q.figure)) parts.push(await image(figureSvg(q.figure, 72, '#111')));
     if (q.data) parts.push(await dataBlock(q.data));
     for (const o of q.options) {
-      const isKey = withKey && (q.subtest === 'TKP' ? o.score === 5 : o.label === q.answer);
+      const isKey = withKey && (isGraded(q.subtest) ? isTopOption(q, o) : o.label === q.answer);
       const option: Content = o.figure ? await image(cellSvg(o.figure, 56, '#111')) : { text: toPlain(o.text), bold: isKey };
       const body: Content = withKey && o.rationale ? { stack: [option, { text: o.rationale, italics: true, fontSize: 9, color: '#444444' }] } : option;
-      const score = withKey && q.subtest === 'TKP' ? { text: `(skor ${o.score})`, italics: true, color: '#555555', width: 'auto' as const } : null;
+      const score = withKey && isGraded(q.subtest) ? { text: `(skor ${o.score})`, italics: true, color: '#555555', width: 'auto' as const } : null;
       parts.push({ columns: [{ text: `${o.label}.`, width: 18, bold: isKey }, { stack: [body], width: '*' }, ...(score ? [score] : [])], columnGap: 4, margin: [14, 1, 0, 1] });
     }
     if (withKey) {
-      if (q.subtest !== 'TKP') parts.push({ text: `Jawaban: ${q.answer ?? '-'}`, bold: true, margin: [0, 4, 0, 0] });
+      if (!isGraded(q.subtest)) parts.push({ text: `Jawaban: ${q.answer ?? '-'}`, bold: true, margin: [0, 4, 0, 0] });
       parts.push({ text: [{ text: 'Pembahasan: ', bold: true }, toPlain(q.explanation || '-')], margin: [0, 2, 0, 0] });
       if (q.reference) parts.push({ text: `Rujukan: ${toPlain(q.reference)}`, italics: true, color: '#444444' });
     }

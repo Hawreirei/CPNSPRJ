@@ -18,6 +18,7 @@ import { FeedbackDialog } from '../components/FeedbackDialog';
 import { Badge, Empty, fmtDate, ProgressBar, SubtestBadge } from '../components/ui';
 import { tabAwaySummary } from '../domain/catMode';
 import type { TabAway } from '../domain/types';
+import { isGraded } from '../domain/examPackage';
 
 /** What Mode CAT recorded. Shown, never scored. */
 function CatModeCard({ aways, lockedOrder }: { aways?: TabAway[]; lockedOrder: boolean }) {
@@ -130,7 +131,7 @@ export default function ScoreReport() {
             </div>
             <ProgressBar value={s.score} max={s.max} tone={s.passed ? 'green' : 'red'} />
             <div className="muted text-xs">
-              Ambang {s.passing} · {s.subtest === 'TKP' ? `${s.correct} opsi skor 5` : `${s.correct} benar`} · {s.answered}/{s.total} dijawab
+              Ambang {s.passing} · {isGraded(s.subtest) ? `${s.correct} opsi skor 5` : `${s.correct} benar`} · {s.answered}/{s.total} dijawab
             </div>
           </div>
         ))}

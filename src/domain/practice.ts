@@ -1,5 +1,6 @@
-import { isCorrect, MAX_PER_QUESTION, scoreQuestion } from './scoring';
+import { isCorrect, scoreQuestion } from './scoring';
 import type { Attempt, AttemptMode, OptionLabel, Question, Subtest } from './types';
+import { topOptions } from './examPackage';
 
 /** `endsAt` of an attempt without a time limit. JSON-safe, unlike Infinity. */
 export const UNTIMED = Number.MAX_SAFE_INTEGER;
@@ -35,7 +36,6 @@ export interface Feedback {
 }
 
 export function feedback(q: Question, answer: OptionLabel): Feedback {
-  const best =
-    q.subtest === 'TKP' ? q.options.filter((o) => o.score === MAX_PER_QUESTION).map((o) => o.label) : q.answer ? [q.answer] : [];
+  const best = topOptions(q);
   return { correct: isCorrect(q, answer), score: scoreQuestion(q, answer), best };
 }

@@ -2,6 +2,7 @@ import { NUMERIC_TOPICS } from './blueprint';
 import { approxEqual, evaluateExpression, parseNumeric } from './numeric';
 import { reportFlag } from './quality';
 import type { Flag, OptionLabel, Question } from './types';
+import { isGraded } from './examPackage';
 
 export { loadMath } from './numeric';
 
@@ -17,7 +18,7 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
     flags.push({ kind: 'structure', severity: 'warn', message: `Pilihan jawaban hanya ${next.options.length}, seharusnya 5.` });
   }
 
-  if (next.subtest === 'TKP') {
+  if (isGraded(next.subtest)) {
     flags.push(...checkTkp(next));
   } else {
     const fixed = checkChoice(next);
@@ -31,7 +32,7 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
     flags.push(...m.flags);
   }
 
-  if (next.subtest !== 'TKP' && next.answer) {
+  if (!isGraded(next.subtest) && next.answer) {
     const said = explainedOption(next);
     if (said && said !== next.answer) {
       flags.push({

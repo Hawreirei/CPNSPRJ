@@ -14,6 +14,7 @@ import { CROSS_CHECK_KINDS, isCrossCheckable, openCheckerSession, runCrossCheck 
 import { callAndParse, callAndParsePassages, openSession, type ModelSession } from './session';
 import { errorText, isQuotaError } from './storage';
 import { logError } from '../lib/errorLog';
+import { isGraded } from '../domain/examPackage';
 
 export interface GenProgress {
   setId: string;
@@ -336,7 +337,7 @@ const REPAIRABLE = new Set<FlagKind>(['math-mismatch', 'explanation-mismatch']);
 
 /** A question whose key, explanation and calculation disagree, and that the AI may rewrite. */
 export const needsRepair = (q: Question) =>
-  q.source === 'ai' && !q.locked && q.subtest !== 'TKP' && q.flags.some((f) => f.severity === 'warn' && REPAIRABLE.has(f.kind));
+  q.source === 'ai' && !q.locked && !isGraded(q.subtest) && q.flags.some((f) => f.severity === 'warn' && REPAIRABLE.has(f.kind));
 
 /** Ask the model to fix the given questions (one request per sub-test); returns how many were fixed. */
 async function repairWith(session: ModelSession, questions: Question[], signal: AbortSignal, onUsage: (i: number, o: number) => Promise<void>): Promise<number> {
@@ -408,7 +409,7 @@ export async function revalidateStored() {
   } catch {
     return;
   }
-  const qs = await db.questions.filter((q) => q.subtest !== 'TKP' && q.source !== 'procedural' && !q.locked).toArray();
+  const qs = await db.questions.filter((q) => !isGraded(q.subtest) && q.source !== 'procedural' && !q.locked).toArray();
   if (qs.length) await loadMath();
   const changed = qs.flatMap((q) => {
     const v = validateQuestion(q);

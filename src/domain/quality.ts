@@ -1,5 +1,6 @@
 import { attemptMode } from './practice';
 import type { Attempt, Flag, Question, QuestionReport, ReportReason } from './types';
+import { isGraded } from './examPackage';
 
 export const REPORT_REASONS: Record<ReportReason, string> = {
   'kunci-salah': 'Kunci jawaban salah',
@@ -45,7 +46,7 @@ export interface AnswerStats {
  * out, as elsewhere in the analytics. TKP has no wrong answer, only weaker ones, so it is skipped.
  */
 export function answerStats(attempts: Attempt[], questions: Question[]): Map<string, AnswerStats> {
-  const keyed = new Map(questions.filter((q) => q.subtest !== 'TKP' && q.answer).map((q) => [q.id, q.answer]));
+  const keyed = new Map(questions.filter((q) => !isGraded(q.subtest) && q.answer).map((q) => [q.id, q.answer]));
   const out = new Map<string, AnswerStats>();
   for (const a of attempts) {
     if (!a.result && attemptMode(a) !== 'practice') continue;

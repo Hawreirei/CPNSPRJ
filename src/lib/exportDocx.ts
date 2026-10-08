@@ -7,6 +7,7 @@ import { toPlain } from '../components/RichText';
 import { dataChartSvg } from './dataSvg';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
+import { isGraded } from '../domain/examPackage';
 
 export type PackKind = 'soal' | 'soal-kunci' | 'lengkap' | 'kunci' | 'pembahasan';
 
@@ -28,7 +29,7 @@ export interface ExportMeta {
 export const hasStudentHeader = (p: PackKind) => p === 'soal' || p === 'soal-kunci' || p === 'lengkap';
 
 export function keyText(q: Question): string {
-  return q.subtest === 'TKP' ? q.options.map((o) => `${o.label}=${o.score}`).join('  ') : (q.answer ?? '-');
+  return isGraded(q.subtest) ? q.options.map((o) => `${o.label}=${o.score}`).join('  ') : (q.answer ?? '-');
 }
 
 export async function exportDocx(meta: ExportMeta, questions: Question[], pack: PackKind): Promise<Blob> {
@@ -102,8 +103,8 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
     if (q.data) out.push(...(await dataBlock(q.data)));
     for (const o of q.options) {
       const runs = o.figure ? [await image(cellSvg(o.figure, 56, '#111'))] : text(o.text);
-      const suffix = withKey && q.subtest === 'TKP' ? [new TextRun({ text: `  (skor ${o.score})`, italics: true, color: '555555' })] : [];
-      const isKey = withKey && q.subtest !== 'TKP' && o.label === q.answer;
+      const suffix = withKey && isGraded(q.subtest) ? [new TextRun({ text: `  (skor ${o.score})`, italics: true, color: '555555' })] : [];
+      const isKey = withKey && !isGraded(q.subtest) && o.label === q.answer;
       out.push(new Paragraph({ indent: { left: 360 }, keepNext: true, children: [new TextRun({ text: `${o.label}. `, bold: isKey }), ...runs, ...suffix] }));
       if (withKey && o.rationale) out.push(new Paragraph({ indent: { left: 720 }, keepNext: true, children: text(o.rationale, { italics: true, size: 18, color: '444444' }) }));
     }
@@ -142,7 +143,7 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
       out.push(subtestHeading(g.s));
       for (const { q, n } of g.items) {
         out.push(...(await questionBlock(q, n, true)));
-        if (q.subtest !== 'TKP') out.push(new Paragraph({ children: [new TextRun({ text: `Jawaban: ${q.answer ?? '-'}`, bold: true })] }));
+        if (!isGraded(q.subtest)) out.push(new Paragraph({ children: [new TextRun({ text: `Jawaban: ${q.answer ?? '-'}`, bold: true })] }));
         out.push(new Paragraph({ children: [new TextRun({ text: 'Pembahasan: ', bold: true }), ...text(q.explanation || '-')] }));
         if (q.reference) out.push(new Paragraph({ children: [new TextRun({ text: 'Rujukan: ', italics: true }), ...text(q.reference, { italics: true })] }));
       }

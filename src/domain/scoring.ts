@@ -1,5 +1,6 @@
 import { SUBTESTS } from './types';
 import type { AttemptResult, OptionLabel, Question, Subtest, SubtestResult, TopicResult } from './types';
+import { isGraded, maxPerQuestion } from './examPackage';
 
 export const MAX_PER_QUESTION = 5;
 
@@ -10,7 +11,7 @@ export function scoreQuestion(q: Question, answer: OptionLabel | undefined): num
 
 export function isCorrect(q: Question, answer: OptionLabel | undefined): boolean {
   if (!answer) return false;
-  if (q.subtest === 'TKP') return scoreQuestion(q, answer) === MAX_PER_QUESTION;
+  if (isGraded(q.subtest)) return scoreQuestion(q, answer) === maxPerQuestion(q.subtest);
   return q.answer === answer;
 }
 
@@ -37,14 +38,14 @@ export function computeResult(
       const key = `${s}::${q.topic}`;
       const t = topicMap.get(key) ?? { subtest: s, topic: q.topic, score: 0, max: 0, total: 0 };
       t.score += sc;
-      t.max += MAX_PER_QUESTION;
+      t.max += maxPerQuestion(s);
       t.total += 1;
       topicMap.set(key, t);
     }
     perSubtest.push({
       subtest: s,
       score,
-      max: qs.length * MAX_PER_QUESTION,
+      max: qs.length * maxPerQuestion(s),
       passing: passing[s],
       passed: score >= passing[s],
       correct,

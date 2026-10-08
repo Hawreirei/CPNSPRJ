@@ -7,6 +7,7 @@ import { PassageView } from './PassageView';
 import { CellView } from './FigureView';
 import { RichText } from './RichText';
 import { Badge, FlagList, SubtestBadge } from './ui';
+import { isGraded, isTopOption } from '../domain/examPackage';
 
 // The tutor, its prompts and the similar-question generator load only when someone asks.
 const TutorDialog = lazy(() => import('./TutorDialog'));
@@ -82,7 +83,7 @@ export function QuestionCard({
           <StemMedia q={q} />
           <ol className="mt-3 space-y-1.5">
             {q.options.map((o) => {
-              const isKey = mode === 'pembahasan' && (q.subtest === 'TKP' ? o.score === 5 : o.label === q.answer);
+              const isKey = mode === 'pembahasan' && (isGraded(q.subtest) ? isTopOption(q, o) : o.label === q.answer);
               return (
                 <li
                   key={o.label}
@@ -93,7 +94,7 @@ export function QuestionCard({
                     {o.figure ? <CellView cell={o.figure} /> : <RichText text={o.text} />}
                     {mode === 'pembahasan' && o.rationale && <span className="mt-0.5 block text-xs text-slate-600 dark:text-slate-400">{o.rationale}</span>}
                   </span>
-                  {mode === 'pembahasan' && q.subtest === 'TKP' && <Badge tone={o.score === 5 ? 'green' : 'slate'}>{o.score}</Badge>}
+                  {mode === 'pembahasan' && isGraded(q.subtest) && <Badge tone={isTopOption(q, o) ? 'green' : 'slate'}>{o.score}</Badge>}
                 </li>
               );
             })}
@@ -128,7 +129,7 @@ export function Explanation({
   return (
     <div className="mt-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-800">
       <div className="mb-1 font-semibold">
-        Pembahasan {q.subtest !== 'TKP' && <span className="font-normal">· Jawaban: {q.answer}</span>}
+        Pembahasan {!isGraded(q.subtest) && <span className="font-normal">· Jawaban: {q.answer}</span>}
       </div>
       <div className="leading-relaxed text-slate-700 dark:text-slate-300">
         <RichText text={q.explanation || '—'} />
@@ -183,11 +184,11 @@ export function Explanation({
 }
 
 export function KeyLine({ q }: { q: Question }) {
-  if (q.subtest === 'TKP') {
+  if (isGraded(q.subtest)) {
     return (
       <div className="flex flex-wrap gap-2 text-sm">
         {q.options.map((o) => (
-          <span key={o.label} className={`rounded-md px-2 py-0.5 ${o.score === 5 ? 'bg-green-100 font-semibold dark:bg-green-950' : 'bg-slate-100 dark:bg-slate-800'}`}>
+          <span key={o.label} className={`rounded-md px-2 py-0.5 ${isTopOption(q, o) ? 'bg-green-100 font-semibold dark:bg-green-950' : 'bg-slate-100 dark:bg-slate-800'}`}>
             {o.label} = {o.score}
           </span>
         ))}

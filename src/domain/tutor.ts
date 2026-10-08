@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { describeCell, describeData, describeFigure } from './describe';
 import { extractJson } from './schemas';
 import type { OptionLabel, Question } from './types';
+import { isGraded } from './examPackage';
 
 /*
  * "Tanya AI": a tutor for one question. It is given the question, its options, key, explanation
@@ -40,9 +41,9 @@ export function tutorContext(q: Question, userAnswer?: OptionLabel): string {
   lines.push(`Soal: ${q.stem}`);
   lines.push(
     'Opsi:\n' +
-      q.options.map((o) => `${o.label}. ${o.figure ? `[gambar: ${describeCell(o.figure)}]` : o.text}${q.subtest === 'TKP' ? ` (skor ${o.score}${o.rationale ? `: ${o.rationale}` : ''})` : ''}`).join('\n'),
+      q.options.map((o) => `${o.label}. ${o.figure ? `[gambar: ${describeCell(o.figure)}]` : o.text}${isGraded(q.subtest) ? ` (skor ${o.score}${o.rationale ? `: ${o.rationale}` : ''})` : ''}`).join('\n'),
   );
-  if (q.subtest !== 'TKP') lines.push(`Kunci jawaban: ${q.answer ?? '-'}`);
+  if (!isGraded(q.subtest)) lines.push(`Kunci jawaban: ${q.answer ?? '-'}`);
   lines.push(`Pembahasan: ${q.explanation || '-'}`);
   if (q.reference) lines.push(`Rujukan: ${q.reference}`);
   if (userAnswer) lines.push(`Jawaban pengguna: ${userAnswer}`);

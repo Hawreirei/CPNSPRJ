@@ -1,5 +1,6 @@
 import { SUBTESTS } from './types';
 import type { Blueprint, Difficulty, DifficultyChoice, ExamNumbers, KisiProfile, KisiTopic, Settings, Subtest } from './types';
+import { SKD_CPNS } from './examPackage';
 
 export const TOPICS: Record<Subtest, string[]> = {
   TWK: [
@@ -53,11 +54,7 @@ export const PASSAGE_TOPIC = 'Pemahaman Bacaan';
 /** Topics whose answers are checked with mathjs. */
 export const NUMERIC_TOPICS = new Set(['Aritmetika', 'Deret Angka', 'Soal Cerita', 'Perbandingan Kuantitatif']);
 
-export const SUBTEST_NAMES: Record<Subtest, string> = {
-  TWK: 'Tes Wawasan Kebangsaan',
-  TIU: 'Tes Intelegensia Umum',
-  TKP: 'Tes Karakteristik Pribadi',
-};
+export const SUBTEST_NAMES = Object.fromEntries(SKD_CPNS.subtests.map((s) => [s.id, s.name])) as Record<Subtest, string>;
 
 /** Preset reflects the commonly used SKD structure; every number is editable in Settings. */
 export const DEFAULT_SETTINGS: Settings = {

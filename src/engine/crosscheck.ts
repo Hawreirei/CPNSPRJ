@@ -1,12 +1,12 @@
 import { db, getSettings } from '../db';
 import { NUMERIC_TOPICS, PROCEDURAL_TOPICS } from '../domain/blueprint';
 import { buildCrossCheckPrompt, CHECK_SYSTEM_PROMPT } from '../domain/prompts';
-import { MAX_PER_QUESTION } from '../domain/scoring';
 import { parseCrossCheck } from '../domain/schemas';
 import { SUBTESTS } from '../domain/types';
 import type { CrossCheckSettings, Flag, FlagKind, OptionLabel, PlanBatch, Question, Subtest } from '../domain/types';
 import { QuotaExhaustedError } from './quota';
 import { callModel, openSession, type ModelSession } from './session';
+import { isGraded, isTopOption, topOptions } from '../domain/examPackage';
 
 /**
  * Second opinion: another model answers each question blind (no key, no explanation, no TKP
@@ -43,10 +43,10 @@ const withoutCrossCheck = (flags: Flag[]) => flags.filter((f) => !CROSS_CHECK_KI
 export function applyCrossCheck(q: Question, reply: { answer: OptionLabel; reason: string }, model: string): Flag[] {
   const flags = withoutCrossCheck(q.flags);
   const picked = q.options.find((o) => o.label === reply.answer);
-  const agrees = q.subtest === 'TKP' ? picked?.score === MAX_PER_QUESTION : reply.answer === q.answer;
+  const agrees = isGraded(q.subtest) ? isTopOption(q, picked) : reply.answer === q.answer;
   if (agrees) return [...flags, { kind: 'cross-checked', severity: 'info', message: `Diperiksa silang oleh ${model}: jawabannya sama.` }];
-  const best = q.subtest === 'TKP' ? q.options.find((o) => o.score === MAX_PER_QUESTION)?.label : q.answer;
-  const what = q.subtest === 'TKP' ? `opsi ${reply.answer}${picked ? ` (skor ${picked.score})` : ''} sebagai yang paling tepat, bukan ${best ?? '—'}` : `jawaban ${reply.answer}, bukan ${best ?? '—'}`;
+  const best = topOptions(q)[0];
+  const what = isGraded(q.subtest) ? `opsi ${reply.answer}${picked ? ` (skor ${picked.score})` : ''} sebagai yang paling tepat, bukan ${best ?? '—'}` : `jawaban ${reply.answer}, bukan ${best ?? '—'}`;
   return [
     ...flags,
     {
