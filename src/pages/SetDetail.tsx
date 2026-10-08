@@ -1,10 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { db, getSetQuestions } from '../db';
+import { db, getSetQuestions, useSettings } from '../db';
 import { SUBTESTS } from '../domain/types';
 import type { QSet, Question, Subtest } from '../domain/types';
 import { moreLikeThis, needsRepair, repairQuestion, rewriteQuestion, startGeneration, stopGeneration, useGenProgress } from '../engine/generator';
+import { crossCheckQuestions, isCrossCheckable, needsCrossCheck, type CrossCheckResult } from '../engine/crosscheck';
 import { moveInSet, removeFromSet } from '../engine/sets';
 import { QuestionCard, type CardMode } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
@@ -24,6 +25,9 @@ export default function SetDetail() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const settings = useSettings();
+  const [checking, setChecking] = useState(false);
+  const [checkMsg, setCheckMsg] = useState<string | null>(null);
 
   if (set === undefined || !questions) return null;
   if (set === null) return <Empty title="Set tidak ditemukan" />;
@@ -33,6 +37,23 @@ export default function SetDetail() {
   const shown = questions
     .map((q, i) => ({ q, i }))
     .filter(({ q }) => (sub === 'all' || q.subtest === sub) && (filter === 'all' || (filter === 'flagged' ? q.flags.some((f) => f.severity === 'warn') : q.starred)));
+
+  const unchecked = questions.filter(needsCrossCheck);
+  const describe = (r: CrossCheckResult) =>
+    `${r.checked} soal diperiksa silang, ${r.mismatched} berbeda jawaban${r.mismatched ? ' (ditandai "perlu dicek")' : ''}.` +
+    (r.pending ? ` ${r.pending} soal belum diperiksa karena kuota habis.` : '');
+  async function crossCheckAll() {
+    setChecking(true);
+    setCheckMsg(null);
+    setError(null);
+    try {
+      setCheckMsg(describe(await crossCheckQuestions(unchecked, set!.keyId)));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setChecking(false);
+    }
+  }
 
   async function act(q: Question, fn: () => Promise<unknown>) {
     setBusyId(q.id);
@@ -72,8 +93,14 @@ export default function SetDetail() {
           <Link className={`btn ${questions.length ? '' : 'pointer-events-none opacity-50'}`} to={`/simulation?set=${set.id}`}>
             Mulai latihan ujian
           </Link>
+          {settings.crossCheck?.enabled && unchecked.length > 0 && set.status !== 'generating' && (
+            <button className="btn" disabled={checking} onClick={crossCheckAll} title="Minta model lain menjawab soal tanpa melihat kunci. Memakai kuota AI.">
+              {checking ? 'Memeriksa silang…' : `Periksa silang (${unchecked.length} soal)`}
+            </button>
+          )}
         </div>
       </div>
+      {checkMsg && <div className="rounded-lg bg-brand-50 p-3 text-sm dark:bg-slate-800">{checkMsg}</div>}
 
       <GenerationPanel set={set} />
 
@@ -149,6 +176,15 @@ export default function SetDetail() {
                             if (instr === null) return;
                             void act(q, () => rewriteQuestion(q, instr, set.keyId));
                           },
+                        },
+                        {
+                          label: 'Periksa silang dengan model lain',
+                          disabled: !isCrossCheckable(q),
+                          onClick: () =>
+                            void act(q, async () => {
+                              const r = await crossCheckQuestions([q], set.keyId);
+                              if (!r.checked) throw new Error(r.pending ? 'Kuota AI hari ini habis; soal belum diperiksa silang.' : 'Pemeriksa tidak memberi jawaban untuk soal ini. Coba lagi.');
+                            }),
                         },
                         {
                           label: 'Buat soal serupa',

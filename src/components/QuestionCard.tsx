@@ -29,6 +29,12 @@ export function QuestionCard({
         <Badge>{q.difficulty}</Badge>
         {q.locked && <Badge tone="blue">🔒 terkunci</Badge>}
         {warn && showFlags && <Badge tone="amber">perlu dicek</Badge>}
+        {showFlags && q.flags.some((f) => f.kind === 'cross-checked') && (
+          <span title={q.flags.find((f) => f.kind === 'cross-checked')?.message}>
+            <Badge tone="green">✓ diperiksa silang</Badge>
+          </span>
+        )}
+        {showFlags && q.flags.some((f) => f.kind === 'cross-check-pending') && <Badge>belum diperiksa silang</Badge>}
         <div className="ml-auto flex flex-wrap gap-1">{actions}</div>
       </div>
 

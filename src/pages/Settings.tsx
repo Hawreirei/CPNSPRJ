@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { db, saveSettings, useSettings } from '../db';
 import { getBackupState, importBackup } from '../db/backup';
 import { fmtAgo } from '../domain/backupReminder';
+import { CrossCheckEditor } from '../components/CrossCheckEditor';
 import { StudyPlanEditor } from '../components/StudyPlanEditor';
 import { autoBackupNow, chooseBackupFile, downloadBackup, isAutoBackupSupported, stopAutoBackup } from '../lib/autoBackup';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
@@ -78,6 +79,11 @@ export default function SettingsPage() {
       <section className="card space-y-3">
         <h2>Rencana belajar</h2>
         <StudyPlanEditor settings={s} />
+      </section>
+
+      <section className="card space-y-3">
+        <h2>Pemeriksa silang (opsional)</h2>
+        <CrossCheckEditor settings={s} />
       </section>
 
       <section className="card space-y-3">

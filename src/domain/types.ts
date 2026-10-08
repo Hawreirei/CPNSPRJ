@@ -38,7 +38,13 @@ export type FlagKind =
   | 'twk-unverified'
   | 'low-confidence'
   | 'structure'
-  | 'duplicate';
+  | 'duplicate'
+  /** A second model, shown no key, picked another option. */
+  | 'cross-check-mismatch'
+  /** A second model, shown no key, picked the same option. */
+  | 'cross-checked'
+  /** Cross-check was on but could not run for this question (e.g. quota used up). */
+  | 'cross-check-pending';
 
 export interface Flag {
   kind: FlagKind;
@@ -259,6 +265,14 @@ export interface StudyPlan {
   simulationDay?: number;
 }
 
+export interface CrossCheckSettings {
+  enabled: boolean;
+  /** Key used for checking; defaults to the set's key. */
+  keyId?: string;
+  /** Model used for checking; defaults to the key's model. A different model catches more. */
+  model?: string;
+}
+
 export interface Settings {
   passing: Record<Subtest, number>;
   counts: Record<Subtest, number>;
@@ -272,6 +286,8 @@ export interface Settings {
   reviewDailyLimit: number;
   /** Absent until the learner creates a plan. */
   studyPlan?: StudyPlan;
+  /** Second-opinion check of new questions by another model. Off unless enabled. */
+  crossCheck?: CrossCheckSettings;
   /** USD per 1M tokens, keyed by model id; fallback used when unknown. */
   priceOverrides: Record<string, { input: number; output: number }>;
 }

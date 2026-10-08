@@ -7,6 +7,7 @@ import type { PresetId } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
 import type { Blueprint, DifficultyChoice, SectionSpec, Subtest } from '../domain/types';
 import { startGeneration } from '../engine/generator';
+import { estimateCrossCheck } from '../engine/crosscheck';
 import { estimatePlan, planBatches } from '../engine/plan';
 import { createAiSet, createBankSet, pickFromBank } from '../engine/sets';
 import { refreshStaleKeyModels } from '../engine/keys';
@@ -57,6 +58,7 @@ export default function NewSet() {
   const remaining = usage?.blockedUntil ? 0 : (usage?.remainingToday ?? null);
   const total = bp.sections.reduce((n, s) => n + s.count, 0);
   const needsKey = est.requests > 0 && !key;
+  const crossCheck = settings.crossCheck?.enabled && est.requests > 0 ? estimateCrossCheck(batches) : null;
   const missingTopics = bp.sections.some((s) => !s.topics.length);
 
   function applyPreset(id: PresetId) {
@@ -372,6 +374,14 @@ export default function NewSet() {
             </p>
           ) : (
             <p className={`text-xs ${remaining !== null && remaining < est.requests ? 'text-amber-700 dark:text-amber-300' : 'muted'}`}>{quotaLine}</p>
+          )}
+          {crossCheck && crossCheck.requests > 0 && !needsKey && (
+            <p className="muted text-xs">
+              Pemeriksa silang aktif: tambahan sekitar {crossCheck.requests} permintaan AI untuk memeriksa {crossCheck.questions} soal (di luar angka di atas).{' '}
+              <Link className="underline" to="/settings">
+                Ubah
+              </Link>
+            </p>
           )}
           {msg && <p className="text-sm text-red-600 dark:text-red-400">{msg}</p>}
           <div className="space-y-2">

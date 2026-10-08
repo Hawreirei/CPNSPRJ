@@ -124,3 +124,25 @@ ${list}
 Format JSON:
 ${formatSpec(subtest)}`;
 }
+
+export const CHECK_SYSTEM_PROMPT = `Anda penguji soal latihan SKD CPNS yang teliti dan independen.
+Kerjakan setiap soal sendiri dari awal. Kunci jawaban tidak diberikan; jangan menebak berdasarkan pola.
+Balas HANYA dengan JSON valid sesuai format yang diminta, tanpa teks lain.`;
+
+/** Questions for a second model to answer blind: stems and options only, no key, no explanation, no TKP scores. */
+export function buildCrossCheckPrompt(subtest: Subtest, questions: Pick<Question, 'stem' | 'options'>[]): string {
+  const task =
+    subtest === 'TKP'
+      ? 'Untuk setiap soal TKP (situasi kerja ASN), pilih SATU tindakan yang paling tepat menurut nilai pelayanan publik, integritas, dan profesionalisme ASN.'
+      : `Untuk setiap soal ${subtest}, pilih SATU opsi yang benar.`;
+  const list = questions
+    .map((q, i) => `${i + 1}. ${q.stem.replace(/\s*\n\s*/g, ' ')}\n${q.options.map((o) => `${o.label}. ${o.figure ? '[gambar]' : o.text}`).join('\n')}`)
+    .join('\n\n');
+  return `${task}
+Beri alasan singkat (satu kalimat) untuk setiap jawaban.
+
+${list}
+
+Format JSON:
+{"answers": [{"no": 1, "answer": "C", "reason": "alasan singkat"}, ...]} untuk semua ${questions.length} soal.`;
+}

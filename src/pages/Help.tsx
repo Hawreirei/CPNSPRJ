@@ -60,6 +60,10 @@ export default function Help() {
             <b>TKP</b>: setiap opsi wajib berskor 1–5, tidak boleh ada dua opsi berbagi skor tertinggi.
           </li>
           <li>
+            <b>Pemeriksa silang (opsional, di Pengaturan)</b>: model AI lain menjawab soal tanpa melihat kunci. Bila berbeda, soal ditandai "perlu dicek" dengan
+            alasannya. Dua model bisa sama-sama keliru, jadi ini menambah kepercayaan, bukan jaminan.
+          </li>
+          <li>
             <b>TWK</b>: setiap soal harus memiliki rujukan (sila, pasal UUD, fakta sejarah). Soal tanpa rujukan atau yang ditandai AI "kurang yakin" diberi tanda untuk
             dicek ke sumber resmi.
           </li>
