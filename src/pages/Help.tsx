@@ -19,7 +19,9 @@ export default function Help() {
             dibintangi, dipindah, dihapus, atau dijadikan dasar "Serupa+".
           </li>
           <li>
-            <b>Simulasi CAT</b>: timer, grid nomor, ragu-ragu, kirim otomatis. Laporan menampilkan skor per sub-tes terhadap ambang batas dan topik lemah.
+            <b>Simulasi CAT</b>: timer, grid nomor, ragu-ragu, kirim otomatis. Laporan menampilkan skor per sub-tes terhadap ambang batas dan topik lemah. Bila
+            set yang sama sudah pernah diujikan, laporan membandingkannya dengan ujian sebelumnya: soal yang membaik, memburuk, dan tetap salah, lalu yang
+            memburuk atau tetap salah bisa langsung dilatih ulang.
           </li>
           <li>
             <b>PPPK 2024 dan paket ujian lain</b>: di Buat Soal, pilih ujian "PPPK 2024" (bawaan, dari Keputusan MenPAN-RB Nomor 347 Tahun 2024: teknis,

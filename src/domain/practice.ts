@@ -21,11 +21,15 @@ export const examAttempts = <T extends Pick<Attempt, 'mode'>>(list: T[]): T[] =>
 export interface QuestionFilter {
   subtests?: Subtest[];
   topics?: string[];
+  /** These questions only, e.g. those that got worse since the previous exam (#46). */
+  questionIds?: string[];
 }
 
 /** Narrow a set's questions for practice. An empty or missing list means no restriction. */
 export function filterQuestions(questions: Question[], f: QuestionFilter = {}): Question[] {
-  return questions.filter((q) => (!f.subtests?.length || f.subtests.includes(q.subtest)) && (!f.topics?.length || f.topics.includes(q.topic)));
+  return questions.filter(
+    (q) => (!f.subtests?.length || f.subtests.includes(q.subtest)) && (!f.topics?.length || f.topics.includes(q.topic)) && (!f.questionIds?.length || f.questionIds.includes(q.id)),
+  );
 }
 
 export interface Feedback {
