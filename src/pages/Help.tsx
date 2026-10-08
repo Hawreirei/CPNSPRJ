@@ -119,6 +119,11 @@ export default function Help() {
           <li>Tidak ada server dan tidak ada login. Set, bank soal, riwayat, dan key hanya tersimpan di browser ini (IndexedDB).</li>
           <li>Teks soal yang Anda minta dikirim langsung ke penyedia AI pilihan Anda dan tunduk pada kebijakan privasi penyedia tersebut.</li>
           <li>
+            Ekstensi browser yang diizinkan membaca halaman bisa melihat API key Anda, juga key yang hanya untuk sesi; aplikasi tidak bisa mendeteksinya. Pakai
+            profil browser tanpa ekstensi yang tidak Anda percayai, dan batasi key di dasbor penyedia (misalnya batas pengeluaran, atau hanya untuk Gemini API).
+            Panduan per penyedia ada di halaman API Key.
+          </li>
+          <li>
             Data browser bisa terhapus bila Anda membersihkan data situs. Unduh cadangan di Pengaturan; Beranda mengingatkan bila cadangan sudah lebih dari 7
             hari atau ada 3 set baru. Di Chrome/Edge desktop, pilih "Simpan otomatis ke berkas" agar cadangan diperbarui sendiri setiap ada perubahan.
           </li>

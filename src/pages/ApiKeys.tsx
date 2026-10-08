@@ -38,6 +38,8 @@ export default function ApiKeys() {
         <p className="muted mt-1">Pakai API key AI milik Anda sendiri. Key hanya disimpan di browser ini, terenkripsi, atau tidak disimpan sama sekali bila Anda memilih "hanya untuk sesi ini".</p>
       </div>
 
+      <ExtensionWarning />
+
       {keys.map((k) => (
         <KeyCard key={k.id} k={k} single={keys.length === 1} />
       ))}
@@ -58,12 +60,46 @@ export default function ApiKeys() {
             Kunci enkripsinya juga ada di perangkat ini, jadi siapa pun yang bisa membuka profil browser ini bisa memakai key yang disimpan. Di komputer
             bersama, pilih "Jangan simpan, hanya untuk sesi ini": key tidak ditulis ke penyimpanan browser dan hilang saat tab ditutup.
           </li>
-          <li>Ekstensi browser yang boleh membaca halaman bisa melihat key, baik yang disimpan maupun yang hanya untuk sesi. Pakai profil browser tanpa ekstensi yang tidak Anda percayai.</li>
           <li>Permintaan dikirim langsung dari browser Anda ke penyedia AI, tanpa server perantara.</li>
           <li>Gunakan browser tepercaya, dan pasang batas pengeluaran di dasbor penyedia.</li>
         </ul>
       </details>
     </div>
+  );
+}
+
+/**
+ * Always shown (#48): extensions that can read pages can read the key, saved or session-only, and the
+ * app cannot detect them (browsers do not allow it). What helps is limiting what a key can do.
+ */
+function ExtensionWarning() {
+  return (
+    <section className="card space-y-2 border-amber-300 text-sm dark:border-amber-800" aria-labelledby="extension-warning">
+      <h2 id="extension-warning" className="text-base">
+        Ekstensi browser bisa membaca key Anda
+      </h2>
+      <p>
+        Ekstensi yang diizinkan membaca halaman bisa melihat API key di aplikasi ini, baik yang disimpan maupun yang hanya untuk sesi. Aplikasi tidak bisa
+        mendeteksi ekstensi seperti itu. Jadi:
+      </p>
+      <ul className="list-disc space-y-1 pl-5">
+        <li>Pakai profil browser tanpa ekstensi yang tidak Anda percayai, atau mode "hanya untuk sesi ini" di perangkat bersama.</li>
+        <li>
+          Batasi apa yang bisa dilakukan key bila sampai bocor:
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+            {(Object.keys(PROVIDERS) as ProviderId[]).map((p) => (
+              <li key={p}>
+                {SHORT_NAME[p]}: {PROVIDERS[p].limitHelp.text} (
+                <a className="text-brand-600 dark:text-brand-300 underline" href={PROVIDERS[p].limitHelp.url} target="_blank" rel="noreferrer">
+                  panduan {p === 'compat' ? 'OpenRouter' : SHORT_NAME[p]}
+                </a>
+                ).
+              </li>
+            ))}
+          </ul>
+        </li>
+      </ul>
+    </section>
   );
 }
 
@@ -140,6 +176,13 @@ function AddKeyForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () =>
             buat key di sini
           </a>
         </div>
+        <p className="muted mb-1 text-xs">
+          Setelah membuat key, {info.limitHelp.text} (
+          <a className="text-brand-600 dark:text-brand-300 underline" href={info.limitHelp.url} target="_blank" rel="noreferrer">
+            caranya
+          </a>
+          ).
+        </p>
         <input
           className="input font-mono"
           aria-label="API key"
