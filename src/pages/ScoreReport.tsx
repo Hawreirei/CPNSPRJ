@@ -1,0 +1,172 @@
+import { useLiveQuery } from 'dexie-react-hooks';
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { db } from '../db';
+import { isCorrect, scoreQuestion, weakTopics } from '../domain/scoring';
+import { SUBTEST_NAMES } from '../domain/blueprint';
+import { attemptQuestions } from '../engine/attempts';
+import { startGeneration } from '../engine/generator';
+import { createRemedialSet } from '../engine/sets';
+import { QuestionCard } from '../components/QuestionCard';
+import { Badge, Empty, fmtDate, ProgressBar, SubtestBadge } from '../components/ui';
+
+const fmtSec = (ms: number) => (ms >= 60000 ? `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}d` : `${Math.round(ms / 1000)}d`);
+
+export default function ScoreReport() {
+  const { attemptId = '' } = useParams();
+  const nav = useNavigate();
+  const data = useLiveQuery(async () => {
+    const a = await db.attempts.get(attemptId);
+    return a ? { a, questions: await attemptQuestions(a) } : null;
+  }, [attemptId]);
+  const [review, setReview] = useState<'none' | 'wrong' | 'all'>('none');
+  const [busy, setBusy] = useState(false);
+
+  if (data === undefined) return null;
+  if (!data?.a.result) return <Empty title="Hasil tidak ditemukan" />;
+  const { a, questions } = data;
+  const r = a.result!;
+  const weak = weakTopics(r.topics);
+  const durationMs = (a.finishedAt ?? a.endsAt) - a.startedAt;
+  const timed = questions.map((q) => ({ q, ms: a.timeSpent[q.id] ?? 0 })).sort((x, y) => y.ms - x.ms);
+
+  async function remedial() {
+    setBusy(true);
+    const set = await createRemedialSet(weak.slice(0, 6), 5, a.questionIds);
+    if (set.batches.length) void startGeneration(set.id);
+    nav(`/sets/${set.id}`);
+  }
+
+  const reviewList = questions
+    .map((q, i) => ({ q, i }))
+    .filter(({ q }) => review === 'all' || (review === 'wrong' && !isCorrect(q, a.answers[q.id])));
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1>Laporan Skor</h1>
+          <p className="muted mt-1">
+            {a.setName} · {fmtDate(a.startedAt)} · durasi {fmtSec(durationMs)}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Link className="btn" to={`/simulation?set=${a.setId}`}>
+            Ulangi
+          </Link>
+          <Link className="btn" to="/progress">
+            Progres
+          </Link>
+        </div>
+      </div>
+
+      <div className={`card border-2 ${r.passedAll ? 'border-green-500' : 'border-red-400'}`}>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="text-4xl font-bold">{r.total}</div>
+          <div className="muted">dari {r.maxTotal}</div>
+          <Badge tone={r.passedAll ? 'green' : 'red'}>{r.passedAll ? 'Memenuhi semua ambang batas' : 'Belum memenuhi ambang batas'}</Badge>
+        </div>
+        <p className="muted mt-2 text-xs">Kelulusan SKD mensyaratkan setiap sub-tes mencapai ambang batasnya masing-masing.</p>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        {r.perSubtest.map((s) => (
+          <div key={s.subtest} className="card space-y-2">
+            <div className="flex items-center gap-2">
+              <SubtestBadge subtest={s.subtest} />
+              <span className="text-sm font-medium">{SUBTEST_NAMES[s.subtest]}</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-semibold">{s.score}</span>
+              <span className="muted">/ {s.max}</span>
+              <Badge tone={s.passed ? 'green' : 'red'}>{s.passed ? 'lulus' : 'belum'}</Badge>
+            </div>
+            <ProgressBar value={s.score} max={s.max} tone={s.passed ? 'green' : 'red'} />
+            <div className="muted text-xs">
+              Ambang {s.passing} · {s.subtest === 'TKP' ? `${s.correct} opsi skor 5` : `${s.correct} benar`} · {s.answered}/{s.total} dijawab
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <section className="card">
+          <h2>Topik lemah</h2>
+          {weak.length === 0 ? (
+            <p className="muted mt-2">Tidak ada topik di bawah 60%. Bagus!</p>
+          ) : (
+            <>
+              <ul className="mt-2 space-y-2">
+                {weak.slice(0, 8).map((t) => (
+                  <li key={t.subtest + t.topic}>
+                    <div className="flex justify-between text-sm">
+                      <span>
+                        <SubtestBadge subtest={t.subtest} /> {t.topic}
+                      </span>
+                      <span>{Math.round((t.score / t.max) * 100)}%</span>
+                    </div>
+                    <ProgressBar value={t.score} max={t.max} tone="red" />
+                  </li>
+                ))}
+              </ul>
+              <button className="btn btn-primary mt-3" disabled={busy} onClick={remedial}>
+                Buat set latihan topik lemah
+              </button>
+              <p className="muted mt-1 text-xs">Diambil dari bank soal dulu; AI hanya dipakai bila bank kurang.</p>
+            </>
+          )}
+        </section>
+        <section className="card">
+          <h2>Waktu per soal</h2>
+          <p className="muted mt-1 text-sm">Rata-rata {fmtSec(durationMs / Math.max(1, questions.length))} per soal.</p>
+          <div className="mt-2 text-sm font-medium">Paling lama:</div>
+          <ul className="mt-1 space-y-1 text-sm">
+            {timed.slice(0, 5).map(({ q, ms }) => (
+              <li key={q.id} className="flex justify-between gap-2">
+                <span className="truncate">
+                  No. {questions.indexOf(q) + 1} · {q.topic}
+                </span>
+                <span className="shrink-0">{fmtSec(ms)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="mr-auto">Tinjau jawaban</h2>
+          <button className={`btn btn-sm ${review === 'wrong' ? 'btn-primary' : ''}`} onClick={() => setReview('wrong')}>
+            Salah / kosong
+          </button>
+          <button className={`btn btn-sm ${review === 'all' ? 'btn-primary' : ''}`} onClick={() => setReview('all')}>
+            Semua
+          </button>
+          {review !== 'none' && (
+            <button className="btn btn-sm" onClick={() => setReview('none')}>
+              Sembunyikan
+            </button>
+          )}
+        </div>
+        {review !== 'none' &&
+          reviewList.map(({ q, i }) => {
+            const ans = a.answers[q.id];
+            return (
+              <QuestionCard
+                key={q.id}
+                q={q}
+                index={i}
+                mode="pembahasan"
+                showFlags={false}
+                actions={
+                  <Badge tone={isCorrect(q, ans) ? 'green' : 'red'}>
+                    Jawaban Anda: {ans ?? '—'} · skor {scoreQuestion(q, ans)}
+                  </Badge>
+                }
+              />
+            );
+          })}
+      </section>
+    </div>
+  );
+}
