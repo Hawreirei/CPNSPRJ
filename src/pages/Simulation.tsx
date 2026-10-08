@@ -11,8 +11,8 @@ import { passageLabel } from '../domain/groups';
 import { RichText } from '../components/RichText';
 import { Badge, Modal, SubtestBadge } from '../components/ui';
 import { allowedRange, canGo, nextSection } from '../domain/catMode';
-import { SUBTEST_NAMES } from '../domain/blueprint';
 import { fmtSec } from '../engine/analytics';
+import { specOf } from '../domain/examPackage';
 
 const fullscreenSupported = () => typeof document !== 'undefined' && !!document.fullscreenEnabled;
 const exitFullscreen = () => {
@@ -324,7 +324,7 @@ export default function Simulation() {
         </div>
       </Modal>
 
-      <Modal open={sectionAsk !== null} onClose={() => setSectionAsk(null)} title={`Lanjut ke ${next ? SUBTEST_NAMES[next.subtest] : ''}?`}>
+      <Modal open={sectionAsk !== null} onClose={() => setSectionAsk(null)} title={`Lanjut ke ${next ? specOf(next.subtest).name : ''}?`}>
         {(() => {
           const ids = questions.slice(range.from, range.to + 1).map((x) => x.id);
           const done = ids.filter((id) => attempt.answers[id]).length;

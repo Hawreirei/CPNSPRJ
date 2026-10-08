@@ -1,13 +1,11 @@
 import { getSettings } from '../db';
-import { SUBTEST_NAMES } from '../domain/blueprint';
-import { SUBTESTS } from '../domain/types';
 import { fmtNum } from '../domain/describe';
 import type { DataFigure, Question } from '../domain/types';
 import { toPlain } from '../components/RichText';
 import { dataChartSvg } from './dataSvg';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
-import { isGraded } from '../domain/examPackage';
+import { isGraded, scoringRulesText, specOf, subtestsIn } from '../domain/examPackage';
 
 export type PackKind = 'soal' | 'soal-kunci' | 'lengkap' | 'kunci' | 'pembahasan';
 
@@ -112,11 +110,11 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
   }
 
   function subtestHeading(s: string) {
-    return new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 300 }, children: [new TextRun({ text: `${s} — ${SUBTEST_NAMES[s as keyof typeof SUBTEST_NAMES]}` })] });
+    return new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 300 }, children: [new TextRun({ text: `${s} — ${specOf(s).name}` })] });
   }
 
   const numbered = questions.map((q, i) => ({ q, n: i + 1 }));
-  const groups = SUBTESTS.map((s) => ({ s, items: numbered.filter((x) => x.q.subtest === s) })).filter((g) => g.items.length);
+  const groups = subtestsIn(numbered.map((x) => x.q)).map((s) => ({ s, items: numbered.filter((x) => x.q.subtest === s) }));
 
   async function soalSection(): Promise<Child[]> {
     const out: Child[] = [];
@@ -129,7 +127,7 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
 
   function kunciSection(): Child[] {
     const out: Child[] = [new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: 'Kunci Jawaban & Skor' })] })];
-    out.push(new Paragraph({ children: text('TWK & TIU: jawaban benar bernilai 5, salah atau kosong 0. TKP: setiap opsi bernilai 1–5.', { size: 18, italics: true }) }));
+    out.push(new Paragraph({ children: text(scoringRulesText(groups.map((g) => g.s)), { size: 18, italics: true }) }));
     for (const g of groups) {
       out.push(subtestHeading(g.s));
       for (const { q, n } of g.items) out.push(new Paragraph({ children: [new TextRun({ text: `${n}. `, bold: true }), new TextRun({ text: keyText(q) })] }));

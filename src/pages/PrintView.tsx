@@ -2,12 +2,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { db, getSetQuestions, useSettings } from '../db';
-import { SUBTEST_NAMES } from '../domain/blueprint';
 import { opensGroup, passageLabel } from '../domain/groups';
-import { SUBTESTS } from '../domain/types';
 import type { Question } from '../domain/types';
 import { KeyLine, QuestionCard } from '../components/QuestionCard';
 import { PACK_TITLES, type PackKind } from '../lib/exportDocx';
+import { scoringRulesText, specOf, subtestsIn } from '../domain/examPackage';
 
 export default function PrintView() {
   const { setId = '' } = useParams();
@@ -38,13 +37,13 @@ export default function PrintView() {
   if (!data) return null;
   const { set, questions } = data;
   const numbered = questions.map((q, i) => ({ q, i }));
-  const groups = SUBTESTS.map((s) => ({ s, items: numbered.filter((x) => x.q.subtest === s) })).filter((g) => g.items.length);
+  const groups = subtestsIn(numbered.map((x) => x.q)).map((s) => ({ s, items: numbered.filter((x) => x.q.subtest === s) }));
 
   const soal = (withKey: boolean) =>
     groups.map((g) => (
       <section key={g.s}>
         <h2 className="mt-6 mb-2 border-b pb-1">
-          {g.s} — {SUBTEST_NAMES[g.s]}
+          {g.s} — {specOf(g.s).name}
         </h2>
         <div className="space-y-3">
           {g.items.map(({ q, i }) => (
@@ -66,7 +65,7 @@ export default function PrintView() {
   const kunci = (
     <section>
       <h2 className="mt-6 mb-2">Kunci Jawaban & Skor</h2>
-      <p className="mb-2 text-xs">TWK & TIU: benar 5, salah/kosong 0. TKP: tiap opsi 1–5.</p>
+      <p className="mb-2 text-xs">{scoringRulesText(groups.map((g) => g.s), true)}</p>
       {groups.map((g) => (
         <div key={g.s} className="mb-4">
           <h3 className="mb-1">{g.s}</h3>

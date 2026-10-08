@@ -20,13 +20,25 @@ export interface SubtestSpec {
   id: Subtest;
   name: string;
   scoring: ScoringRule;
+  /** Imported packages: questions in the full exam. SKD takes its numbers from Settings instead. */
+  count?: number;
+  /** Pass mark for the full exam; absent when the exam is decided by ranking. */
+  passing?: number;
+  /** Topics to write questions on. */
+  topics?: string[];
+  /** Questions are about the job the learner names (PPPK technical competence), not a topic list. */
+  fromJobTitle?: boolean;
 }
 
 export interface ExamPackage {
   id: string;
   name: string;
-  /** Where the numbers come from; only official documents for anything beyond the built-in package. */
+  /** Where the numbers come from, in a few words. */
   source: string;
+  /** The official document the numbers come from. Without it the package is shown as "bukan data resmi". */
+  official?: { title: string; date: string; url?: string };
+  /** Imported packages: length of the full exam. */
+  durationMinutes?: number;
   subtests: SubtestSpec[];
 }
 
@@ -57,6 +69,23 @@ registerPackage(SKD_CPNS);
 
 export const packages = (): readonly ExamPackage[] => PACKAGES;
 
+export const isBuiltIn = (pkg: Pick<ExamPackage, 'id'>) => pkg.id === SKD_CPNS.id;
+
+/**
+ * Make the registry match the learner's imported packages (kept in Settings). Called whenever
+ * Settings are read, so scoring always knows them. A package whose sub-test ids clash is skipped.
+ */
+export function setCustomPackages(list: readonly ExamPackage[] = []) {
+  for (const pkg of PACKAGES.splice(1)) for (const spec of pkg.subtests) SPECS.delete(spec.id);
+  for (const pkg of list) {
+    try {
+      registerPackage(pkg);
+    } catch {
+      // Kept in Settings, but not usable until the clash is resolved.
+    }
+  }
+}
+
 /** A sub-test's spec. Unknown ids (data from a newer version) are scored like a keyed sub-test, not dropped. */
 export function specOf(subtest: Subtest): SubtestSpec {
   return SPECS.get(subtest)?.spec ?? { id: subtest, name: subtest, scoring: { kind: 'keyed', correct: 5 } };
@@ -65,10 +94,42 @@ export function specOf(subtest: Subtest): SubtestSpec {
 /** The package a sub-test belongs to; SKD CPNS for unknown ids. */
 export const packageOf = (subtest: Subtest): ExamPackage => SPECS.get(subtest)?.pkg ?? SKD_CPNS;
 
+/** Position of a sub-test in exam order across all packages; unknown ids last. */
+export const examRank = (s: Subtest) => SPECS.get(s)?.order ?? Number.MAX_SAFE_INTEGER;
+
 /** Sub-tests in package order (SKD: TWK, TIU, TKP), unknown ones last, each once. */
 export function inExamOrder(subtests: Iterable<Subtest>): Subtest[] {
-  const rank = (s: Subtest) => SPECS.get(s)?.order ?? Number.MAX_SAFE_INTEGER;
-  return [...new Set(subtests)].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  return [...new Set(subtests)].sort((a, b) => examRank(a) - examRank(b) || a.localeCompare(b));
+}
+
+/** The sub-tests among `items`, in exam order. */
+export const subtestsIn = (items: readonly { subtest: Subtest }[]): Subtest[] => inExamOrder(items.map((x) => x.subtest));
+
+/** Questions sorted by sub-test in exam order; order within a sub-test is kept. */
+export function inSubtestOrder<T extends { subtest: Subtest }>(items: readonly T[]): T[] {
+  const order = subtestsIn(items);
+  return [...items].sort((a, b) => order.indexOf(a.subtest) - order.indexOf(b.subtest));
+}
+
+/**
+ * How the given sub-tests are scored, in one line for printed sets, e.g. for SKD:
+ * "TWK & TIU: jawaban benar bernilai 5, salah atau kosong 0. TKP: setiap opsi bernilai 1–5."
+ */
+export function scoringRulesText(subtests: readonly Subtest[], short = false): string {
+  const groups = new Map<string, Subtest[]>();
+  for (const s of inExamOrder(subtests)) {
+    const r = scoringOf(s);
+    const text =
+      r.kind === 'keyed'
+        ? short
+          ? `benar ${r.correct}, salah/kosong 0`
+          : `jawaban benar bernilai ${r.correct}, salah atau kosong 0`
+        : short
+          ? `tiap opsi ${r.min}–${r.max}`
+          : `setiap opsi bernilai ${r.min}–${r.max}`;
+    groups.set(text, [...(groups.get(text) ?? []), s]);
+  }
+  return [...groups].map(([text, ids]) => `${ids.join(' & ')}: ${text}.`).join(' ');
 }
 
 export function scoringOf(subtest: Subtest): ScoringRule {

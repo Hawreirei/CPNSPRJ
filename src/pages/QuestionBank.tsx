@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, useSettings } from '../db';
-import { topicsFor } from '../domain/blueprint';
+import { fullExam, fullExamOf, topicsFor } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
 import type { Blueprint, Question, Subtest } from '../domain/types';
 import { createBankSet } from '../engine/sets';
@@ -13,6 +13,7 @@ import { FeedbackDialog } from '../components/FeedbackDialog';
 import { answerStats, isReported } from '../domain/quality';
 import { Empty } from '../components/ui';
 import { DownloadDialog } from '../components/DownloadDialog';
+import { inExamOrder, inSubtestOrder, packageOf, subtestsIn } from '../domain/examPackage';
 
 const PAGE = 30;
 
@@ -22,6 +23,8 @@ export default function QuestionBank() {
   const all = useLiveQuery(() => db.questions.orderBy('createdAt').reverse().toArray(), []);
   const [q, setQ] = useState('');
   const [sub, setSub] = useState<Subtest | ''>('');
+  // SKD always, plus the sub-tests of other exam packages that have questions here.
+  const bankSubtests = useMemo(() => inExamOrder([...SUBTESTS, ...(all ?? []).map((x) => x.subtest)]), [all]);
   const [topic, setTopic] = useState('');
   const [diff, setDiff] = useState('');
   const [only, setOnly] = useState<'' | 'starred' | 'flagged' | 'reported'>('');
@@ -36,9 +39,9 @@ export default function QuestionBank() {
 
   // The profile's topics, plus any older ones questions in the bank still carry.
   const topicOptions = useMemo(() => {
-    const subs = sub ? [sub] : SUBTESTS;
+    const subs = sub ? [sub] : bankSubtests;
     return [...new Set([...subs.flatMap((x) => topicsFor(settings, x)), ...(all ?? []).filter((x) => subs.includes(x.subtest)).map((x) => x.topic)])];
-  }, [settings, sub, all]);
+  }, [settings, sub, all, bankSubtests]);
 
   const filtered = useMemo(() => {
     if (!all) return [];
@@ -67,17 +70,17 @@ export default function QuestionBank() {
 
   async function buildFromSelection() {
     const qs = all!.filter((x) => selected.has(x.id));
-    const counts = Object.fromEntries(SUBTESTS.map((s) => [s, qs.filter((x) => x.subtest === s).length])) as Record<Subtest, number>;
-    const total = qs.length;
+    const subtests = subtestsIn(qs);
+    const full = fullExamOf(packageOf(subtests[0] ?? 'TWK'), settings);
     const blueprint: Blueprint = {
-      sections: SUBTESTS.filter((s) => counts[s]).map((s) => ({
+      sections: subtests.map((s) => ({
         subtest: s,
-        count: counts[s],
+        count: qs.filter((x) => x.subtest === s).length,
         topics: [...new Set(qs.filter((x) => x.subtest === s).map((x) => x.topic))],
         difficulty: 'campuran',
       })),
-      durationMinutes: Math.max(5, Math.round((settings.durationMinutes * total) / 110)),
-      passing: { ...settings.passing },
+      durationMinutes: Math.max(5, Math.round((full.durationMinutes * qs.length) / (full.total || 110))),
+      passing: Object.fromEntries(subtests.map((s) => [s, fullExam(s, settings).passing])),
     };
     const name = prompt('Beri nama set baru:', `Set dari bank · ${new Date().toLocaleDateString('id-ID')}`);
     if (!name) return;
@@ -100,7 +103,7 @@ export default function QuestionBank() {
 
   const selectedQs = all.filter((x) => selected.has(x.id));
   // Download the picked questions, or everything currently shown when nothing is picked.
-  const toDownload = (selectedQs.length ? selectedQs : filtered).slice().sort((a, b) => SUBTESTS.indexOf(a.subtest) - SUBTESTS.indexOf(b.subtest));
+  const toDownload = inSubtestOrder(selectedQs.length ? selectedQs : filtered);
   const moreFilters = !!(topic || diff || only);
 
   return (
@@ -118,7 +121,7 @@ export default function QuestionBank() {
       <div className="card space-y-3">
         <input className="input" placeholder="Cari soal…" value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="flex flex-wrap items-center gap-1.5">
-          {(['', ...SUBTESTS] as const).map((s) => (
+          {['', ...bankSubtests].map((s) => (
             <button
               key={s || 'all'}
               onClick={() => {

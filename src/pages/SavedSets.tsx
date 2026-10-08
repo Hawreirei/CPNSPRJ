@@ -2,11 +2,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../db';
-import { SUBTESTS } from '../domain/types';
 import { createVariantSet, deleteSet } from '../engine/sets';
 import { startGeneration } from '../engine/generator';
 import { Empty, fmtDate } from '../components/ui';
 import { StatusBadge } from './Dashboard';
+import { subtestsIn } from '../domain/examPackage';
 
 const SOURCE_LABEL = { ai: 'AI', bank: 'dari bank', variant: 'varian', remedial: 'topik lemah' } as const;
 
@@ -39,7 +39,7 @@ export default function SavedSets() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {shown.map((s) => {
-            const counts = SUBTESTS.map((st) => [st, s.blueprint.sections.find((x) => x.subtest === st)?.count ?? 0] as const).filter(([, n]) => n);
+            const counts = subtestsIn(s.blueprint.sections).map((st) => [st, s.blueprint.sections.find((x) => x.subtest === st)?.count ?? 0] as const).filter(([, n]) => n);
             return (
               <div key={s.id} className="card flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">

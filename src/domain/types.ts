@@ -1,3 +1,5 @@
+import type { ExamPackage } from './examPackage';
+
 /** SKD CPNS sub-tests: the built-in exam, and everything the app had before exam packages (#37). */
 export type SkdSubtest = 'TWK' | 'TIU' | 'TKP';
 /**
@@ -160,7 +162,8 @@ export interface SectionSpec {
 export interface Blueprint {
   sections: SectionSpec[];
   durationMinutes: number;
-  passing: Record<Subtest, number>;
+  /** Pass mark per sub-test; a sub-test without one is decided by ranking. */
+  passing: Partial<Record<Subtest, number>>;
 }
 
 export interface BatchItem {
@@ -245,7 +248,7 @@ export interface Attempt {
   flagged: string[];
   timeSpent: Record<string, number>;
   currentIndex: number;
-  passing: Record<Subtest, number>;
+  passing: Partial<Record<Subtest, number>>;
   result?: AttemptResult;
   /** Exam taken in "Mode CAT": full screen where supported, and leaving the tab is recorded. */
   catMode?: boolean;
@@ -427,6 +430,8 @@ export interface Settings {
   crossCheck?: CrossCheckSettings;
   /** Syllabus profiles the learner added, and which one is in use. Absent means the built-in one. */
   kisi?: KisiSettings;
+  /** Exam packages the learner imported (PPPK and others). SKD CPNS is built in and not listed. */
+  examPackages?: ExamPackage[];
   /** Streak and badges; on unless switched off. */
   streak?: StreakSettings;
   /** USD per 1M tokens, keyed by model id; fallback used when unknown. */

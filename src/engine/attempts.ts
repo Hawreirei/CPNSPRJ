@@ -1,12 +1,12 @@
 import { db, getSetQuestions } from '../db';
 import { computeResult } from '../domain/scoring';
 import { filterQuestions, UNTIMED, type QuestionFilter } from '../domain/practice';
-import { SUBTESTS } from '../domain/types';
 import type { Attempt, AttemptMode, Question } from '../domain/types';
 import { uid } from '../lib/id';
 import { shuffleUnits } from '../domain/groups';
 import { recordMistakes } from './review';
 import { passingForSet } from './sets';
+import { inSubtestOrder, subtestsIn } from '../domain/examPackage';
 
 export async function startAttempt(
   setId: string,
@@ -30,12 +30,12 @@ export async function startAttempt(
   if (!questions.length) throw new Error('Tidak ada soal yang cocok dengan pilihan ini.');
   if (opts.shuffleQuestions) {
     // A reading passage's questions move as one block, in their own order.
-    questions = SUBTESTS.flatMap((s) => shuffleUnits(questions.filter((q) => q.subtest === s)));
+    questions = subtestsIn(questions).flatMap((s) => shuffleUnits(questions.filter((q) => q.subtest === s)));
   }
   const catMode = mode === 'exam' && !!opts.catMode;
   const lockedOrder = catMode && !!opts.lockedOrder;
   // A locked order walks sub-test blocks, so each sub-test must be one block.
-  if (lockedOrder) questions = SUBTESTS.flatMap((s) => questions.filter((q) => q.subtest === s));
+  if (lockedOrder) questions = inSubtestOrder(questions);
   const now = Date.now();
   const attempt: Attempt = {
     id: uid(),

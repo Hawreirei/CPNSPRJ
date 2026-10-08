@@ -3,11 +3,11 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { db, getSetQuestions } from '../db';
 import { attemptMode, attemptPath, filterQuestions } from '../domain/practice';
-import { SUBTESTS } from '../domain/types';
 import type { AttemptMode } from '../domain/types';
 import { startAttempt } from '../engine/attempts';
 import { Badge, Empty, fmtDate, SubtestBadge } from '../components/ui';
 import { errorText } from '../engine/storage';
+import { subtestsIn } from '../domain/examPackage';
 
 export default function SimulationHome() {
   const nav = useNavigate();
@@ -40,7 +40,7 @@ export default function SimulationHome() {
 
   // Topics in the chosen set, in sub-test order. A `topics` link param (from a score report) preselects some.
   const setTopicsBySubtest = useMemo(
-    () => SUBTESTS.map((s) => ({ subtest: s, topics: [...new Set((setQuestions ?? []).filter((q) => q.subtest === s).map((q) => q.topic))] })).filter((g) => g.topics.length),
+    () => subtestsIn(setQuestions ?? []).map((s) => ({ subtest: s, topics: [...new Set((setQuestions ?? []).filter((q) => q.subtest === s).map((q) => q.topic))] })).filter((g) => g.topics.length),
     [setQuestions],
   );
   const topicsFor = useRef('');
@@ -131,14 +131,15 @@ export default function SimulationHome() {
 
           {set && !practice && (
             <div className="flex flex-wrap gap-2 text-sm">
-              {SUBTESTS.map((s) => {
-                const sec = set.blueprint.sections.find((x) => x.subtest === s);
-                return sec ? (
+              {subtestsIn(set.blueprint.sections).map((s) =>
+                set.blueprint.passing[s] === undefined ? (
+                  <Badge key={s}>{s}: tanpa ambang batas</Badge>
+                ) : (
                   <Badge key={s}>
                     {s}: ambang {set.blueprint.passing[s]}
                   </Badge>
-                ) : null;
-              })}
+                ),
+              )}
               {set.status !== 'ready' && <Badge tone="amber">set belum lengkap</Badge>}
             </div>
           )}

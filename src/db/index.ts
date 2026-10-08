@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
+import { setCustomPackages } from '../domain/examPackage';
 import type { ApiKeyRecord, Attempt, QSet, Question, RequestLog, ReviewItem, Settings } from '../domain/types';
 
 interface MetaRow {
@@ -40,12 +41,17 @@ export const db = new AppDB();
 
 export async function getSettings(): Promise<Settings> {
   const row = await db.meta.get('settings');
-  return { ...DEFAULT_SETTINGS, ...((row?.value as Partial<Settings>) ?? {}) };
+  const settings = { ...DEFAULT_SETTINGS, ...((row?.value as Partial<Settings>) ?? {}) };
+  // Scoring reads sub-test rules synchronously, so imported packages are registered on every read.
+  setCustomPackages(settings.examPackages);
+  return settings;
 }
 
 export async function saveSettings(patch: Partial<Settings>): Promise<void> {
   const cur = await getSettings();
-  await db.meta.put({ key: 'settings', value: { ...cur, ...patch } });
+  const next = { ...cur, ...patch };
+  await db.meta.put({ key: 'settings', value: next });
+  if ('examPackages' in patch) setCustomPackages(next.examPackages);
 }
 
 export function useSettings(): Settings {

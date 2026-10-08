@@ -3,7 +3,6 @@ import { db, getSettings } from '../db';
 import { endOfGroup } from '../domain/groups';
 import { easier } from '../domain/blueprint';
 import { buildPassagePrompt, buildPrompt, buildRepairPrompt, buildRewritePrompt } from '../domain/prompts';
-import { SUBTESTS } from '../domain/types';
 import { loadMath, validateQuestion } from '../domain/validators';
 import { ProviderError } from '../providers';
 import type { FlagKind, PlanBatch, QSet, Question } from '../domain/types';
@@ -14,7 +13,7 @@ import { CROSS_CHECK_KINDS, isCrossCheckable, openCheckerSession, runCrossCheck 
 import { callAndParse, callAndParsePassages, openSession, type ModelSession } from './session';
 import { errorText, isQuotaError } from './storage';
 import { logError } from '../lib/errorLog';
-import { isGraded } from '../domain/examPackage';
+import { examRank, isGraded, subtestsIn } from '../domain/examPackage';
 
 export interface GenProgress {
   setId: string;
@@ -55,7 +54,7 @@ function log(setId: string, level: 'info' | 'error', message: string) {
   update(setId, { log: [...(cur?.log ?? []), { at: Date.now(), level, message }].slice(-50) });
 }
 
-const subtestOrder = (q: Question) => SUBTESTS.indexOf(q.subtest);
+const subtestOrder = (q: Question) => examRank(q.subtest);
 
 /** Append questions to a set, keeping TWK → TIU → TKP grouping. */
 export async function appendToSet(setId: string, questions: Question[], afterId?: string) {
@@ -342,7 +341,7 @@ export const needsRepair = (q: Question) =>
 /** Ask the model to fix the given questions (one request per sub-test); returns how many were fixed. */
 async function repairWith(session: ModelSession, questions: Question[], signal: AbortSignal, onUsage: (i: number, o: number) => Promise<void>): Promise<number> {
   let fixed = 0;
-  for (const subtest of SUBTESTS) {
+  for (const subtest of subtestsIn(questions)) {
     const group = questions.filter((q) => q.subtest === subtest).slice(0, 10);
     if (!group.length) continue;
     const items = group.map((q) => ({ topic: q.topic, difficulty: q.difficulty }));

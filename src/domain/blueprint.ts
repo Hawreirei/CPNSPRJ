@@ -1,6 +1,6 @@
 import { SUBTESTS } from './types';
 import type { Blueprint, Difficulty, DifficultyChoice, ExamNumbers, KisiProfile, KisiTopic, Settings, Subtest } from './types';
-import { SKD_CPNS } from './examPackage';
+import { packageOf, SKD_CPNS, specOf, type ExamPackage } from './examPackage';
 
 export const TOPICS: Record<Subtest, string[]> = {
   TWK: [
@@ -93,13 +93,15 @@ export function activeProfile(settings: Pick<Settings, 'kisi'>): KisiProfile {
 
 /** Topics offered for new questions in a sub-test. Existing questions may carry others; they stay valid. */
 export function topicsFor(settings: Pick<Settings, 'kisi'>, s: Subtest): string[] {
-  return activeProfile(settings).topics[s].map((t) => t.name);
+  // Syllabus profiles are about SKD; other packages carry their topics in the package file.
+  if (packageOf(s).id !== SKD_CPNS.id) return specOf(s).topics ?? [];
+  return activeProfile(settings).topics[s]?.map((t) => t.name) ?? [];
 }
 
 /** Per-topic shares, or undefined when the profile spreads questions evenly. */
 export function weightsFor(settings: Pick<Settings, 'kisi'>, s: Subtest): Record<string, number> | undefined {
-  const topics = activeProfile(settings).topics[s];
-  if (topics.every((t) => (t.weight ?? 1) === 1)) return undefined;
+  const topics = packageOf(s).id === SKD_CPNS.id ? activeProfile(settings).topics[s] : undefined;
+  if (!topics || topics.every((t) => (t.weight ?? 1) === 1)) return undefined;
   return Object.fromEntries(topics.map((t) => [t.name, t.weight ?? 1]));
 }
 
@@ -141,9 +143,43 @@ export function buildPreset(id: PresetId, settings: Settings, difficulty: Diffic
   return { sections, durationMinutes: duration, passing: { ...settings.passing } };
 }
 
-/** Passing threshold scaled to the number of questions actually in the set (for partial sets). */
-export function scaledPassing(subtest: Subtest, count: number, settings: Pick<Settings, 'passing' | 'counts'>): number {
-  const full = settings.counts[subtest];
-  if (!full || count === full) return settings.passing[subtest];
-  return Math.round((settings.passing[subtest] * count) / full);
+/**
+ * A set for an imported exam package: "mini" takes up to 10 questions per sub-test, "full" the
+ * package's numbers. Sub-tests about the learner's job get that job title as their one topic.
+ */
+export function buildPackagePreset(pkg: ExamPackage, size: 'mini' | 'full', difficulty: DifficultyChoice = 'campuran', jobTitle = ''): Blueprint {
+  const job = jobTitle.trim();
+  const sections = pkg.subtests.map((s) => ({
+    subtest: s.id,
+    count: size === 'full' ? (s.count ?? 10) : Math.min(10, s.count ?? 10),
+    topics: s.fromJobTitle ? (job ? [job] : []) : [...(s.topics ?? [])],
+    difficulty,
+  }));
+  const total = sections.reduce((n, s) => n + s.count, 0);
+  const fullTotal = pkg.subtests.reduce((n, s) => n + (s.count ?? 10), 0);
+  const fullMinutes = pkg.durationMinutes ?? fullTotal;
+  return {
+    sections,
+    durationMinutes: size === 'full' ? fullMinutes : Math.max(10, Math.round((fullMinutes * total) / fullTotal)),
+    passing: Object.fromEntries(pkg.subtests.filter((s) => s.passing !== undefined).map((s) => [s.id, s.passing!])),
+  };
+}
+
+/** A sub-test in its full exam: SKD takes its numbers from Settings, other packages from their file. */
+export function fullExam(subtest: Subtest, settings: Pick<Settings, 'counts' | 'passing'>): { count: number; passing?: number } {
+  if (packageOf(subtest).id === SKD_CPNS.id) return { count: settings.counts[subtest] ?? 0, passing: settings.passing[subtest] };
+  const spec = specOf(subtest);
+  return { count: spec.count ?? 0, passing: spec.passing };
+}
+
+/** A package's full exam: total questions and minutes. */
+export function fullExamOf(pkg: ExamPackage, settings: Pick<Settings, 'counts' | 'durationMinutes'>): { total: number; durationMinutes: number } {
+  if (pkg.id === SKD_CPNS.id) return { total: SUBTESTS.reduce((n, s) => n + settings.counts[s], 0), durationMinutes: settings.durationMinutes };
+  return { total: pkg.subtests.reduce((n, s) => n + (s.count ?? 0), 0), durationMinutes: pkg.durationMinutes ?? 0 };
+}
+
+/** A pass mark scaled to the questions actually in a set (partial sets); none stays none. */
+export function scaledPassing(passing: number | undefined, count: number, fullCount: number): number | undefined {
+  if (passing === undefined || !fullCount || count === fullCount) return passing;
+  return Math.round((passing * count) / fullCount);
 }

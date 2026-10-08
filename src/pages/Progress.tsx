@@ -4,7 +4,8 @@ import { db, useSettings } from '../db';
 import { SUBTEST_NAMES } from '../domain/blueprint';
 import { attemptMode, examAttempts } from '../domain/practice';
 import { SUBTESTS } from '../domain/types';
-import type { Question, Subtest } from '../domain/types';
+import type { Attempt, Question, Subtest } from '../domain/types';
+import { isBuiltIn, packageOf, packages } from '../domain/examPackage';
 import { examSeries, MIN_EXAMS_FOR_PROJECTION, reasonSummary, topicMovers, trend } from '../engine/analytics';
 import { ScoreTrend } from '../components/ScoreTrend';
 import { Badge, Empty, ProgressBar, SubtestBadge } from '../components/ui';
@@ -145,48 +146,65 @@ export default function Progress() {
         </div>
       </section>
 
-      <section className="card overflow-x-auto">
-        <h2 className="mb-2">Riwayat skor</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
-              <th className="py-1 pr-3">Tanggal</th>
-              <th className="pr-3">Set</th>
-              {SUBTESTS.map((s) => (
-                <th key={s} className="pr-3 text-right">
-                  {s}
-                </th>
-              ))}
-              <th className="pr-3 text-right">Total</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {[...attempts].reverse().map((a) => (
-              <tr key={a.id} className="border-t border-slate-100 dark:border-slate-800">
-                <td className="py-1.5 pr-3 whitespace-nowrap">{new Date(a.startedAt).toLocaleDateString('id-ID')}</td>
-                <td className="pr-3">
-                  <Link className="hover:underline" to={`/results/${a.id}`}>
-                    {a.setName}
-                  </Link>{' '}
-                  {attemptMode(a) === 'practice' && <Badge tone="blue">latihan</Badge>}
-                </td>
-                {SUBTESTS.map((s) => {
-                  const r = a.result!.perSubtest.find((p) => p.subtest === s);
-                  return (
-                    <td key={s} className={`pr-3 text-right tabular-nums ${r?.passed === false ? 'text-red-600 dark:text-red-400' : ''}`}>
-                      {r ? `${r.score}/${r.max}` : '—'}
-                    </td>
-                  );
-                })}
-                <td className="pr-3 text-right font-medium tabular-nums">{a.result!.total}</td>
-                <td>{attemptMode(a) === 'exam' && a.result!.passedAll !== undefined && <Badge tone={a.result!.passedAll ? 'green' : 'red'}>{a.result!.passedAll ? 'lulus' : 'belum'}</Badge>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      {/* One table per exam package: their sub-tests and scales differ. SKD first. */}
+      {packages()
+        .map((pkg) => ({ pkg, list: attempts.filter((a) => packageOf(a.result!.perSubtest[0]?.subtest ?? 'TWK').id === pkg.id) }))
+        .filter((g) => g.list.length)
+        .map(({ pkg, list }) => (
+          <HistoryTable
+            key={pkg.id}
+            title={isBuiltIn(pkg) ? 'Riwayat skor' : `Riwayat skor ${pkg.name}`}
+            attempts={list}
+            subtests={isBuiltIn(pkg) ? SUBTESTS : pkg.subtests.map((x) => x.id)}
+          />
+        ))}
     </div>
+  );
+}
+
+function HistoryTable({ title, attempts, subtests }: { title: string; attempts: Attempt[]; subtests: Subtest[] }) {
+  return (
+    <section className="card overflow-x-auto">
+      <h2 className="mb-2">{title}</h2>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
+            <th className="py-1 pr-3">Tanggal</th>
+            <th className="pr-3">Set</th>
+            {subtests.map((s) => (
+              <th key={s} className="pr-3 text-right">
+                {s}
+              </th>
+            ))}
+            <th className="pr-3 text-right">Total</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {[...attempts].reverse().map((a) => (
+            <tr key={a.id} className="border-t border-slate-100 dark:border-slate-800">
+              <td className="py-1.5 pr-3 whitespace-nowrap">{new Date(a.startedAt).toLocaleDateString('id-ID')}</td>
+              <td className="pr-3">
+                <Link className="hover:underline" to={`/results/${a.id}`}>
+                  {a.setName}
+                </Link>{' '}
+                {attemptMode(a) === 'practice' && <Badge tone="blue">latihan</Badge>}
+              </td>
+              {subtests.map((s) => {
+                const r = a.result!.perSubtest.find((p) => p.subtest === s);
+                return (
+                  <td key={s} className={`pr-3 text-right tabular-nums ${r?.passed === false ? 'text-red-600 dark:text-red-400' : ''}`}>
+                    {r ? `${r.score}/${r.max}` : '—'}
+                  </td>
+                );
+              })}
+              <td className="pr-3 text-right font-medium tabular-nums">{a.result!.total}</td>
+              <td>{attemptMode(a) === 'exam' && a.result!.passedAll !== undefined && <Badge tone={a.result!.passedAll ? 'green' : 'red'}>{a.result!.passedAll ? 'lulus' : 'belum'}</Badge>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
   );
 }
 

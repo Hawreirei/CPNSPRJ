@@ -20,7 +20,7 @@ export interface GeminiMock {
   /** generateContent calls received for writing questions. */
   generateCalls: number;
   /** Questions returned, per sub-test. */
-  served: Record<'TWK' | 'TIU' | 'TKP', number>;
+  served: Record<string, number>;
   /** generateContent calls received from the cross-checker. */
   checkCalls: number;
   /** Prompts received by the tutor ("Tanya AI"). */
@@ -36,8 +36,10 @@ let serial = 0;
 
 /** Questions for one generation prompt, in the order and topics the prompt lists. */
 export function fakeQuestions(prompt: string) {
-  const subtest = /Sub-tes: (TWK|TIU|TKP)/.exec(prompt)?.[1] as 'TWK' | 'TIU' | 'TKP' | undefined;
+  const subtest = /Sub-tes: ([A-Z][A-Z0-9-]+)/.exec(prompt)?.[1];
   if (!subtest) throw new Error(`Unexpected prompt: ${prompt.slice(0, 200)}`);
+  // Graded sub-tests of other exam packages say their range, e.g. '"score" 1 sampai 4'.
+  const graded = subtest === 'TKP' ? null : /"score" (\d+) sampai (\d+)/.exec(prompt);
   const slots = [...prompt.matchAll(/^\d+\. topik "([^"]+)", kesulitan (\w+)/gm)].map((m) => ({ topic: m[1], hard: m[2] === 'sulit' }));
   const questions = slots.map(({ topic, hard }) => {
     const n = ++serial;
@@ -47,6 +49,16 @@ export function fakeQuestions(prompt: string) {
         stem: `Situasi uji ${n} (${topic}): seorang warga meminta bantuan di luar jam layanan. Apa yang Anda lakukan?`,
         options: LABELS.map((label, i) => ({ label, text: `Tindakan ${label} untuk situasi ${n}`, score: 5 - i, ...(hard ? { rationale: `Alasan skor ${5 - i} untuk tindakan ${label} situasi ${n}` } : {}) })),
         explanation: `Tindakan A paling sesuai dengan nilai pelayanan publik (situasi ${n}).`,
+        confidence: 'high',
+      };
+    }
+    if (graded) {
+      const [lo, hi] = [Number(graded[1]), Number(graded[2])];
+      return {
+        topic,
+        stem: `Situasi uji ${subtest} ${n} (${topic}): apa yang paling tepat dilakukan?`,
+        options: LABELS.map((label, i) => ({ label, text: `Jawaban ${label} untuk situasi ${n}`, score: Math.max(lo, hi - i) })),
+        explanation: `Jawaban A paling tepat (situasi ${n}).`,
         confidence: 'high',
       };
     }
@@ -137,7 +149,7 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
       stats.generateCalls++;
       const reading = fakePassages(prompt);
       const reply = reading ? { subtest: 'TIU' as const, body: { passages: reading.passages }, count: reading.count } : (({ subtest, questions }) => ({ subtest, body: { questions }, count: questions.length }))(fakeQuestions(prompt));
-      stats.served[reply.subtest] += reply.count;
+      stats.served[reply.subtest] = (stats.served[reply.subtest] ?? 0) + reply.count;
       return route.fulfill({
         json: {
           candidates: [{ content: { parts: [{ text: JSON.stringify(reply.body) }] }, finishReason: 'STOP' }],

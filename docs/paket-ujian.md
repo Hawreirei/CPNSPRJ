@@ -30,11 +30,40 @@ Kode menanyakan `isGraded`, `maxPerQuestion`, `isTopOption`, dan `topOptions`, b
 - `SKD_SUBTESTS` dan tipe `SkdSubtest` untuk bagian yang memang khusus SKD (profil kisi-kisi, berkas berbagi).
 - Diuji dengan paket fiktif khusus tes (sub-tes bernilai 1–4, tanpa ambang batas), bukan angka PPPK.
 
-**Tahap 2b: tampilan dan konten mengikuti paket.**
-- Kemampuan konten per sub-tes (`features`): wajib rujukan, cek hitungan, jenis prosedural, wacana, rasional per opsi, analisis jawaban "kurang tepat".
-- Pilihan paket saat membuat set (Buat Soal); preset, jumlah soal, dan durasi dari paket.
-- Teks aturan skor (cetak, Word, Bantuan) dibuat dari paket.
-- Progres dan kesiapan per paket, tidak dicampur.
+**Tahap 2b: paket sebagai berkas, dan seluruh alur mengikutinya (selesai).**
+- Pengaturan → **Paket ujian**: impor, ekspor, dan hapus berkas paket. Paket disimpan di Pengaturan (ikut cadangan) dan didaftarkan setiap kali Pengaturan dibaca, termasuk sebelum halaman pertama tampil. Paket yang soalnya masih ada di Bank Soal tidak bisa dihapus.
+- **Buat Soal**: pilihan ujian bila ada paket selain SKD, preset "Latihan Singkat" (paling banyak 10 soal per sub-tes) dan "lengkap" (jumlah dan waktu dari berkas), isian **nama jabatan** untuk sub-tes `fromJobTitle`, dan ambang batas yang boleh kosong.
+- **Pembuatan soal**: prompt generik untuk sub-tes paket lain (nama paket, nama sub-tes, topik atau jabatan, aturan skor). Prompt SKD tidak berubah.
+- **Validasi**: skor bertingkat diperiksa terhadap rentang paket (misalnya 1–4).
+- **Ujian, laporan, cetak, PDF/Word, Detail Set, Bank Soal, Buku Kesalahan**: mengikuti sub-tes yang ada di soal; teks aturan skor dibuat dari paket.
+- **Progres**: tabel riwayat terpisah per paket; grafik dan kesiapan tetap SKD.
+- Diuji dengan paket fiktif (unit test dan e2e lengkap dari impor sampai Progres).
+
+### Format berkas paket
+
+```json
+{
+  "app": "cpns-skd-builder",
+  "kind": "exam-package",
+  "version": 1,
+  "package": {
+    "id": "huruf-kecil-angka-minus",
+    "name": "Nama ujian",
+    "source": "Sumber angka dalam beberapa kata",
+    "official": { "title": "Judul dokumen resmi", "date": "YYYY-MM-DD", "url": "https://…" },
+    "durationMinutes": 0,
+    "subtests": [
+      { "id": "HURUF-BESAR", "name": "Nama sub-tes", "scoring": { "kind": "keyed", "correct": 0 }, "count": 0, "passing": 0, "topics": ["…"] },
+      { "id": "HURUF-BESAR-2", "name": "…", "scoring": { "kind": "graded", "min": 0, "max": 0 }, "count": 0, "fromJobTitle": true }
+    ]
+  }
+}
+```
+
+- `official` boleh tidak ada; paketnya lalu ditandai "bukan data resmi" di Pengaturan dan Buat Soal.
+- `passing` boleh tidak ada (ujian dengan peringkat).
+- `topics` wajib kecuali `fromJobTitle: true`.
+- Id sub-tes tidak boleh TWK, TIU, TKP, atau id milik paket lain.
 
 **Tahap 3: paket PPPK.** Data paket (sub-tes, aturan skor, jumlah soal, durasi, ambang batas atau tidak ada) dari dokumen resmi, prompt per sub-tes, e2e satu ujian PPPK lengkap.
 

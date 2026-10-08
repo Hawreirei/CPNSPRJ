@@ -1,7 +1,5 @@
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import { getSettings } from '../db';
-import { SUBTEST_NAMES } from '../domain/blueprint';
-import { SUBTESTS } from '../domain/types';
 import { fmtNum } from '../domain/describe';
 import type { DataFigure, Question } from '../domain/types';
 import { toPlain } from '../components/RichText';
@@ -9,7 +7,7 @@ import { dataChartSvg } from './dataSvg';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
 import { hasStudentHeader, keyText, PACK_TITLES, type ExportMeta, type PackKind } from './exportDocx';
-import { isGraded, isTopOption } from '../domain/examPackage';
+import { isGraded, isTopOption, scoringRulesText, specOf, subtestsIn } from '../domain/examPackage';
 
 function toBase64(bytes: Uint8Array): string {
   let bin = '';
@@ -37,8 +35,8 @@ export async function exportPdf(meta: ExportMeta, questions: Question[], pack: P
   }
 
   const numbered = questions.map((q, i) => ({ q, n: i + 1 }));
-  const groups = SUBTESTS.map((s) => ({ s, items: numbered.filter((x) => x.q.subtest === s) })).filter((g) => g.items.length);
-  const heading = (s: string): Content => ({ text: `${s} — ${SUBTEST_NAMES[s as keyof typeof SUBTEST_NAMES]}`, style: 'h2', margin: [0, 12, 0, 6] });
+  const groups = subtestsIn(numbered.map((x) => x.q)).map((s) => ({ s, items: numbered.filter((x) => x.q.subtest === s) }));
+  const heading = (s: string): Content => ({ text: `${s} — ${specOf(s).name}`, style: 'h2', margin: [0, 12, 0, 6] });
 
   /** A data question's numbers: a real table, or the chart as an image under its title. */
   async function dataBlock(data: DataFigure): Promise<Content> {
@@ -86,7 +84,7 @@ export async function exportPdf(meta: ExportMeta, questions: Question[], pack: P
   function kunciSection(): Content[] {
     const out: Content[] = [
       { text: 'Kunci Jawaban & Skor', style: 'h1' },
-      { text: 'TWK & TIU: jawaban benar bernilai 5, salah atau kosong 0. TKP: setiap opsi bernilai 1–5.', italics: true, fontSize: 9, margin: [0, 0, 0, 6] },
+      { text: scoringRulesText(groups.map((g) => g.s)), italics: true, fontSize: 9, margin: [0, 0, 0, 6] },
     ];
     for (const g of groups) {
       out.push(heading(g.s));
