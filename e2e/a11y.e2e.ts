@@ -6,6 +6,9 @@ const WCAG = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 /** Serious and critical WCAG A/AA violations on the page as it is now, as readable lines. */
 async function violations(page: Page): Promise<string[]> {
+  // Let CSS transitions finish first: a button that just became enabled is still fading in from
+  // half opacity for 150 ms, and axe would measure that passing colour.
+  await page.waitForFunction(() => document.getAnimations().every((a) => !(a instanceof CSSTransition) || a.playState !== 'running'));
   const r = await new AxeBuilder({ page }).withTags(WCAG).analyze();
   return r.violations
     .filter((v) => v.impact === 'serious' || v.impact === 'critical')
