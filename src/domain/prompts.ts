@@ -1,5 +1,5 @@
 import { NUMERIC_TOPICS } from './blueprint';
-import { isGraded, packageOf, SKD_CPNS, specOf } from './examPackage';
+import { isGraded, isSkd, packageOf, specOf } from './examPackage';
 import type { BatchItem, Difficulty, Question, Subtest } from './types';
 
 export const SYSTEM_PROMPT = `Anda adalah penyusun soal latihan SKD CPNS (Seleksi Kompetensi Dasar) yang teliti.
@@ -31,13 +31,13 @@ Jika Anda tidak yakin suatu aturan atau angka benar, isi "confidence": "low". Ja
     r.kind === 'keyed'
       ? 'Hanya satu opsi benar; pengecoh harus masuk akal.'
       : `Kelima opsi adalah tindakan atau jawaban yang masuk akal. Setiap opsi WAJIB punya "score" ${r.min} sampai ${r.max}; tepat satu opsi mendapat skor ${r.max}. Pembahasan menjelaskan alasan skor tiap opsi. Tidak perlu "answer".`;
-  return `Sub-tes: ${subtest} (${spec.name}) untuk ${pkg.name}. Ini BUKAN soal SKD CPNS.
+  return `Sub-tes: ${subtest} (${spec.name}) untuk ${pkg.name}. Ini BUKAN soal SKD CPNS.${spec.guide ? `\nTujuan sub-tes: ${spec.guide}` : ''}
 ${what}
 ${scoring}`;
 }
 
 function subtestGuide(subtest: Subtest, topics: string[]): string {
-  if (packageOf(subtest).id !== SKD_CPNS.id) return packageGuide(subtest, topics);
+  if (!isSkd(packageOf(subtest))) return packageGuide(subtest, topics);
   const list = topics.map((t) => `"${t}"`).join(', ');
   if (subtest === 'TWK') {
     return `Sub-tes: TWK (Tes Wawasan Kebangsaan). Topik: ${list}.

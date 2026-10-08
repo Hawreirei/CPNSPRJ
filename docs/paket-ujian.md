@@ -65,25 +65,32 @@ Kode menanyakan `isGraded`, `maxPerQuestion`, `isTopOption`, dan `topOptions`, b
 - `topics` wajib kecuali `fromJobTitle: true`.
 - Id sub-tes tidak boleh TWK, TIU, TKP, atau id milik paket lain.
 
-**Tahap 3: paket PPPK.** Data paket (sub-tes, aturan skor, jumlah soal, durasi, ambang batas atau tidak ada) dari dokumen resmi, prompt per sub-tes, e2e satu ujian PPPK lengkap.
+**Tahap 3: paket PPPK 2024 (selesai).** Paket bawaan `PPPK_2024` di `src/domain/examPackage.ts`, dari **Keputusan MenPAN-RB Nomor 347 Tahun 2024** tentang Mekanisme Seleksi PPPK Tahun Anggaran 2024, ditetapkan 19 Agustus 2024 (salinan dari jdih.menpan.go.id). Bawaan berarti langsung bisa dipilih tanpa impor, dan tidak bisa dihapus atau ditimpa berkas impor.
 
-## Paket PPPK: yang dibutuhkan dari dokumen resmi
+## Paket PPPK 2024 dan rujukannya
 
-Angka di aplikasi hanya diambil dari dokumen resmi. Dokumen yang relevan menurut pencarian: **Keputusan MenPAN-RB Nomor 347 Tahun 2024** tentang mekanisme seleksi PPPK tahun anggaran 2024, serta 348/2024 (guru) dan 349/2024 (kesehatan). Teksnya **belum bisa dibaca** dari lingkungan pengembangan ini, jadi belum ada angka PPPK di kode.
+| Isi paket | Nilai | Diktum |
+|---|---|---|
+| Sub-tes | Kompetensi teknis, manajerial, sosial kultural; wawancara berbasis komputer | KETIGA BELAS, KEEMPAT BELAS |
+| Jumlah soal | 145: teknis 90, manajerial 25, sosial kultural 20, wawancara 10 | KEDUA PULUH DUA |
+| Penilaian teknis | benar 5, salah atau tidak menjawab 0 | KEDUA PULUH TIGA huruf a |
+| Penilaian manajerial, sosial kultural, wawancara | jawaban 1 sampai 4, tidak menjawab 0 | KEDUA PULUH TIGA huruf b |
+| Nilai tertinggi | 670: teknis 450, manajerial dan sosial kultural 180, wawancara 40 (cocok dengan jumlah soal × nilai tertinggi) | KEDUA PULUH EMPAT |
+| Waktu | 120 menit untuk tiga kompetensi, 10 menit wawancara; di aplikasi satu sesi 130 menit | KETUJUH BELAS, KEDELAPAN BELAS |
+| Ambang batas | tidak ada; lulus bila berperingkat terbaik | KEDUA PULUH SEMBILAN |
+| Topik manajerial | integritas, kerja sama, komunikasi, orientasi pada hasil, pelayanan publik, pengembangan diri dan orang lain, mengelola perubahan, pengambilan keputusan | KELIMA BELAS huruf b |
+| Topik sosial kultural | kepekaan terhadap keberagaman, kemampuan berhubungan sosial, kepekaan terhadap pentingnya persatuan, empati | KELIMA BELAS huruf c |
+| Aspek wawancara | kejujuran, komitmen, keadilan, etika, kepatuhan | KELIMA BELAS huruf d |
+| Kompetensi teknis | spesifik bidang teknis jabatan; di aplikasi dibuat dari nama jabatan yang diisi pengguna, berlabel bukan kisi-kisi resmi | KELIMA BELAS huruf a |
 
-Yang perlu dipastikan dari teksnya:
-1. Daftar komponen seleksi kompetensi dan jumlah soal masing-masing.
-2. Aturan skor per komponen (jawaban benar/salah, rentang skor per opsi, nilai tidak menjawab).
-3. Durasi tes.
-4. Ada atau tidak ada nilai ambang batas, dan bila tidak ada, bagaimana kelulusan ditentukan.
-5. Apakah aturan ini berlaku umum atau berbeda untuk guru, kesehatan, dan teknis.
+Ditampilkan sebagai catatan saat paket dipilih, karena tidak bisa dinyatakan sebagai satu angka:
+- Pelamar disabilitas sensorik netra: 150 menit dan 15 menit (KEDUA PULUH, KEDUA PULUH SATU).
+- Jabatan Pengelola Umum Operasional: teknis 45 soal, nilai tertinggi 445 (KEDUA PULUH TUJUH, KEDUA PULUH DELAPAN). Jumlah soal teknis bisa diubah di "Sesuaikan lebih lanjut".
+- Guru di instansi pusat dengan sertifikat pendidik yang linear mendapat nilai teknis tertinggi 100% (KEDUA PULUH LIMA): tidak relevan untuk latihan, tidak dimodelkan.
 
-Klaim dari pemberitaan, **belum terverifikasi dan tidak dipakai di kode**:
-- Komponen: teknis, manajerial, sosial kultural, wawancara; disebut 90, 25, 20, dan 10 soal.
-- Teknis: benar 5, salah atau kosong 0. Manajerial, sosial kultural, wawancara: 1–4 per opsi, kosong 0.
-- Tidak ada nilai ambang batas pada 2024; kelulusan berdasarkan peringkat.
+Keputusan ini khusus tahun anggaran 2024. Bila aturan tahun berikutnya berbeda, tambahkan paket baru (misalnya `pppk-2025` dengan id sub-tes baru), jangan mengubah angka paket 2024.
 
 ## Keputusan untuk PPPK
 
 - **Kompetensi teknis dari nama jabatan** (diputuskan pemilik produk, 8 Oktober 2026). Pengguna menulis nama jabatannya; soal teknis dibuat AI dari nama itu dan ditandai "bukan kisi-kisi resmi".
-- **Wawancara** di PPPK adalah tes tertulis berbasis komputer menurut pemberitaan; formatnya perlu dipastikan dari dokumen sebelum dibuatkan soal.
+- **Wawancara** dilaksanakan berbasis komputer dengan CAT BKN (Diktum KEEMPAT BELAS dan KEENAM BELAS) dan dinilai 1–4 per jawaban, jadi di aplikasi dibuat sebagai sub-tes pilihan ganda bertingkat.

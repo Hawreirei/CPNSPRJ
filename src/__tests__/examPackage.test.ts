@@ -101,7 +101,7 @@ describe('a second package (made up for this test, not real exam numbers)', () =
     expect(specOf('UJI-B')).toMatchObject({ name: 'Uji B', scoring: { kind: 'graded', max: 4 } });
     expect(maxPerQuestion('UJI-B')).toBe(4);
     expect(specOf('BARU')).toEqual({ id: 'BARU', name: 'BARU', scoring: { kind: 'keyed', correct: 5 } });
-    expect(packages().map((p) => p.id)).toEqual(['skd-cpns', 'uji']);
+    expect(packages().map((p) => p.id)).toEqual(['skd-cpns', 'pppk-2024', 'uji']);
   });
 
   it('orders sub-tests by package, then unknown ones', () => {

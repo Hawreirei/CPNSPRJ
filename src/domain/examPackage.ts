@@ -28,6 +28,8 @@ export interface SubtestSpec {
   topics?: string[];
   /** Questions are about the job the learner names (PPPK technical competence), not a topic list. */
   fromJobTitle?: boolean;
+  /** What the sub-test measures, in the source document's words; given to the model with the topics. */
+  guide?: string;
 }
 
 export interface ExamPackage {
@@ -37,8 +39,10 @@ export interface ExamPackage {
   source: string;
   /** The official document the numbers come from. Without it the package is shown as "bukan data resmi". */
   official?: { title: string; date: string; url?: string };
-  /** Imported packages: length of the full exam. */
+  /** Length of the full exam (SKD: from Settings). */
   durationMinutes?: number;
+  /** Exceptions and details the numbers cannot express, shown when the package is picked. */
+  notes?: string[];
   subtests: SubtestSpec[];
 }
 
@@ -54,7 +58,66 @@ export const SKD_CPNS: ExamPackage = {
   ],
 };
 
-/** Every package the app knows, in display order; SKD CPNS first. */
+/**
+ * PPPK 2024, from Keputusan MenPAN-RB Nomor 347 Tahun 2024 (19 Agustus 2024). Every number below
+ * cites its diktum. There is no pass mark: applicants pass by ranking (Diktum KEDUA PULUH SEMBILAN).
+ */
+export const PPPK_2024: ExamPackage = {
+  id: 'pppk-2024',
+  name: 'PPPK 2024',
+  source: 'Keputusan MenPAN-RB Nomor 347 Tahun 2024',
+  official: {
+    title: 'Keputusan Menteri PANRB Nomor 347 Tahun 2024 tentang Mekanisme Seleksi PPPK Tahun Anggaran 2024',
+    date: '2024-08-19',
+    url: 'https://jdih.menpan.go.id',
+  },
+  // Diktum KETUJUH BELAS (120 minutes for the three competences) and KEDELAPAN BELAS (10 for the
+  // interview), taken here as one sitting.
+  durationMinutes: 130,
+  notes: [
+    'Waktu resmi: 120 menit untuk kompetensi teknis, manajerial, dan sosial kultural, ditambah 10 menit wawancara (Diktum KETUJUH BELAS dan KEDELAPAN BELAS). Di aplikasi digabung menjadi satu sesi 130 menit.',
+    'Pelamar disabilitas sensorik netra: 150 menit dan 15 menit (Diktum KEDUA PULUH dan KEDUA PULUH SATU).',
+    'Jabatan Pengelola Umum Operasional: kompetensi teknis 45 soal, nilai tertinggi 445 (Diktum KEDUA PULUH TUJUH dan KEDUA PULUH DELAPAN). Ubah jumlah soal teknis di "Sesuaikan lebih lanjut".',
+    'Tidak ada ambang batas: pelamar lulus bila berperingkat terbaik (Diktum KEDUA PULUH SEMBILAN).',
+  ],
+  subtests: [
+    {
+      id: 'PPPK-TEKNIS',
+      name: 'Kompetensi Teknis',
+      scoring: { kind: 'keyed', correct: 5 }, // Diktum KEDUA PULUH TIGA huruf a
+      count: 90, // Diktum KEDUA PULUH DUA huruf a
+      fromJobTitle: true,
+      guide: 'Menilai penguasaan pengetahuan, keterampilan, dan sikap/perilaku yang dapat diamati, diukur, dan dikembangkan, yang spesifik berkaitan dengan bidang teknis jabatan.',
+    },
+    {
+      id: 'PPPK-MANAJERIAL',
+      name: 'Kompetensi Manajerial',
+      scoring: { kind: 'graded', min: 1, max: 4 }, // Diktum KEDUA PULUH TIGA huruf b
+      count: 25, // Diktum KEDUA PULUH DUA huruf b
+      topics: ['Integritas', 'Kerja Sama', 'Komunikasi', 'Orientasi pada Hasil', 'Pelayanan Publik', 'Pengembangan Diri dan Orang Lain', 'Mengelola Perubahan', 'Pengambilan Keputusan'],
+      guide: 'Menilai komitmen, kemampuan, dan perilaku individu dalam berorganisasi yang dapat diamati dan diukur.',
+    },
+    {
+      id: 'PPPK-SOSKUL',
+      name: 'Kompetensi Sosial Kultural',
+      scoring: { kind: 'graded', min: 1, max: 4 }, // Diktum KEDUA PULUH TIGA huruf b
+      count: 20, // Diktum KEDUA PULUH DUA huruf c
+      topics: ['Kepekaan terhadap Keberagaman', 'Kemampuan Berhubungan Sosial', 'Kepekaan terhadap Pentingnya Persatuan', 'Empati'],
+      guide:
+        'Menilai pengetahuan dan sikap terkait pengalaman berinteraksi dengan masyarakat majemuk (agama, suku dan budaya, perilaku, wawasan kebangsaan, etika, nilai, moral, emosi, dan prinsip), sebagai perekat bangsa.',
+    },
+    {
+      id: 'PPPK-WAWANCARA',
+      name: 'Wawancara',
+      scoring: { kind: 'graded', min: 1, max: 4 }, // Diktum KEDUA PULUH TIGA huruf b
+      count: 10, // Diktum KEDUA PULUH DUA huruf d
+      topics: ['Kejujuran', 'Komitmen', 'Keadilan', 'Etika', 'Kepatuhan'],
+      guide: 'Wawancara berbasis komputer yang menggali informasi nonkognitif untuk menilai integritas dan moralitas.',
+    },
+  ],
+};
+
+/** Every package the app knows, in display order: the built-in ones first. */
 const PACKAGES: ExamPackage[] = [];
 const SPECS = new Map<Subtest, { spec: SubtestSpec; pkg: ExamPackage; order: number }>();
 
@@ -65,18 +128,23 @@ export function registerPackage(pkg: ExamPackage) {
   PACKAGES.push(pkg);
   for (const spec of pkg.subtests) SPECS.set(spec.id, { spec, pkg, order: SPECS.size });
 }
-registerPackage(SKD_CPNS);
+const BUILT_IN = [SKD_CPNS, PPPK_2024];
+for (const pkg of BUILT_IN) registerPackage(pkg);
 
 export const packages = (): readonly ExamPackage[] => PACKAGES;
 
-export const isBuiltIn = (pkg: Pick<ExamPackage, 'id'>) => pkg.id === SKD_CPNS.id;
+/** SKD CPNS: its numbers and topics come from Settings and the syllabus profile, not the package. */
+export const isSkd = (pkg: Pick<ExamPackage, 'id'>) => pkg.id === SKD_CPNS.id;
+
+/** Shipped with the app: cannot be removed or replaced by an imported file. */
+export const isBuiltIn = (pkg: Pick<ExamPackage, 'id'>) => BUILT_IN.some((p) => p.id === pkg.id);
 
 /**
  * Make the registry match the learner's imported packages (kept in Settings). Called whenever
  * Settings are read, so scoring always knows them. A package whose sub-test ids clash is skipped.
  */
 export function setCustomPackages(list: readonly ExamPackage[] = []) {
-  for (const pkg of PACKAGES.splice(1)) for (const spec of pkg.subtests) SPECS.delete(spec.id);
+  for (const pkg of PACKAGES.splice(BUILT_IN.length)) for (const spec of pkg.subtests) SPECS.delete(spec.id);
   for (const pkg of list) {
     try {
       registerPackage(pkg);
