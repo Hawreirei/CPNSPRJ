@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import type { Blueprint, FlagKind, Question, SkdSubtest } from './types';
+import { isBuiltIn, packageOf, packages, type ExamPackage } from './examPackage';
+import { packageFile, parsePackageFile } from './packageFile';
+import { SKD_SUBTESTS } from './types';
+import type { Blueprint, FlagKind, Question, Subtest } from './types';
 
 /*
  * A set shared as a file or a link: the set's name and blueprint and its questions, without
@@ -8,7 +11,15 @@ import type { Blueprint, FlagKind, Question, SkdSubtest } from './types';
  * and its text is only ever rendered as text.
  */
 
+/** SKD sets: unchanged since #30, so older versions of the app still read them. */
 export const SHARE_VERSION = 1;
+/**
+ * Sets with sub-tests of other exam packages (#45). Older versions only know TWK/TIU/TKP; the higher
+ * version makes them say "perbarui aplikasi" instead of failing on an unknown sub-test.
+ */
+export const SHARE_VERSION_PACKAGES = 2;
+/** Imported packages a set may carry (a set is normally one package). */
+const MAX_PACKAGES = 3;
 
 /** Shown when a set holding questions copied from photos or PDFs (#38) is shared. */
 export const COPYRIGHT_SHARE =
@@ -27,7 +38,8 @@ const cell = z.object({
   rotation: finite.min(-720).max(720),
   count: z.number().int().min(1).max(4),
 });
-const subtest = z.enum(['TWK', 'TIU', 'TKP']);
+// Any package's sub-test id; whether it is known is checked after parsing (parseShared).
+const subtest = z.string().regex(/^[A-Z][A-Z0-9-]{1,23}$/, 'id sub-tes tidak valid');
 const difficulty = z.enum(['mudah', 'sedang', 'sulit']);
 
 const questionSchema = z.object({
@@ -41,7 +53,7 @@ const questionSchema = z.object({
       z.object({
         label,
         text: text(1000),
-        score: z.number().int().min(0).max(5),
+        score: z.number().int().min(0).max(10),
         figure: cell.optional(),
         rationale: text(600).optional(),
       }),
@@ -72,9 +84,10 @@ const questionSchema = z.object({
 });
 
 const blueprintSchema = z.object({
-  sections: z.array(z.object({ subtest, count: z.number().int().min(0).max(500), topics: z.array(text(80)).max(60), difficulty: z.enum(['mudah', 'sedang', 'sulit', 'campuran']), weights: z.record(z.string(), finite).optional() })).max(3),
+  sections: z.array(z.object({ subtest, count: z.number().int().min(0).max(500), topics: z.array(text(80)).max(60), difficulty: z.enum(['mudah', 'sedang', 'sulit', 'campuran']), weights: z.record(z.string(), finite).optional() })).max(10),
   durationMinutes: z.number().int().min(1).max(600),
-  passing: z.object({ TWK: finite, TIU: finite, TKP: finite }),
+  // SKD sets carry all three pass marks; other packages may have none (decided by ranking).
+  passing: z.record(subtest, finite),
 });
 
 const fileSchema = z.object({
@@ -84,6 +97,8 @@ const fileSchema = z.object({
   exportedAt: text(40).optional(),
   set: z.object({ name: text(120).min(1), blueprint: blueprintSchema }),
   questions: z.array(questionSchema).min(1, 'set kosong').max(MAX_QUESTIONS, `paling banyak ${MAX_QUESTIONS} soal`),
+  // Checked one by one with the package file rules (parsePackageFile).
+  packages: z.array(z.unknown()).max(MAX_PACKAGES).optional(),
 });
 
 export type SharedQuestion = z.infer<typeof questionSchema>;
@@ -94,6 +109,8 @@ export interface SharedSet {
   exportedAt?: string;
   set: { name: string; blueprint: Blueprint };
   questions: SharedQuestion[];
+  /** Imported exam packages the questions belong to, which the receiver may not have. Built-in ones never travel. */
+  packages?: ExamPackage[];
 }
 
 /**
@@ -101,35 +118,36 @@ export interface SharedSet {
  * from the learner's own photos or PDFs stay out unless they choose to share them (#38).
  */
 export function toShared(name: string, blueprint: Blueprint, questions: Question[], opts: { includeNotes?: boolean; includeImported?: boolean } = {}): SharedSet {
+  const shared = questions.filter((q) => opts.includeImported || q.source !== 'import');
+  const skd = [...shared.map((q) => q.subtest), ...blueprint.sections.map((s) => s.subtest)].every(isSkdSubtest);
+  const carried = [...new Set(shared.map((q) => packageOf(q.subtest)))].filter((p) => !isBuiltIn(p));
   return {
     app: 'cpns-skd-builder',
     kind: 'set',
-    version: SHARE_VERSION,
+    version: skd ? SHARE_VERSION : SHARE_VERSION_PACKAGES,
     exportedAt: new Date().toISOString(),
     set: { name, blueprint },
-    questions: questions
-      .filter((q) => opts.includeImported || q.source !== 'import')
-      .map((q) => ({
-        id: q.id,
-        // Shared files carry SKD sets only for now; other exam packages get their own format with #37.
-        subtest: q.subtest as SkdSubtest,
-        topic: q.topic,
-        difficulty: q.difficulty,
-        stem: q.stem,
-        options: q.options.map(({ label, text, score, figure, rationale }) => ({ label, text, score, ...(figure ? { figure } : {}), ...(rationale ? { rationale } : {}) })),
-        ...(q.answer ? { answer: q.answer } : {}),
-        explanation: q.explanation,
-        ...(q.reference ? { reference: q.reference } : {}),
-        ...(q.confidence ? { confidence: q.confidence } : {}),
-        ...(q.mathExpression ? { mathExpression: q.mathExpression } : {}),
-        ...(q.figure ? { figure: q.figure } : {}),
-        ...(q.data ? { data: q.data } : {}),
-        ...(q.passage ? { passage: q.passage } : {}),
-        ...(opts.includeNotes && q.notes?.length ? { notes: q.notes } : {}),
-        flags: q.flags.filter((f) => SHARED_FLAG_KINDS.has(f.kind)),
-        hash: q.hash,
-        source: q.source,
-      })),
+    ...(carried.length ? { packages: carried } : {}),
+    questions: shared.map((q) => ({
+      id: q.id,
+      subtest: q.subtest,
+      topic: q.topic,
+      difficulty: q.difficulty,
+      stem: q.stem,
+      options: q.options.map(({ label, text, score, figure, rationale }) => ({ label, text, score, ...(figure ? { figure } : {}), ...(rationale ? { rationale } : {}) })),
+      ...(q.answer ? { answer: q.answer } : {}),
+      explanation: q.explanation,
+      ...(q.reference ? { reference: q.reference } : {}),
+      ...(q.confidence ? { confidence: q.confidence } : {}),
+      ...(q.mathExpression ? { mathExpression: q.mathExpression } : {}),
+      ...(q.figure ? { figure: q.figure } : {}),
+      ...(q.data ? { data: q.data } : {}),
+      ...(q.passage ? { passage: q.passage } : {}),
+      ...(opts.includeNotes && q.notes?.length ? { notes: q.notes } : {}),
+      flags: q.flags.filter((f) => SHARED_FLAG_KINDS.has(f.kind)),
+      hash: q.hash,
+      source: q.source,
+    })),
   };
 }
 
@@ -140,14 +158,29 @@ export function parseShared(raw: unknown): SharedSet {
     throw new Error(kind === undefined && (raw as { sets?: unknown } | null)?.sets ? 'Ini berkas cadangan, bukan set bersama. Pulihkan lewat Pengaturan.' : 'Berkas bukan set bersama CPNS SKD Set Builder.');
   }
   const version = (raw as { version?: unknown }).version;
-  if (typeof version === 'number' && version > SHARE_VERSION) throw new Error('Set ini dibuat oleh versi aplikasi yang lebih baru. Perbarui aplikasi lalu coba lagi.');
+  if (typeof version === 'number' && version > SHARE_VERSION_PACKAGES) throw new Error('Set ini dibuat oleh versi aplikasi yang lebih baru. Perbarui aplikasi lalu coba lagi.');
   const r = fileSchema.safeParse(raw);
   if (!r.success) {
     const i = r.error.issues[0];
     throw new Error(`Set tidak valid${i.path.length ? ` (${i.path.join('.')})` : ''}: ${i.message}.`);
   }
-  return r.data as SharedSet;
+  const carried = (r.data.packages ?? []).map((p, i) => {
+    try {
+      return parsePackageFile(JSON.parse(packageFile(p as ExamPackage)));
+    } catch (e) {
+      throw new Error(`Paket ujian ke-${i + 1} di set ini tidak valid: ${(e as Error).message}`);
+    }
+  });
+  // Every sub-test must belong to a package the receiver has, or to one the set carries.
+  const known = new Set([...packages(), ...carried].flatMap((p) => p.subtests.map((s) => s.id)));
+  for (const s of [...r.data.questions.map((q) => q.subtest), ...r.data.set.blueprint.sections.map((x) => x.subtest)]) {
+    if (!known.has(s))
+      throw new Error(`Set ini memakai sub-tes "${s}" dari paket ujian yang tidak ada di aplikasi Anda. Minta pengirim membagikannya lagi dengan versi aplikasi terbaru.`);
+  }
+  return { ...(r.data as Omit<SharedSet, 'packages'>), ...(carried.length ? { packages: carried } : {}) };
 }
+
+const isSkdSubtest = (s: Subtest) => (SKD_SUBTESTS as string[]).includes(s);
 
 /* -------------------------------------------------------------- links */
 
