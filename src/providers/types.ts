@@ -55,9 +55,9 @@ export interface ProviderInfo {
 export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   gemini: {
     name: 'Google Gemini',
-    // Google's alias that always points to the current Flash model.
-    defaultModel: 'gemini-flash-latest',
-    suggestedModels: ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest'],
+    // Named by Google's own retirement notice for gemini-2.5-flash (Oct 2026); the live list still decides.
+    defaultModel: 'gemini-3.8-flash',
+    suggestedModels: ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-flash-lite-latest'],
     keyUrl: 'https://aistudio.google.com/app/apikey',
     keyHint: 'AIza…',
   },

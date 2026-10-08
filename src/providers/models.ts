@@ -128,6 +128,17 @@ export function isModelUnavailable(status: number | undefined, message: string):
   return /(model[^.]*(not found|does not exist|no longer|deprecated|not supported|unavailable|not available))|(no longer available)/i.test(message);
 }
 
+/**
+ * Providers often name the replacement in the retirement error, e.g. Gemini:
+ * "...no longer available to new users. Please update your code to use models/gemini-3.8-flash".
+ */
+export function suggestedReplacement(message: string): string | undefined {
+  const m = message.match(/\b(?:use|switch to|migrate to|upgrade to)\s+(?:the\s+)?(?:model\s+)?[`'"]?(?:models\/)?([a-z][a-z0-9.-]*\d[a-z0-9.-]*?)[`'".,;)]?(?:\s|$)/i);
+  if (!m) return undefined;
+  const id = m[1].replace(/[.-]+$/, '');
+  return rankModel(id).tier === 'other' ? undefined : id;
+}
+
 /** Rough price per 1M tokens by model family, for models not in the price table. */
 export function familyPrice(model: string): { input: number; output: number } | undefined {
   const id = bare(model);

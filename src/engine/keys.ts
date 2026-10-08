@@ -62,14 +62,35 @@ const RECHECK_MS = 7 * 24 * 3600 * 1000;
  * Re-read the account's model list and switch to the newest stable recommended
  * model. Returns the (possibly unchanged) model id.
  */
-export async function refreshKeyModel(keyId: string): Promise<{ model: string; changed: boolean }> {
+export async function refreshKeyModel(
+  keyId: string,
+  opts: { exclude?: string; hint?: string } = {},
+): Promise<{ model: string; changed: boolean }> {
   const rec = await db.keys.get(keyId);
   if (!rec) throw new Error('API key tidak ditemukan.');
   const cfg = await providerConfig(keyId);
-  const pick = pickRecommendedModel(await listModels(cfg));
-  const model = pick ?? rec.model;
+  let list: string[] | null = null;
+  try {
+    // A model the provider just rejected may still be listed; never pick it again.
+    list = (await listModels(cfg)).filter((m) => m !== opts.exclude && m.replace(/^models\//, '') !== opts.exclude);
+  } catch (e) {
+    if (!opts.hint) throw e;
+  }
+  // The provider's own suggestion wins when it is available to this key (or the list can't be read).
+  const hinted = opts.hint && (!list || list.some((m) => m === opts.hint || m.endsWith(`/${opts.hint}`))) ? opts.hint : undefined;
+  const model = hinted ?? (list ? pickRecommendedModel(list) : undefined) ?? opts.hint ?? rec.model;
   await db.keys.update(keyId, { model, modelCheckedAt: Date.now() });
   return { model, changed: model !== rec.model };
+}
+
+/** Refresh auto-managed keys whose model hasn't been checked for a week (model listing uses no generation quota). */
+export async function refreshStaleKeyModels(): Promise<void> {
+  const keys = await db.keys.toArray();
+  await Promise.all(
+    keys
+      .filter((k) => k.autoModel !== false && (!k.modelCheckedAt || Date.now() - k.modelCheckedAt > RECHECK_MS))
+      .map((k) => refreshKeyModel(k.id).catch(() => undefined)),
+  );
 }
 
 /** Config for a generation run; refreshes an auto-managed model if it has not been checked recently. */

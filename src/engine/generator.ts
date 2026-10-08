@@ -5,7 +5,7 @@ import { buildPrompt, buildRewritePrompt, SYSTEM_PROMPT } from '../domain/prompt
 import { parseAiQuestions } from '../domain/schemas';
 import { SUBTESTS } from '../domain/types';
 import { validateQuestion } from '../domain/validators';
-import { complete, isModelUnavailable, ProviderError } from '../providers';
+import { complete, isModelUnavailable, ProviderError, suggestedReplacement } from '../providers';
 import type { ProviderConfig } from '../providers';
 import type { ApiKeyRecord, PlanBatch, QSet, Question } from '../domain/types';
 import { uid } from '../lib/id';
@@ -122,12 +122,12 @@ const estimateTokens = (text: string) => Math.ceil(text.length / 3.5);
 const MAX_RATE_WAITS = 6;
 
 /** Switch to the newest stable model once per session when the provider says the current one is gone. */
-async function swapModel(s: ModelSession): Promise<boolean> {
+async function swapModel(s: ModelSession, errorMessage = ''): Promise<boolean> {
   if (!s.autoModel) return false;
   if (!s.swapped) {
     const from = s.cfg.model;
     s.swapped = (async () => {
-      const { model } = await refreshKeyModel(s.keyId);
+      const { model } = await refreshKeyModel(s.keyId, { exclude: from, hint: suggestedReplacement(errorMessage) });
       s.cfg = await providerConfig(s.keyId);
       if (model !== from) s.onSwap?.(from, model);
     })();
@@ -187,7 +187,7 @@ async function callAndParse(
       if (e instanceof ProviderError && !triedSwap && isModelUnavailable(e.status, e.message)) {
         triedSwap = true;
         // Another worker may already have swapped; otherwise refresh from the live list.
-        if (session.cfg.model !== model || (await swapModel(session))) {
+        if (session.cfg.model !== model || (await swapModel(session, e.message))) {
           attempt--;
           continue;
         }
@@ -270,6 +270,8 @@ const fmtWait = (ms: number) => (ms >= 60_000 ? `${Math.ceil(ms / 60_000)} menit
 export function isRunning(setId: string) {
   return controllers.has(setId);
 }
+
+export const isAnyGenerationRunning = () => controllers.size > 0;
 
 /** Generate every pending or failed batch. Safe to call again to resume. */
 export async function startGeneration(setId: string): Promise<void> {
