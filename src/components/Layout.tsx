@@ -2,6 +2,8 @@ import { useState, Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Disclaimer } from './Disclaimer';
 import { useUpdateWaiting } from '../lib/pwa';
+import { useStudyReminder } from '../lib/reminder';
+import { useSettings } from '../db';
 
 const NAV = [
   { to: '/', label: 'Beranda', end: true },
@@ -19,6 +21,7 @@ const NAV = [
 export default function Layout() {
   const [open, setOpen] = useState(false);
   const updateWaiting = useUpdateWaiting();
+  useStudyReminder(!!useSettings().studyPlan?.reminder?.enabled);
   return (
     <div className="min-h-screen md:flex">
       <header className="no-print flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden dark:border-slate-800 dark:bg-slate-900">

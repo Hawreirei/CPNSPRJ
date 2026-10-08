@@ -2,10 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { db, useSettings } from '../db';
 import { attemptMode, attemptPath, examAttempts } from '../domain/practice';
-import { weakTopics } from '../domain/scoring';
-import { recommendations } from '../engine/analytics';
-import { attemptQuestions } from '../engine/attempts';
 import { getReviewDays } from '../engine/review';
+import { weakFocus } from '../engine/today';
 import { dueQueue, isDue } from '../engine/srs';
 import { BackupReminderCard } from '../components/BackupReminder';
 import { StreakCard } from '../components/StreakCard';
@@ -25,14 +23,7 @@ export default function Dashboard() {
     ]);
     const setCount = await db.sets.count();
     const flagged = await db.questions.filter((q) => q.flags.some((f) => f.severity === 'warn')).count();
-    // Topics to practise today: the latest attempt's weak-topic advice, else its weakest topics.
-    let weak: { topics: string[]; setId: string } | undefined;
-    const latest = attempts.find((a) => a.result);
-    if (latest && (await db.sets.get(latest.setId))) {
-      const advice = recommendations(latest, await attemptQuestions(latest)).find((r) => r.kind === 'weak-topic')?.practiceTopics;
-      const topics = advice ?? weakTopics(latest.result!.topics).slice(0, 3).map((t) => t.topic);
-      if (topics.length) weak = { topics, setId: latest.setId };
-    }
+    const weak = await weakFocus(attempts);
     return { sets, setCount, questions, keys, attempts, flagged, reviews, reviewDays, weak, now: Date.now() };
   });
   if (!data) return null;

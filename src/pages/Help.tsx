@@ -32,7 +32,8 @@ export default function Help() {
           </li>
           <li>
             <b>Rencana belajar</b>: di Pengaturan, isi waktu belajar per hari dan, bila sudah ada, tanggal ujian. Beranda lalu menampilkan hitung mundur,
-            target hari ini, dan kesiapan Anda dibanding skor target. Jadwal simulasi mingguan bisa diunduh ke kalender (.ics).
+            target hari ini, dan kesiapan Anda dibanding skor target. Jadwal simulasi mingguan bisa diunduh ke kalender (.ics). Di rencana ada juga
+            pengingat harian lewat notifikasi browser; pengingat ini hanya bisa muncul saat aplikasi terbuka, jadi kalender (.ics) tetap cara yang paling andal.
           </li>
           <li>
             <b>Streak dan lencana</b>: Beranda menghitung hari berturut-turut Anda menyelesaikan latihan, ujian, atau ulangan Buku Kesalahan. Hari di luar hari

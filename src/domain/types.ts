@@ -340,6 +340,8 @@ export interface StudyPlan {
   simulationDay?: number;
   /** Weekdays the learner plans to study (0 = Sunday); missing means every day. Other days never break a streak. */
   studyDays?: number[];
+  /** Daily browser notification at a local time ("HH:MM"), shown when the app is open or next opened. */
+  reminder?: { enabled: boolean; time: string };
 }
 
 /** A break from the streak (illness, holiday): local dates, inclusive; no `to` while it lasts. */
