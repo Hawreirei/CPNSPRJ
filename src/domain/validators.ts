@@ -28,6 +28,17 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
     flags.push(...m.flags);
   }
 
+  if (next.subtest !== 'TKP' && next.answer) {
+    const said = explainedOption(next);
+    if (said && said !== next.answer) {
+      flags.push({
+        kind: 'explanation-mismatch',
+        severity: 'warn',
+        message: `Pembahasan menyimpulkan jawaban ${said}, tetapi kunci jawabannya ${next.answer}.`,
+      });
+    }
+  }
+
   if (next.subtest === 'TWK') {
     if (!next.reference?.trim()) {
       flags.push({ kind: 'twk-unverified', severity: 'warn', message: 'Belum ada sumber rujukan (sila, pasal, atau fakta sejarah). Cocokkan dengan sumber resmi.' });
@@ -97,6 +108,18 @@ export function checkMath(q: Question): { question: Question; flags: Flag[] } {
 
   if (matches.length === 1 && matches[0] === q.answer) return { question: q, flags };
 
+  // The explanation is the model's own step-by-step working: when it backs the key,
+  // two of the three agree and the key must not be changed on the formula's word alone.
+  const backsKey = !!q.answer && explainedOption(q) === q.answer;
+
+  if (matches.length === 1 && backsKey) {
+    flags.push({
+      kind: 'math-mismatch',
+      severity: 'warn',
+      message: `Kunci jawaban ${q.answer} dan pembahasan berbeda dengan hitungan ulang otomatis (${formatNum(value)}, opsi ${matches[0]}). Cek soal ini.`,
+    });
+    return { question: q, flags };
+  }
   if (matches.length === 1) {
     const answer = matches[0];
     flags.push({
@@ -111,10 +134,36 @@ export function checkMath(q: Question): { question: Question; flags: Flag[] } {
   }
   if (matches.length > 1) {
     flags.push({ kind: 'math-mismatch', severity: 'warn', message: `Lebih dari satu pilihan jawaban bernilai ${formatNum(value)}.` });
+  } else if (backsKey) {
+    // Only the helper formula is off; the key and the worked explanation agree.
+    flags.push({ kind: 'math-mismatch', severity: 'info', message: 'Rumus bantu dari AI tidak cocok, tetapi kunci jawaban dan pembahasan sudah sesuai.' });
   } else {
-    flags.push({ kind: 'math-mismatch', severity: 'warn', message: `Hasil hitungan (${formatNum(value)}) tidak ada di pilihan jawaban. Cek soal ini.` });
+    flags.push({ kind: 'math-mismatch', severity: 'warn', message: `Hasil hitungan ulang (${formatNum(value)}) tidak ada di pilihan jawaban. Cek soal ini.` });
   }
   return { question: q, flags };
+}
+
+/**
+ * The option the explanation concludes with ("Jawaban: C", "jawaban yang benar
+ * adalah 0,7"), or undefined when it can't be told. Numbers are matched to the
+ * one option with that value.
+ */
+export function explainedOption(q: Question): OptionLabel | undefined {
+  const re = /jawaban(?:nya)?(?:\s+yang\s+(?:paling\s+)?(?:benar|tepat))?\s*(?:adalah|ialah|yaitu|:|=)\s*([^\n]{1,80})/gi;
+  let tail: string | undefined;
+  for (const m of (q.explanation ?? '').matchAll(re)) tail = m[1];
+  if (!tail) return undefined;
+  tail = tail.replace(/[$*_]/g, '').trim();
+  const label = tail.match(/^(?:opsi|pilihan)?\s*\(?([A-E])\)?(?=$|[\s.,;:)])/);
+  if (label) return q.options.some((o) => o.label === label[1]) ? (label[1] as OptionLabel) : undefined;
+  const token = tail.replace(/^rp\.?\s*/i, '').match(/^\S+/)?.[0].replace(/[.,;:)]+$/, '');
+  const value = token ? parseNumeric(token) : null;
+  if (value === null) return undefined;
+  const hits = q.options.filter((o) => {
+    const n = parseNumeric(o.text);
+    return n !== null && approxEqual(n, value);
+  });
+  return hits.length === 1 ? hits[0].label : undefined;
 }
 
 function formatNum(n: number): string {

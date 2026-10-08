@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { db, getSetQuestions } from '../db';
 import { SUBTESTS } from '../domain/types';
 import type { QSet, Question, Subtest } from '../domain/types';
-import { moreLikeThis, rewriteQuestion, startGeneration, stopGeneration, useGenProgress } from '../engine/generator';
+import { moreLikeThis, needsRepair, repairQuestion, rewriteQuestion, startGeneration, stopGeneration, useGenProgress } from '../engine/generator';
 import { moveInSet, removeFromSet } from '../engine/sets';
 import { QuestionCard, type CardMode } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
@@ -130,6 +130,11 @@ export default function SetDetail() {
                   <Badge tone="blue">memproses…</Badge>
                 ) : (
                   <>
+                    {needsRepair(q) && (
+                      <button className="btn btn-sm" title="Minta AI mencocokkan ulang kunci jawaban dan pembahasan" onClick={() => void act(q, () => repairQuestion(q, set.keyId))}>
+                        🔧 Perbaiki
+                      </button>
+                    )}
                     <button className="btn btn-ghost btn-sm" title={q.starred ? 'Hapus bintang' : 'Beri bintang'} onClick={() => db.questions.update(q.id, { starred: !q.starred })}>
                       {q.starred ? '★' : '☆'}
                     </button>

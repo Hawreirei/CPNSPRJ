@@ -5,6 +5,7 @@ export const SYSTEM_PROMPT = `Anda adalah penyusun soal latihan SKD CPNS (Seleks
 Tulis soal ORISINAL dalam Bahasa Indonesia baku. Jangan menyalin soal resmi BKN atau soal bimbel.
 Setiap soal memiliki tepat 5 opsi (A–E). Pembahasan ditulis langkah demi langkah dan jelas untuk belajar mandiri.
 Gunakan notasi LaTeX di antara tanda $...$ hanya bila perlu (pecahan, pangkat, akar).
+Untuk TWK dan TIU: sebelum menulis, kerjakan sendiri soalnya dan pastikan "answer", kesimpulan pembahasan, dan nilai opsi itu saling cocok. Akhiri pembahasan dengan kalimat "Jawaban: <huruf opsi>." (contoh: "Jawaban: C.").
 Balas HANYA dengan JSON valid sesuai format yang diminta, tanpa teks lain.`;
 
 const DIFF_GUIDE: Record<Difficulty, string> = {
@@ -28,7 +29,7 @@ Jika Anda tidak yakin fakta atau nomor pasal benar, isi "confidence": "low". Jan
 Hanya satu opsi benar.${
       numeric.length
         ? `
-Untuk soal bertopik numerik (${numeric.join(', ')}): WAJIB isi "mathExpression", yaitu ekspresi matematika murni (sintaks mathjs, gunakan * dan /, tanpa satuan, tanpa teks) yang hasilnya PERSIS nilai jawaban benar. Contoh: "(1200000 * 0.15) + 50000".
+Untuk soal bertopik numerik (${numeric.join(', ')}): WAJIB isi "mathExpression", yaitu ekspresi matematika murni (sintaks mathjs, gunakan * dan /, titik sebagai desimal, tanpa pemisah ribuan, tanpa satuan, tanpa teks) yang hasilnya PERSIS nilai jawaban benar. Contoh: "(1200000 * 0.15) + 50000".
 Teks opsi berisi angka (boleh dengan satuan atau "Rp"); hanya satu opsi yang bernilai sama dengan hasil ekspresi.
 Untuk deret angka, ekspresi menghitung suku berikutnya, contoh: "48 * 2".`
         : ''
@@ -99,4 +100,27 @@ ${JSON.stringify({ stem: q.stem, options: q.options.map(({ label, text, score })
 
 Kembalikan tepat 1 soal dalam format JSON:
 ${formatSpec(q.subtest)}`;
+}
+
+/** Ask the model to fix questions whose key, explanation and calculation disagree. */
+export function buildRepairPrompt(subtest: Subtest, questions: Question[]): string {
+  const list = questions
+    .map((q, i) => {
+      const problems = q.flags.filter((f) => f.severity === 'warn').map((f) => f.message);
+      const data = { stem: q.stem, options: q.options.map(({ label, text }) => ({ label, text })), answer: q.answer, explanation: q.explanation, reference: q.reference, mathExpression: q.mathExpression };
+      return `${i + 1}. Masalah: ${problems.join(' ')}\n${JSON.stringify(data)}`;
+    })
+    .join('\n\n');
+  return `${subtestGuide(subtest, [...new Set(questions.map((q) => q.topic))])}
+
+Soal-soal berikut bermasalah: kunci jawaban, pembahasan, dan hitungannya tidak saling cocok.
+Perbaiki setiap soal: kerjakan ulang dengan teliti, pastikan tepat satu opsi benar, "answer" menunjuk opsi itu, dan pembahasan menyimpulkan opsi dan nilai yang sama${
+    subtest === 'TIU' ? '; untuk soal hitungan, "mathExpression" (sintaks mathjs, titik sebagai desimal) harus menghasilkan nilai opsi benar' : ''
+  }.
+Boleh mengubah angka pada soal atau opsi bila perlu. Pertahankan topik dan tingkat kesulitan. Kembalikan ${questions.length} soal dengan urutan yang sama.
+
+${list}
+
+Format JSON:
+${formatSpec(subtest)}`;
 }

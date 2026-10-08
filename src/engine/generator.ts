@@ -1,13 +1,13 @@
 import { useSyncExternalStore } from 'react';
 import { db, getSettings } from '../db';
 import { generateFigural } from '../domain/figural';
-import { buildPrompt, buildRewritePrompt, SYSTEM_PROMPT } from '../domain/prompts';
+import { buildPrompt, buildRepairPrompt, buildRewritePrompt, SYSTEM_PROMPT } from '../domain/prompts';
 import { parseAiQuestions } from '../domain/schemas';
 import { SUBTESTS } from '../domain/types';
 import { validateQuestion } from '../domain/validators';
 import { complete, isModelUnavailable, ProviderError, suggestedReplacement } from '../providers';
 import type { ProviderConfig } from '../providers';
-import type { ApiKeyRecord, PlanBatch, QSet, Question } from '../domain/types';
+import type { ApiKeyRecord, FlagKind, PlanBatch, QSet, Question } from '../domain/types';
 import { uid } from '../lib/id';
 import { batchLabel, isProcedural } from './plan';
 import { freshProviderConfig, providerConfig, refreshKeyModel, resolveKey } from './keys';
@@ -248,7 +248,7 @@ async function runBatch(set: QSet, batch: PlanBatch, session: ModelSession | nul
     const batches = cur.batches.flatMap((b) => (b.id === batch.id ? [leftover.done, ...(leftover.rest ? [leftover.rest] : [])] : [b]));
     await db.sets.update(set.id, { batches, updatedAt: Date.now() });
   });
-  return { added: validated.length, rest: leftover.rest };
+  return { added: validated.length, ids: validated.map((q) => q.id), rest: leftover.rest };
 }
 
 /** Split a batch into the part that was produced and the items still missing. */
@@ -335,12 +335,14 @@ export async function startGeneration(setId: string): Promise<void> {
   const queue = [...todo.filter(isProcedural), ...todo.filter((b) => !isProcedural(b))];
   let failures = 0;
   let quotaStop: QuotaExhaustedError | null = null;
+  const producedIds: string[] = [];
   const worker = async () => {
     while (queue.length && !ctrl.signal.aborted) {
       const batch = queue.shift()!;
       update(setId, { current: [...(progress.get(setId)?.current ?? []), label(batch)] });
       try {
         const r = await runBatch(set, batch, session, hashes, ctrl.signal);
+        producedIds.push(...r.ids);
         update(setId, { done: (progress.get(setId)?.done ?? 0) + r.added, waitUntil: undefined, waitReason: undefined });
         if (r.rest) {
           log(setId, 'info', `${label(batch)}: ${r.added}/${batch.count} soal diterima; ${r.rest.count} sisanya diminta ulang.`);
@@ -369,6 +371,22 @@ export async function startGeneration(setId: string): Promise<void> {
   const concurrency = limited && session && limitsOf(session.key).rpm ? 1 : Math.max(1, settings.concurrency);
   await Promise.all(Array.from({ length: concurrency }, worker));
 
+  // One extra request to fix questions whose key, explanation and calculation disagree.
+  if (session && !quotaStop && !ctrl.signal.aborted) {
+    const broken = ((await db.questions.bulkGet(producedIds)).filter(Boolean) as Question[]).filter(needsRepair);
+    const u = broken.length ? await keyUsage(session.key) : null;
+    if (u && (u.remainingToday === null || u.remainingToday > 0)) {
+      update(setId, { current: ['Memeriksa ulang soal'] });
+      log(setId, 'info', `Memeriksa ulang ${broken.length} soal yang kunci jawaban dan pembahasannya tidak cocok…`);
+      try {
+        const fixed = await repairWith(session, broken, ctrl.signal, (i, o) => addUsage(setId, i, o));
+        log(setId, 'info', `${fixed} dari ${broken.length} soal berhasil diperbaiki.${fixed < broken.length ? ' Sisanya ditandai "perlu dicek".' : ''}`);
+      } catch (e) {
+        if ((e as Error).name !== 'AbortError') log(setId, 'info', `Perbaikan otomatis dilewati: ${(e as Error).message}`);
+      }
+    }
+  }
+
   controllers.delete(setId);
   const final = await db.sets.get(setId);
   const allDone = final?.batches.every((b) => b.status === 'done');
@@ -391,6 +409,41 @@ export async function rewriteQuestion(q: Question, instruction: string, keyId?: 
   const updated = validateQuestion({ ...nq, id: q.id, starred: q.starred, locked: q.locked, createdAt: q.createdAt, updatedAt: Date.now() });
   await db.questions.put(updated);
   return updated;
+}
+
+const REPAIRABLE = new Set<FlagKind>(['math-mismatch', 'explanation-mismatch']);
+
+/** A question whose key, explanation and calculation disagree, and that the AI may rewrite. */
+export const needsRepair = (q: Question) =>
+  q.source === 'ai' && !q.locked && q.subtest !== 'TKP' && q.flags.some((f) => f.severity === 'warn' && REPAIRABLE.has(f.kind));
+
+/** Ask the model to fix the given questions (one request per sub-test); returns how many were fixed. */
+async function repairWith(session: ModelSession, questions: Question[], signal: AbortSignal, onUsage: (i: number, o: number) => Promise<void>): Promise<number> {
+  let fixed = 0;
+  for (const subtest of SUBTESTS) {
+    const group = questions.filter((q) => q.subtest === subtest).slice(0, 10);
+    if (!group.length) continue;
+    const items = group.map((q) => ({ topic: q.topic, difficulty: q.difficulty }));
+    const out = await callAndParse(session, buildRepairPrompt(subtest, group), { subtest, items, setId: group[0].originSetId }, signal, onUsage);
+    // Answers are matched to questions by position, so a partial reply can't be trusted.
+    if (out.length !== group.length) continue;
+    for (const [i, old] of group.entries()) {
+      const v = validateQuestion({ ...out[i], id: old.id, originSetId: old.originSetId, starred: old.starred, createdAt: old.createdAt, updatedAt: Date.now() });
+      if (needsRepair(v)) continue;
+      await db.questions.put(v);
+      fixed++;
+    }
+  }
+  return fixed;
+}
+
+/** Fix one question whose key and explanation disagree. */
+export async function repairQuestion(q: Question, keyId?: string): Promise<void> {
+  const session = await openSession(keyId);
+  const fixed = await repairWith(session, [q], new AbortController().signal, async (i, o) => {
+    if (q.originSetId) await addUsage(q.originSetId, i, o);
+  });
+  if (!fixed) throw new Error('AI belum berhasil memperbaiki soal ini. Coba lagi, atau edit soal secara manual.');
 }
 
 /** Generate `count` new questions modelled on `q` and insert them right after it. */
@@ -419,4 +472,27 @@ export async function moreLikeThis(setId: string, q: Question, count: number, ke
 /** Recover sets left in "generating" after a reload. */
 export async function recoverInterrupted() {
   await db.sets.where('status').equals('generating').modify({ status: 'paused' });
+}
+
+const VALIDATOR_VERSION = '2';
+
+/** Re-run the answer checks on saved questions once, after the checks themselves improve. */
+export async function revalidateStored() {
+  try {
+    if (localStorage.getItem('validatorVersion') === VALIDATOR_VERSION) return;
+  } catch {
+    return;
+  }
+  const qs = await db.questions.filter((q) => q.subtest !== 'TKP' && q.source !== 'procedural' && !q.locked).toArray();
+  const changed = qs.flatMap((q) => {
+    const v = validateQuestion(q);
+    const next = { ...v, flags: [...v.flags, ...q.flags.filter((f) => f.kind === 'duplicate')] };
+    return JSON.stringify(next.flags) !== JSON.stringify(q.flags) || next.answer !== q.answer ? [next] : [];
+  });
+  if (changed.length) await db.questions.bulkPut(changed);
+  try {
+    localStorage.setItem('validatorVersion', VALIDATOR_VERSION);
+  } catch {
+    // Private mode: the check simply runs again next time.
+  }
 }
