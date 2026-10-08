@@ -84,11 +84,11 @@ export function Explanation({ q }: { q: Question }) {
         <RichText text={q.explanation || '—'} />
       </div>
       {q.reference && (
-        <div className="mt-2 text-xs text-slate-500">
+        <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
           Rujukan: <RichText text={q.reference} />
         </div>
       )}
-      {q.subtest === 'TKP' && <p className="mt-2 text-xs text-slate-500">Skor TKP adalah rasional berbasis nilai pelayanan publik, bukan kunci resmi.</p>}
+      {q.subtest === 'TKP' && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Skor TKP adalah rasional berbasis nilai pelayanan publik, bukan kunci resmi.</p>}
     </div>
   );
 }

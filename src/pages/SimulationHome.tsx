@@ -82,7 +82,7 @@ export default function SimulationHome() {
       </div>
       {sets.length === 0 ? (
         <Empty title="Belum ada set berisi soal">
-          <Link className="text-brand-600 underline" to="/new">
+          <Link className="text-brand-600 dark:text-brand-300 underline" to="/new">
             Buat set dulu
           </Link>
         </Empty>
@@ -154,7 +154,7 @@ export default function SimulationHome() {
                             type="button"
                             aria-pressed={on}
                             onClick={() => toggleTopic(t)}
-                            className={`rounded-full border px-2.5 py-0.5 text-xs ${on ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-slate-800 dark:text-brand-100' : 'border-slate-300 text-slate-500 dark:border-slate-700'}`}
+                            className={`rounded-full border px-2.5 py-0.5 text-xs ${on ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-slate-800 dark:text-brand-100' : 'border-slate-300 text-slate-500 dark:text-slate-400 dark:border-slate-700'}`}
                           >
                             {t}
                           </button>

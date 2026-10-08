@@ -82,7 +82,7 @@ export default function ScoreReport() {
         {inNotebook > 0 && (
           <p className="mt-2 text-sm">
             {inNotebook} soal yang salah, kosong, atau ragu-ragu masuk{' '}
-            <Link className="text-brand-600 underline" to="/review">
+            <Link className="text-brand-600 dark:text-brand-300 underline" to="/review">
               Buku Kesalahan
             </Link>{' '}
             untuk diulang terjadwal.

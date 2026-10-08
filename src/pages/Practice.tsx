@@ -29,6 +29,12 @@ export default function Practice() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [gridOpen, setGridOpen] = useState(false);
   const enteredAt = useRef(Date.now());
+  // On every question change, focus moves to its heading so screen readers announce it.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const currentIndex = attempt?.currentIndex;
+  useEffect(() => {
+    if (currentIndex !== undefined) headingRef.current?.focus({ preventScroll: true });
+  }, [currentIndex]);
   const submitting = useRef(false);
 
   useEffect(() => {
@@ -143,7 +149,8 @@ export default function Practice() {
   }
 
   const grid = (
-    <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
+    // Six columns and 44px buttons on phones: big enough to tap; the desktop sidebar keeps them compact.
+    <div className="grid grid-cols-6 gap-1 sm:grid-cols-10 lg:grid-cols-5">
       {questions.map((x, i) => {
         const ans = attempt.answers[x.id];
         const f = ans ? feedback(x, ans) : null;
@@ -158,10 +165,11 @@ export default function Practice() {
           <button
             key={x.id}
             onClick={() => go(i)}
-            className={`h-8 rounded text-xs font-medium ${color} ${i === idx ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900' : ''} ${
+            className={`h-11 rounded text-xs font-medium lg:h-8 ${color} ${i === idx ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900' : ''} ${
               attempt.flagged.includes(x.id) ? 'outline-2 outline-amber-400' : ''
             }`}
-            aria-label={`Soal ${i + 1}`}
+            aria-label={`Soal ${i + 1}${!f ? ', belum dijawab' : f.correct ? ', benar' : x.subtest === 'TKP' ? `, skor ${f.score}` : ', salah'}${attempt.flagged.includes(x.id) ? ', ragu-ragu' : ''}`}
+            aria-current={i === idx ? 'step' : undefined}
           >
             {i + 1}
           </button>
@@ -173,14 +181,16 @@ export default function Practice() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900">
-        <div className="min-w-0 flex-1 truncate text-sm font-semibold">
+        <h1 className="min-w-0 flex-1 truncate text-sm font-semibold tracking-normal">
           <Badge tone="blue">Latihan</Badge> {attempt.setName}
-        </div>
+        </h1>
         <div className="hidden text-sm sm:block">
           Benar <b>{correctCount}</b> / {answeredCount}
         </div>
         {timed && (
           <div
+            role="timer"
+            aria-label={`Sisa waktu ${mm} menit ${ss} detik`}
             className={`rounded-lg px-3 py-1 font-mono text-lg font-bold tabular-nums ${remaining < 5 * 60000 ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-slate-100 dark:bg-slate-800'}`}
           >
             {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
@@ -197,7 +207,9 @@ export default function Practice() {
       <div className="mx-auto grid w-full max-w-6xl flex-1 gap-4 p-4 lg:grid-cols-[1fr_260px]">
         <main className="card">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="font-semibold">Soal {idx + 1}</span>
+            <h2 ref={headingRef} tabIndex={-1} data-focus-target className="text-base font-semibold">
+              Soal {idx + 1}
+            </h2>
             <SubtestBadge subtest={q.subtest} />
             <Badge>{q.topic}</Badge>
             {isFlagged && <span className="badge bg-amber-100 text-amber-800">ragu-ragu</span>}

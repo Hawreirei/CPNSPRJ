@@ -23,7 +23,7 @@ export default function Progress() {
       <div className="space-y-4">
         <h1>Progres</h1>
         <Empty title="Belum ada simulasi selesai">
-          <Link className="text-brand-600 underline" to="/simulation">
+          <Link className="text-brand-600 dark:text-brand-300 underline" to="/simulation">
             Mulai simulasi
           </Link>{' '}
           untuk melihat riwayat skor dan penguasaan topik.
@@ -149,7 +149,7 @@ export default function Progress() {
         <h2 className="mb-2">Riwayat skor</h2>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs text-slate-500">
+            <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
               <th className="py-1 pr-3">Tanggal</th>
               <th className="pr-3">Set</th>
               {SUBTESTS.map((s) => (

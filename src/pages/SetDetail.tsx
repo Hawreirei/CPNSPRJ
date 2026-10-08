@@ -71,6 +71,8 @@ export default function SetDetail() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
+          {/* The visible name is an editable field; the page still needs a heading. */}
+          <h1 className="sr-only">{set.name}</h1>
           <input
             className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none focus:underline"
             defaultValue={set.name}

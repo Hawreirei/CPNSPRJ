@@ -17,14 +17,14 @@ export function Recommendations({ a, questions }: { a: Attempt; questions: Quest
             {r.text}{' '}
             {r.practiceTopics && (
               <Link
-                className="whitespace-nowrap text-brand-600 underline"
+                className="whitespace-nowrap text-brand-600 dark:text-brand-300 underline"
                 to={`/simulation?set=${a.setId}&mode=practice&topics=${encodeURIComponent(r.practiceTopics.join('|'))}`}
               >
                 Latih sekarang
               </Link>
             )}
             {r.to && (
-              <Link className="whitespace-nowrap text-brand-600 underline" to={r.to}>
+              <Link className="whitespace-nowrap text-brand-600 dark:text-brand-300 underline" to={r.to}>
                 Buka Buku Kesalahan
               </Link>
             )}
@@ -48,7 +48,7 @@ export function TimingCard({ a, questions, practice }: { a: Attempt; questions: 
         <>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs text-slate-500">
+              <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
                 <th className="py-1 pr-2">Sub-tes</th>
                 <th className="pr-2 text-right">Rata-rata/soal</th>
                 <th className="pr-2 text-right">Soal lama</th>

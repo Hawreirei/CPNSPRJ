@@ -7,9 +7,10 @@ import { requestPersistence } from './db';
 import { pruneRequestLog } from './engine/quota';
 import { setupAutoBackup } from './lib/autoBackup';
 import { setupPwa } from './lib/pwa';
-import { applyTheme, watchSystemTheme } from './lib/theme';
+import { applyTextSize, applyTheme, watchSystemTheme } from './lib/theme';
 
 applyTheme();
+applyTextSize();
 watchSystemTheme();
 
 void recoverInterrupted();

@@ -21,7 +21,7 @@ export function CrossCheckEditor({ settings }: { settings: Settings }) {
       {!keys.length ? (
         <p className="text-sm">
           Butuh API key.{' '}
-          <Link className="text-brand-600 underline" to="/keys">
+          <Link className="text-brand-600 dark:text-brand-300 underline" to="/keys">
             Tambah API key
           </Link>
         </p>

@@ -80,6 +80,15 @@ export default function Help() {
       </section>
 
       <section className="card space-y-2">
+        <h2>Aksesibilitas</h2>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Ujian, latihan, dan ulangan bisa dikerjakan hanya dengan keyboard: A–E memilih jawaban, ← → pindah soal, Tab ke tombol lain.</li>
+          <li>Ukuran teks bisa diperbesar di Pengaturan → Tampilan (Besar atau Sangat besar).</li>
+          <li>Bila "kurangi gerakan" aktif di sistem Anda, animasi dan transisi dimatikan.</li>
+        </ul>
+      </section>
+
+      <section className="card space-y-2">
         <h2>Data & privasi</h2>
         <ul className="list-disc space-y-1 pl-5">
           <li>Tidak ada server dan tidak ada login. Set, bank soal, riwayat, dan key hanya tersimpan di browser ini (IndexedDB).</li>

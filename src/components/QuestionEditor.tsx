@@ -25,16 +25,20 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label">Topik</label>
-            <select className="input" value={draft.topic} onChange={(e) => set('topic', e.target.value)}>
+            <label className="label" htmlFor="qe-topic">
+              Topik
+            </label>
+            <select id="qe-topic" className="input" value={draft.topic} onChange={(e) => set('topic', e.target.value)}>
               {[...new Set([draft.topic, ...TOPICS[draft.subtest]])].map((t) => (
                 <option key={t}>{t}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="label">Kesulitan</label>
-            <select className="input" value={draft.difficulty} onChange={(e) => set('difficulty', e.target.value as Difficulty)}>
+            <label className="label" htmlFor="qe-difficulty">
+              Kesulitan
+            </label>
+            <select id="qe-difficulty" className="input" value={draft.difficulty} onChange={(e) => set('difficulty', e.target.value as Difficulty)}>
               <option value="mudah">mudah</option>
               <option value="sedang">sedang</option>
               <option value="sulit">sulit</option>
@@ -42,11 +46,13 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
           </div>
         </div>
         <div>
-          <label className="label">Soal (gunakan $...$ untuk rumus)</label>
-          <textarea className="input min-h-28" value={draft.stem} onChange={(e) => set('stem', e.target.value)} />
+          <label className="label" htmlFor="qe-stem">
+            Soal (gunakan $...$ untuk rumus)
+          </label>
+          <textarea id="qe-stem" className="input min-h-28" value={draft.stem} onChange={(e) => set('stem', e.target.value)} />
         </div>
         <div className="space-y-2">
-          <label className="label">{draft.subtest === 'TKP' ? 'Opsi dan skor (1–5)' : 'Opsi (pilih kunci jawaban)'}</label>
+          <div className="label">{draft.subtest === 'TKP' ? 'Opsi dan skor (1–5)' : 'Opsi (pilih kunci jawaban)'}</div>
           {draft.options.map((o, i) => (
             <div key={o.label} className="flex items-center gap-2">
               {draft.subtest === 'TKP' ? (
@@ -55,15 +61,17 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
                   min={1}
                   max={5}
                   className="input w-16"
+                  aria-label={`Skor opsi ${o.label}`}
                   value={o.score}
                   onChange={(e) => set('options', draft.options.map((x, j) => (j === i ? { ...x, score: Number(e.target.value) } : x)))}
                 />
               ) : (
-                <input type="radio" name="answer" checked={draft.answer === o.label} onChange={() => set('answer', o.label as OptionLabel)} />
+                <input type="radio" name="answer" aria-label={`Kunci jawaban ${o.label}`} checked={draft.answer === o.label} onChange={() => set('answer', o.label as OptionLabel)} />
               )}
               <span className="w-4 font-semibold">{o.label}</span>
               <input
                 className="input"
+                aria-label={`Teks opsi ${o.label}`}
                 value={o.text}
                 disabled={!!o.figure}
                 onChange={(e) => set('options', draft.options.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))}
@@ -73,19 +81,25 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
         </div>
         {draft.subtest === 'TIU' && (
           <div>
-            <label className="label">Ekspresi hitung (diverifikasi mathjs, opsional)</label>
-            <input className="input font-mono" value={draft.mathExpression ?? ''} onChange={(e) => set('mathExpression', e.target.value || undefined)} />
+            <label className="label" htmlFor="qe-math">
+              Ekspresi hitung (diverifikasi mathjs, opsional)
+            </label>
+            <input id="qe-math" className="input font-mono" value={draft.mathExpression ?? ''} onChange={(e) => set('mathExpression', e.target.value || undefined)} />
           </div>
         )}
         {draft.subtest === 'TWK' && (
           <div>
-            <label className="label">Rujukan</label>
-            <input className="input" value={draft.reference ?? ''} onChange={(e) => set('reference', e.target.value || undefined)} />
+            <label className="label" htmlFor="qe-ref">
+              Rujukan
+            </label>
+            <input id="qe-ref" className="input" value={draft.reference ?? ''} onChange={(e) => set('reference', e.target.value || undefined)} />
           </div>
         )}
         <div>
-          <label className="label">Pembahasan</label>
-          <textarea className="input min-h-28" value={draft.explanation} onChange={(e) => set('explanation', e.target.value)} />
+          <label className="label" htmlFor="qe-explanation">
+            Pembahasan
+          </label>
+          <textarea id="qe-explanation" className="input min-h-28" value={draft.explanation} onChange={(e) => set('explanation', e.target.value)} />
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={draft.confidence !== 'low'} onChange={(e) => set('confidence', e.target.checked ? 'high' : 'low')} />

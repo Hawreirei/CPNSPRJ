@@ -206,12 +206,17 @@ export default function NewSet() {
             <div className="space-y-6 border-t border-slate-200 p-4 dark:border-slate-800">
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
                 <div>
-                  <label className="label">Nama set</label>
-                  <input className="input" placeholder={defaultName()} value={name} onChange={(e) => setName(e.target.value)} />
+                  <label className="label" htmlFor="ns-name">
+                    Nama set
+                  </label>
+                  <input id="ns-name" className="input" placeholder={defaultName()} value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
                 <div>
-                  <label className="label">Waktu ujian (menit)</label>
+                  <label className="label" htmlFor="ns-duration">
+                    Waktu ujian (menit)
+                  </label>
                   <input
+                    id="ns-duration"
                     type="number"
                     min={5}
                     className="input"
@@ -254,8 +259,9 @@ export default function NewSet() {
                             return (
                               <button
                                 key={t}
+                                aria-pressed={on}
                                 onClick={() => setSection(s, { topics: on ? sec.topics.filter((x) => x !== t) : [...sec.topics, t] })}
-                                className={`rounded-full border px-2.5 py-1 text-xs ${on ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-slate-800 dark:text-brand-100' : 'border-slate-300 text-slate-500 dark:border-slate-700'}`}
+                                className={`rounded-full border px-2.5 py-1 text-xs ${on ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-slate-800 dark:text-brand-100' : 'border-slate-300 text-slate-500 dark:text-slate-400 dark:border-slate-700'}`}
                               >
                                 {on ? '✓ ' : ''}
                                 {t}
@@ -295,8 +301,11 @@ export default function NewSet() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {keys.length > 1 && (
                     <div>
-                      <label className="label">API key</label>
+                      <label className="label" htmlFor="ns-key">
+                        API key
+                      </label>
                       <select
+                        id="ns-key"
                         className="input"
                         value={keyId}
                         onChange={(e) => {
@@ -314,8 +323,11 @@ export default function NewSet() {
                   )}
                   {key && (
                     <div>
-                      <label className="label">Model AI</label>
+                      <label className="label" htmlFor="ns-model">
+                        Model AI
+                      </label>
                       <ModelSelect
+                        id="ns-model"
                         models={key.models ?? []}
                         value={setModel || null}
                         inheritOption={`Sama seperti di API Key (${key.model})`}

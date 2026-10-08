@@ -130,12 +130,13 @@ function AddKeyForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () =>
       <div>
         <div className="label">
           2. Tempel API key ·{' '}
-          <a className="text-brand-600 underline" href={info.keyUrl} target="_blank" rel="noreferrer">
+          <a className="text-brand-600 dark:text-brand-300 underline" href={info.keyUrl} target="_blank" rel="noreferrer">
             buat key di sini
           </a>
         </div>
         <input
           className="input font-mono"
+          aria-label="API key"
           type="password"
           autoComplete="off"
           placeholder={info.keyHint}
@@ -147,8 +148,10 @@ function AddKeyForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () =>
 
       {info.needsBaseUrl && (
         <div>
-          <div className="label">Alamat endpoint (berakhiran /v1)</div>
-          <input className="input font-mono" placeholder="https://openrouter.ai/api/v1" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
+          <label className="label" htmlFor="key-base-url">
+            Alamat endpoint (berakhiran /v1)
+          </label>
+          <input id="key-base-url" className="input font-mono" placeholder="https://openrouter.ai/api/v1" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
         </div>
       )}
 
@@ -156,8 +159,10 @@ function AddKeyForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () =>
         <summary className="muted cursor-pointer text-sm">Pengaturan lanjutan (opsional)</summary>
         <div className="mt-3 space-y-3">
           <div>
-            <div className="label">Nama key</div>
-            <input className="input" placeholder={info.name} value={label} onChange={(e) => setLabel(e.target.value)} />
+            <label className="label" htmlFor="key-label">
+              Nama key
+            </label>
+            <input id="key-label" className="input" placeholder={info.name} value={label} onChange={(e) => setLabel(e.target.value)} />
           </div>
           <div>
             <div className="label">Batas kuota</div>
@@ -243,8 +248,11 @@ function KeyCard({ k, single }: { k: ApiKeyRecord; single: boolean }) {
       </div>
 
       <div>
-        <div className="label">Model</div>
+        <label className="label" htmlFor={`model-${k.id}`}>
+          Model
+        </label>
         <ModelSelect
+          id={`model-${k.id}`}
           models={k.models ?? []}
           value={auto ? null : k.model}
           autoOption={`Otomatis (disarankan) — ${k.model}`}
@@ -327,6 +335,7 @@ function LimitsEditor({ value, onChange }: { value: KeyLimits; onChange: (l: Key
     <div className="space-y-2">
       <select
         className="input"
+        aria-label="Batas kuota"
         value={custom ? 'custom' : matched}
         onChange={(e) => {
           const p = LIMIT_PRESETS.find((x) => x.id === e.target.value);
