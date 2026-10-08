@@ -1,5 +1,5 @@
-import { SUBTESTS } from './types';
 import type { AttemptResult, OptionLabel, Question, Subtest, SubtestResult, TopicResult } from './types';
+import { inExamOrder, isGraded, maxPerQuestion } from './examPackage';
 
 export const MAX_PER_QUESTION = 5;
 
@@ -10,19 +10,23 @@ export function scoreQuestion(q: Question, answer: OptionLabel | undefined): num
 
 export function isCorrect(q: Question, answer: OptionLabel | undefined): boolean {
   if (!answer) return false;
-  if (q.subtest === 'TKP') return scoreQuestion(q, answer) === MAX_PER_QUESTION;
+  if (isGraded(q.subtest)) return scoreQuestion(q, answer) === maxPerQuestion(q.subtest);
   return q.answer === answer;
 }
 
+/**
+ * Score an attempt per sub-test, in exam order. A sub-test without a pass mark (an exam decided by
+ * ranking) gets no pass/fail, and then neither does the attempt as a whole.
+ */
 export function computeResult(
   questions: Question[],
   answers: Record<string, OptionLabel>,
-  passing: Record<Subtest, number>,
+  passing: Partial<Record<Subtest, number>>,
 ): AttemptResult {
   const perSubtest: SubtestResult[] = [];
   const topicMap = new Map<string, TopicResult>();
 
-  for (const s of SUBTESTS) {
+  for (const s of inExamOrder(questions.map((q) => q.subtest))) {
     const qs = questions.filter((q) => q.subtest === s);
     if (!qs.length) continue;
     let score = 0;
@@ -37,16 +41,16 @@ export function computeResult(
       const key = `${s}::${q.topic}`;
       const t = topicMap.get(key) ?? { subtest: s, topic: q.topic, score: 0, max: 0, total: 0 };
       t.score += sc;
-      t.max += MAX_PER_QUESTION;
+      t.max += maxPerQuestion(s);
       t.total += 1;
       topicMap.set(key, t);
     }
+    const mark = passing[s];
     perSubtest.push({
       subtest: s,
       score,
-      max: qs.length * MAX_PER_QUESTION,
-      passing: passing[s],
-      passed: score >= passing[s],
+      max: qs.length * maxPerQuestion(s),
+      ...(mark !== undefined && { passing: mark, passed: score >= mark }),
       correct,
       answered,
       total: qs.length,
@@ -60,7 +64,7 @@ export function computeResult(
     topics: [...topicMap.values()],
     total,
     maxTotal,
-    passedAll: perSubtest.length > 0 && perSubtest.every((r) => r.passed),
+    ...(perSubtest.every((r) => r.passed !== undefined) && { passedAll: perSubtest.length > 0 && perSubtest.every((r) => r.passed) }),
   };
 }
 

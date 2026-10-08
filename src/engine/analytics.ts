@@ -2,6 +2,7 @@ import { attemptMode } from '../domain/practice';
 import { isCorrect, MAX_PER_QUESTION, scoreQuestion } from '../domain/scoring';
 import { REASON_TAGS, SUBTESTS } from '../domain/types';
 import type { Attempt, OptionLabel, Question, ReasonTag, ReviewItem, Subtest, SubtestResult } from '../domain/types';
+import { isGraded } from '../domain/examPackage';
 
 /**
  * Explains a score instead of only reporting it: where the time went, whether "unsure" marks
@@ -86,7 +87,7 @@ export function timing(a: Pick<Attempt, 'answers' | 'flagged' | 'timeSpent'>, qu
     if (!timed.length) return [];
     const totalMs = timed.reduce((n, r) => n + r.ms, 0);
     const avgMs = totalMs / timed.length;
-    const wastedMs = s === 'TKP' ? 0 : timed.filter((r) => !r.correct).reduce((n, r) => n + r.ms, 0);
+    const wastedMs = isGraded(s) ? 0 : timed.filter((r) => !r.correct).reduce((n, r) => n + r.ms, 0);
     const slow = timed.length >= MIN_TIMED ? timed.filter((r) => r.ms > avgMs * SLOW_FACTOR).sort((x, y) => y.ms - x.ms).map(ref) : [];
     return [{ subtest: s, timed: timed.length, avgMs, totalMs, wastedMs, slow }];
   });
@@ -155,7 +156,7 @@ export function calibration(a: Pick<Attempt, 'answers' | 'flagged' | 'timeSpent'
 export function likelyGuesses(a: Pick<Attempt, 'answers' | 'flagged' | 'timeSpent'>, questions: Question[]): QuestionRef[] {
   const avg = new Map(timing(a, questions).filter((t) => t.timed >= MIN_TIMED).map((t) => [t.subtest, t.avgMs]));
   return rows(a, questions)
-    .filter((r) => r.q.subtest !== 'TKP' && r.correct && !r.flagged && r.ms > 0)
+    .filter((r) => !isGraded(r.q.subtest) && r.correct && !r.flagged && r.ms > 0)
     .filter((r) => {
       const m = avg.get(r.q.subtest);
       return m !== undefined && r.ms < Math.min(FAST_MAX_MS, m * FAST_FACTOR);
@@ -229,7 +230,8 @@ export function examSeries(attempts: Attempt[], counts: Record<Subtest, number>)
   const exams = attempts.filter((a) => a.result && attemptMode(a) === 'exam').sort((x, y) => x.startedAt - y.startedAt);
   const out = { TWK: [], TIU: [], TKP: [] } as Record<Subtest, SeriesPoint[]>;
   for (const a of exams) {
-    for (const r of a.result!.perSubtest) {
+    // SKD scores only: sub-tests of other exam packages have no place on these scales.
+    for (const r of a.result!.perSubtest.filter((p) => p.subtest in out)) {
       const max = counts[r.subtest] * MAX_PER_QUESTION;
       out[r.subtest].push({ attemptId: a.id, at: a.startedAt, setName: a.setName, value: scaledScore(r, max), max });
     }
@@ -335,7 +337,7 @@ export function recommendations(a: Attempt, questions: Question[], limit = 3): R
 
   // Answered questions only: empty ones are covered by the advice above and say nothing about skill.
   const stats = topicStats(a, questions).filter((t) => !(tkpAdvice && t.subtest === 'TKP'));
-  const wrongWord = (s: Subtest) => (s === 'TKP' ? 'bukan pilihan terbaik' : 'salah');
+  const wrongWord = (s: Subtest) => (isGraded(s) ? 'bukan pilihan terbaik' : 'salah');
   const weak = stats
     .filter((t) => t.answered >= WEAK_MIN_QUESTIONS && t.answeredWrong / t.answered >= WEAK_WRONG_RATE)
     .sort((x, y) => y.answeredWrong / y.answered - x.answeredWrong / x.answered || y.avgMs - x.avgMs);

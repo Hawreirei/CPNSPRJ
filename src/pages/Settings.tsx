@@ -4,6 +4,7 @@ import { db, saveSettings, useSettings } from '../db';
 import { getBackupState, importBackup } from '../db/backup';
 import { fmtAgo } from '../domain/backupReminder';
 import { KisiProfiles } from '../components/KisiProfiles';
+import { ExamPackages } from '../components/ExamPackages';
 import { CrossCheckEditor } from '../components/CrossCheckEditor';
 import { StudyPlanEditor } from '../components/StudyPlanEditor';
 import { StorageCard } from '../components/StorageCard';
@@ -130,6 +131,11 @@ export default function SettingsPage() {
       <section className="card space-y-3">
         <h2>Profil kisi-kisi</h2>
         <KisiProfiles settings={s} />
+      </section>
+
+      <section className="card space-y-3">
+        <h2>Paket ujian</h2>
+        <ExamPackages settings={s} />
       </section>
 
       <section className="card space-y-3">

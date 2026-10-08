@@ -2,6 +2,7 @@ import { NUMERIC_TOPICS } from './blueprint';
 import { approxEqual, evaluateExpression, parseNumeric } from './numeric';
 import { reportFlag } from './quality';
 import type { Flag, OptionLabel, Question } from './types';
+import { isGraded, scoringOf } from './examPackage';
 
 export { loadMath } from './numeric';
 
@@ -17,7 +18,7 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
     flags.push({ kind: 'structure', severity: 'warn', message: `Pilihan jawaban hanya ${next.options.length}, seharusnya 5.` });
   }
 
-  if (next.subtest === 'TKP') {
+  if (isGraded(next.subtest)) {
     flags.push(...checkTkp(next));
   } else {
     const fixed = checkChoice(next);
@@ -31,7 +32,7 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
     flags.push(...m.flags);
   }
 
-  if (next.subtest !== 'TKP' && next.answer) {
+  if (!isGraded(next.subtest) && next.answer) {
     const said = explainedOption(next);
     if (said && said !== next.answer) {
       flags.push({
@@ -72,21 +73,25 @@ function checkChoice(q: Question): { question: Question; flags: Flag[] } {
   return { question: { ...q, answer, options }, flags };
 }
 
+/** Graded options (TKP, and graded sub-tests of other packages): every score in range, one best option. */
 export function checkTkp(q: Question): Flag[] {
   const flags: Flag[] = [];
+  const rule = scoringOf(q.subtest);
+  const [lo, hi] = rule.kind === 'graded' ? [rule.min, rule.max] : [1, 5];
   const scores = q.options.map((o) => o.score);
-  if (scores.some((s) => !Number.isInteger(s) || s < 1 || s > 5)) {
-    flags.push({ kind: 'tkp-spread', severity: 'warn', message: 'Skor pilihan jawaban TKP tidak lengkap (harus 1 sampai 5).' });
+  if (scores.some((s) => !Number.isInteger(s) || s < lo || s > hi)) {
+    flags.push({ kind: 'tkp-spread', severity: 'warn', message: `Skor pilihan jawaban ${q.subtest} tidak lengkap (harus ${lo} sampai ${hi}).` });
     return flags;
   }
   const max = Math.max(...scores);
   if (scores.filter((s) => s === max).length > 1) {
     flags.push({ kind: 'tkp-spread', severity: 'warn', message: 'Ada lebih dari satu jawaban dengan skor tertinggi.' });
   }
-  if (max !== 5) {
-    flags.push({ kind: 'tkp-spread', severity: 'warn', message: 'Tidak ada jawaban dengan skor tertinggi (5).' });
+  if (max !== hi) {
+    flags.push({ kind: 'tkp-spread', severity: 'warn', message: `Tidak ada jawaban dengan skor tertinggi (${hi}).` });
   }
-  if (new Set(scores).size < scores.length && flags.length === 0) {
+  // With fewer score values than options, some options must share a score.
+  if (hi - lo + 1 >= scores.length && new Set(scores).size < scores.length && flags.length === 0) {
     flags.push({ kind: 'tkp-spread', severity: 'info', message: 'Beberapa jawaban punya skor sama.' });
   }
   return flags;

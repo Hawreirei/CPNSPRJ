@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { hashText, uid } from '../lib/id';
 import { OPTION_LABELS } from './types';
 import type { BatchItem, OptionLabel, Question, Subtest } from './types';
+import { isGraded, keyedScore } from './examPackage';
 
 const label = z
   .string()
@@ -109,12 +110,12 @@ export function parseAiQuestions(text: string, ctx: { subtest: Subtest; items: B
     const options = q.options.slice(0, 5).map((o, i) => ({
       label: OPTION_LABELS[i],
       text: o.text.trim(),
-      score: ctx.subtest === 'TKP' ? Math.round(o.score ?? 0) : 0,
-      ...(ctx.subtest === 'TKP' && o.rationale?.trim() ? { rationale: o.rationale.trim() } : {}),
+      score: isGraded(ctx.subtest) ? Math.round(o.score ?? 0) : 0,
+      ...(isGraded(ctx.subtest) && o.rationale?.trim() ? { rationale: o.rationale.trim() } : {}),
       origLabel: o.label,
     }));
     let answer: OptionLabel | undefined;
-    if (ctx.subtest !== 'TKP') {
+    if (!isGraded(ctx.subtest)) {
       // Map the model's label back to position in case it re-lettered options.
       const byOrig = options.find((o) => o.origLabel === q.answer);
       answer = byOrig?.label ?? (q.answer as OptionLabel | undefined);
@@ -126,7 +127,7 @@ export function parseAiQuestions(text: string, ctx: { subtest: Subtest; items: B
       topic: slot.topic,
       difficulty: slot.difficulty,
       stem: q.stem.trim(),
-      options: options.map(({ origLabel: _o, ...o }) => ({ ...o, score: ctx.subtest === 'TKP' ? o.score : o.label === answer ? 5 : 0 })),
+      options: options.map(({ origLabel: _o, ...o }) => ({ ...o, score: isGraded(ctx.subtest) ? o.score : keyedScore(ctx.subtest, o.label === answer) })),
       answer,
       explanation: q.explanation.trim(),
       reference: q.reference?.trim() || undefined,

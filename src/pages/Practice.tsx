@@ -12,6 +12,7 @@ import { Explanation } from '../components/QuestionCard';
 import { FeedbackDialog } from '../components/FeedbackDialog';
 import { RichText } from '../components/RichText';
 import { Badge, Modal, SubtestBadge } from '../components/ui';
+import { isGraded } from '../domain/examPackage';
 
 /**
  * Practice mode: each answer is final and immediately reveals the key and explanation.
@@ -162,7 +163,7 @@ export default function Practice() {
           ? 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
           : f.correct
             ? 'bg-green-600 text-white'
-            : x.subtest === 'TKP'
+            : isGraded(x.subtest)
               ? 'bg-sky-500 text-white'
               : 'bg-red-600 text-white';
         return (
@@ -172,7 +173,7 @@ export default function Practice() {
             className={`h-11 rounded text-xs font-medium lg:h-8 ${color} ${i === idx ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900' : ''} ${
               attempt.flagged.includes(x.id) ? 'outline-2 outline-amber-400' : ''
             }`}
-            aria-label={`Soal ${i + 1}${!f ? ', belum dijawab' : f.correct ? ', benar' : x.subtest === 'TKP' ? `, skor ${f.score}` : ', salah'}${attempt.flagged.includes(x.id) ? ', ragu-ragu' : ''}`}
+            aria-label={`Soal ${i + 1}${!f ? ', belum dijawab' : f.correct ? ', benar' : isGraded(x.subtest) ? `, skor ${f.score}` : ', salah'}${attempt.flagged.includes(x.id) ? ', ragu-ragu' : ''}`}
             aria-current={i === idx ? 'step' : undefined}
           >
             {i + 1}

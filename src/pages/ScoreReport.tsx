@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { db } from '../db';
 import { isCorrect, scoreQuestion, weakTopics } from '../domain/scoring';
-import { SUBTEST_NAMES } from '../domain/blueprint';
 import { attemptMode } from '../domain/practice';
 import type { Question } from '../domain/types';
 import { mistakesInAttempt } from '../engine/srs';
@@ -18,6 +17,7 @@ import { FeedbackDialog } from '../components/FeedbackDialog';
 import { Badge, Empty, fmtDate, ProgressBar, SubtestBadge } from '../components/ui';
 import { tabAwaySummary } from '../domain/catMode';
 import type { TabAway } from '../domain/types';
+import { isGraded, maxPerQuestion, specOf } from '../domain/examPackage';
 
 /** What Mode CAT recorded. Shown, never scored. */
 function CatModeCard({ aways, lockedOrder }: { aways?: TabAway[]; lockedOrder: boolean }) {
@@ -94,16 +94,18 @@ export default function ScoreReport() {
 
       {a.catMode && <CatModeCard aways={a.tabAways} lockedOrder={!!a.lockedOrder} />}
 
-      <div className={`card ${practice ? '' : `border-2 ${r.passedAll ? 'border-green-500' : 'border-red-400'}`}`}>
+      <div className={`card ${practice || r.passedAll === undefined ? '' : `border-2 ${r.passedAll ? 'border-green-500' : 'border-red-400'}`}`}>
         <div className="flex flex-wrap items-center gap-4">
           <div className="text-4xl font-bold">{r.total}</div>
           <div className="muted">dari {r.maxTotal}</div>
-          {!practice && <Badge tone={r.passedAll ? 'green' : 'red'}>{r.passedAll ? 'Memenuhi semua ambang batas' : 'Belum memenuhi ambang batas'}</Badge>}
+          {!practice && r.passedAll !== undefined && <Badge tone={r.passedAll ? 'green' : 'red'}>{r.passedAll ? 'Memenuhi semua ambang batas' : 'Belum memenuhi ambang batas'}</Badge>}
         </div>
         <p className="muted mt-2 text-xs">
           {practice
             ? 'Hasil latihan: kunci tampil setiap selesai menjawab, jadi skor ini tidak masuk grafik skor ujian di Progres.'
-            : 'Kelulusan SKD mensyaratkan setiap sub-tes mencapai ambang batasnya masing-masing.'}
+            : r.passedAll === undefined
+              ? 'Ujian ini tidak memakai ambang batas: kelulusan ditentukan peringkat nilai di antara peserta.'
+              : 'Kelulusan SKD mensyaratkan setiap sub-tes mencapai ambang batasnya masing-masing.'}
         </p>
         {inNotebook > 0 && (
           <p className="mt-2 text-sm">
@@ -121,16 +123,17 @@ export default function ScoreReport() {
           <div key={s.subtest} className="card space-y-2">
             <div className="flex items-center gap-2">
               <SubtestBadge subtest={s.subtest} />
-              <span className="text-sm font-medium">{SUBTEST_NAMES[s.subtest]}</span>
+              <span className="text-sm font-medium">{specOf(s.subtest).name}</span>
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-semibold">{s.score}</span>
               <span className="muted">/ {s.max}</span>
-              <Badge tone={s.passed ? 'green' : 'red'}>{s.passed ? 'lulus' : 'belum'}</Badge>
+              {s.passed !== undefined && <Badge tone={s.passed ? 'green' : 'red'}>{s.passed ? 'lulus' : 'belum'}</Badge>}
             </div>
-            <ProgressBar value={s.score} max={s.max} tone={s.passed ? 'green' : 'red'} />
+            <ProgressBar value={s.score} max={s.max} tone={s.passed === undefined ? 'brand' : s.passed ? 'green' : 'red'} />
             <div className="muted text-xs">
-              Ambang {s.passing} · {s.subtest === 'TKP' ? `${s.correct} opsi skor 5` : `${s.correct} benar`} · {s.answered}/{s.total} dijawab
+              {s.passing !== undefined && `Ambang ${s.passing} · `}
+              {isGraded(s.subtest) ? `${s.correct} opsi skor ${maxPerQuestion(s.subtest)}` : `${s.correct} benar`} · {s.answered}/{s.total} dijawab
             </div>
           </div>
         ))}

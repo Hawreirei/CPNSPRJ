@@ -3,6 +3,7 @@ import type { OptionLabel, Question } from '../domain/types';
 import { CellView } from './FigureView';
 import { RichText } from './RichText';
 import { Badge } from './ui';
+import { isGraded, isTopOption, maxPerQuestion } from '../domain/examPackage';
 
 /**
  * Selectable options that turn into a marked key once `revealed`: top option green,
@@ -33,7 +34,7 @@ export function AnswerOptions({
           : isBest
             ? 'border-green-500 bg-green-50 dark:bg-green-950'
             : sel
-              ? q.subtest === 'TKP'
+              ? isGraded(q.subtest)
                 ? 'border-sky-500 bg-sky-50 dark:bg-sky-950'
                 : 'border-red-500 bg-red-50 dark:bg-red-950'
               : 'border-slate-200 opacity-70 dark:border-slate-700';
@@ -54,7 +55,7 @@ export function AnswerOptions({
               {o.figure ? <CellView cell={o.figure} /> : <RichText text={o.text} />}
               {revealed && o.rationale && <span className="mt-0.5 block text-xs text-slate-600 dark:text-slate-400">{o.rationale}</span>}
             </span>
-            {revealed && q.subtest === 'TKP' && <Badge tone={o.score === 5 ? 'green' : 'slate'}>{o.score}</Badge>}
+            {revealed && isGraded(q.subtest) && <Badge tone={isTopOption(q, o) ? 'green' : 'slate'}>{o.score}</Badge>}
           </button>
         );
       })}
@@ -66,25 +67,26 @@ export function AnswerOptions({
 export function FeedbackBanner({ q, answer }: { q: Question; answer?: OptionLabel }) {
   const fb = feedback(q, answer ?? 'A');
   const best = fb.best.join(', ') || '—';
+  const max = maxPerQuestion(q.subtest);
   const box = 'mt-4 rounded-lg px-3 py-2 text-sm font-medium';
   const green = 'bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200';
   if (!answer) {
     return (
       <div className={`${box} bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200`}>
-        {q.subtest === 'TKP' ? `Pilihan terbaik: ${best}.` : `Jawaban yang benar: ${best}.`}
+        {isGraded(q.subtest) ? `Pilihan terbaik: ${best}.` : `Jawaban yang benar: ${best}.`}
       </div>
     );
   }
-  if (q.subtest === 'TKP') {
+  if (isGraded(q.subtest)) {
     return (
       <div className={`${box} ${fb.correct ? green : 'bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200'}`}>
-        {fb.correct ? 'Skor 5 dari 5. Pilihan terbaik.' : `Skor ${fb.score} dari 5. Pilihan terbaik: ${best}.`}
+        {fb.correct ? `Skor ${max} dari ${max}. Pilihan terbaik.` : `Skor ${fb.score} dari ${max}. Pilihan terbaik: ${best}.`}
       </div>
     );
   }
   return (
     <div className={`${box} ${fb.correct ? green : 'bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200'}`}>
-      {fb.correct ? 'Benar. +5' : `Kurang tepat. Jawaban yang benar: ${best}.`}
+      {fb.correct ? `Benar. +${max}` : `Kurang tepat. Jawaban yang benar: ${best}.`}
     </div>
   );
 }

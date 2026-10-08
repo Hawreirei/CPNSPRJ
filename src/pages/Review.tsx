@@ -14,6 +14,7 @@ import { Explanation } from '../components/QuestionCard';
 import { FeedbackDialog } from '../components/FeedbackDialog';
 import { RichText } from '../components/RichText';
 import { Badge, Empty, SubtestBadge } from '../components/ui';
+import { inExamOrder } from '../domain/examPackage';
 
 const GRADE_LABEL: Record<Grade, string> = { lupa: 'Lupa', sulit: 'Sulit', baik: 'Baik', mudah: 'Mudah' };
 const TAG_LABEL = Object.fromEntries(REASON_TAGS.map((t) => [t.id, t.label])) as Record<ReasonTag, string>;
@@ -322,7 +323,7 @@ function Notebook({ items, now }: { items: ReviewItem[]; now: number }) {
       <div className="flex flex-wrap gap-2">
         <select className="input w-auto" value={subtest} onChange={(e) => setSubtest(e.target.value as Subtest | '')} aria-label="Sub-tes">
           <option value="">Semua sub-tes</option>
-          {SUBTESTS.map((s) => (
+          {inExamOrder([...SUBTESTS, ...[...questions.values()].map((q) => q.subtest)]).map((s) => (
             <option key={s} value={s}>
               {s}
             </option>

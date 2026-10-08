@@ -2,7 +2,6 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { db, getSetQuestions, useSettings } from '../db';
-import { SUBTESTS } from '../domain/types';
 import type { QSet, Question, Subtest } from '../domain/types';
 import { moreLikeThis, needsRepair, repairQuestion, rewriteQuestion, startGeneration, stopGeneration, useGenProgress } from '../engine/generator';
 import { crossCheckQuestions, isCrossCheckable, needsCrossCheck, type CrossCheckResult } from '../engine/crosscheck';
@@ -17,6 +16,7 @@ import { answerStats } from '../domain/quality';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { DownloadDialog } from '../components/DownloadDialog';
 import { Badge, Empty, ProgressBar } from '../components/ui';
+import { subtestsIn } from '../domain/examPackage';
 
 const STATUS_TEXT: Record<string, string> = { ready: 'Siap dipakai', generating: 'Sedang dibuat', paused: 'Belum selesai', draft: 'Draf' };
 
@@ -93,10 +93,7 @@ export default function SetDetail() {
           />
           <div className="muted mt-1 text-sm">
             {STATUS_TEXT[set.status] ?? set.status} · {questions.length} soal
-            {SUBTESTS.map((s) => {
-              const n = questions.filter((q) => q.subtest === s).length;
-              return n ? ` · ${s} ${n}` : '';
-            })}
+            {subtestsIn(questions).map((s) => ` · ${s} ${questions.filter((q) => q.subtest === s).length}`)}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -138,7 +135,7 @@ export default function SetDetail() {
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-1.5 text-sm">
-            {(['all', ...SUBTESTS] as const).map((s) => (
+            {['all', ...subtestsIn(questions)].map((s) => (
               <Chip key={s} on={sub === s} onClick={() => setSub(s)}>
                 {s === 'all' ? 'Semua' : s}
               </Chip>

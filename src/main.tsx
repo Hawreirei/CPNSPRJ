@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { recoverInterrupted, revalidateStored } from './engine/generator';
-import { requestPersistence } from './db';
+import { getSettings, requestPersistence } from './db';
 import { pruneRequestLog } from './engine/quota';
 import { setupAutoBackup } from './lib/autoBackup';
 import { setupPwa } from './lib/pwa';
@@ -28,8 +28,13 @@ function whenIdle(fn: () => void) {
   else setTimeout(fn, 2000);
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+// Imported exam packages are registered when Settings are read; do that before anything is scored.
+void getSettings()
+  .catch(() => undefined)
+  .finally(() =>
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    ),
+  );

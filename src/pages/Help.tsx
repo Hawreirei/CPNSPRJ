@@ -22,6 +22,11 @@ export default function Help() {
             <b>Simulasi CAT</b>: timer, grid nomor, ragu-ragu, kirim otomatis. Laporan menampilkan skor per sub-tes terhadap ambang batas dan topik lemah.
           </li>
           <li>
+            <b>Paket ujian lain</b>: di Pengaturan → Paket ujian, impor berkas paket untuk ujian selain SKD (misalnya PPPK). Setelah itu ujiannya bisa dipilih di Buat
+            Soal; bila ada sub-tes kompetensi teknis, isi nama jabatan Anda. Angka di berkas paket harus dari dokumen resmi; paket tanpa rujukan dokumen resmi ditandai
+            "bukan data resmi".
+          </li>
+          <li>
             <b>Mode CAT</b>: centang saat memulai ujian. Ujian dibuka layar penuh bila perangkat mendukung (tombol "Keluar layar penuh" selalu ada), dan setiap
             kali Anda meninggalkan tab ujian dicatat di Laporan Skor tanpa pengurangan nilai. Opsi "Kunci urutan sub-tes" melatih pembagian waktu (TWK → TIU →
             TKP tanpa kembali); ini bukan aturan resmi yang sudah kami pastikan.

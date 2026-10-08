@@ -1,5 +1,15 @@
-export type Subtest = 'TWK' | 'TIU' | 'TKP';
-export const SUBTESTS: Subtest[] = ['TWK', 'TIU', 'TKP'];
+import type { ExamPackage } from './examPackage';
+
+/** SKD CPNS sub-tests: the built-in exam, and everything the app had before exam packages (#37). */
+export type SkdSubtest = 'TWK' | 'TIU' | 'TKP';
+/**
+ * A sub-test id from an exam package (domain/examPackage.ts). Ids are unique across packages, so a
+ * question's sub-test alone says how it is scored. SKD CPNS uses 'TWK', 'TIU' and 'TKP'.
+ */
+export type Subtest = string;
+/** The SKD CPNS sub-tests, in exam order. Analytics, plans and streaks are about these. */
+export const SKD_SUBTESTS: SkdSubtest[] = ['TWK', 'TIU', 'TKP'];
+export const SUBTESTS: Subtest[] = SKD_SUBTESTS;
 
 export type Difficulty = 'mudah' | 'sedang' | 'sulit';
 export type DifficultyChoice = Difficulty | 'campuran';
@@ -152,7 +162,8 @@ export interface SectionSpec {
 export interface Blueprint {
   sections: SectionSpec[];
   durationMinutes: number;
-  passing: Record<Subtest, number>;
+  /** Pass mark per sub-test; a sub-test without one is decided by ranking. */
+  passing: Partial<Record<Subtest, number>>;
 }
 
 export interface BatchItem {
@@ -194,8 +205,9 @@ export interface SubtestResult {
   subtest: Subtest;
   score: number;
   max: number;
-  passing: number;
-  passed: boolean;
+  /** Absent for a sub-test without a pass mark (an exam decided by ranking). */
+  passing?: number;
+  passed?: boolean;
   correct: number;
   answered: number;
   total: number;
@@ -214,7 +226,8 @@ export interface AttemptResult {
   topics: TopicResult[];
   total: number;
   maxTotal: number;
-  passedAll: boolean;
+  /** Whether every sub-test met its pass mark; absent when a sub-test has none. */
+  passedAll?: boolean;
 }
 
 /** `exam`: CAT simulation, answers hidden until submit. `practice`: key and explanation shown after each answer. */
@@ -235,7 +248,7 @@ export interface Attempt {
   flagged: string[];
   timeSpent: Record<string, number>;
   currentIndex: number;
-  passing: Record<Subtest, number>;
+  passing: Partial<Record<Subtest, number>>;
   result?: AttemptResult;
   /** Exam taken in "Mode CAT": full screen where supported, and leaving the tab is recorded. */
   catMode?: boolean;
@@ -417,6 +430,8 @@ export interface Settings {
   crossCheck?: CrossCheckSettings;
   /** Syllabus profiles the learner added, and which one is in use. Absent means the built-in one. */
   kisi?: KisiSettings;
+  /** Exam packages the learner imported (PPPK and others). SKD CPNS is built in and not listed. */
+  examPackages?: ExamPackage[];
   /** Streak and badges; on unless switched off. */
   streak?: StreakSettings;
   /** USD per 1M tokens, keyed by model id; fallback used when unknown. */

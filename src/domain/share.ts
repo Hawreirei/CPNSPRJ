@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Blueprint, FlagKind, Question } from './types';
+import type { Blueprint, FlagKind, Question, SkdSubtest } from './types';
 
 /*
  * A set shared as a file or a link: the set's name and blueprint and its questions, without
@@ -102,7 +102,8 @@ export function toShared(name: string, blueprint: Blueprint, questions: Question
     set: { name, blueprint },
     questions: questions.map((q) => ({
       id: q.id,
-      subtest: q.subtest,
+      // Shared files carry SKD sets only for now; other exam packages get their own format with #37.
+      subtest: q.subtest as SkdSubtest,
       topic: q.topic,
       difficulty: q.difficulty,
       stem: q.stem,

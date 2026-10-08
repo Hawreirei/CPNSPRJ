@@ -3,6 +3,7 @@ import { SUBTEST_NAMES } from '../domain/blueprint';
 import type { Attempt, Question } from '../domain/types';
 import { calibration, fmtSec, likelyGuesses, MIN_FLAGGED, MIN_TIMED, recommendations, timing, tkpPattern } from '../engine/analytics';
 import { ProgressBar, SubtestBadge } from './ui';
+import { isGraded } from '../domain/examPackage';
 
 /** Up to three concrete next steps for one attempt, each linking to where to act on it. */
 export function Recommendations({ a, questions }: { a: Attempt; questions: Question[] }) {
@@ -63,7 +64,7 @@ export function TimingCard({ a, questions, practice }: { a: Attempt; questions: 
                   </td>
                   <td className="pr-2 text-right tabular-nums">{fmtSec(s.avgMs)}</td>
                   <td className="pr-2 text-right tabular-nums">{s.timed >= MIN_TIMED ? s.slow.length : '—'}</td>
-                  <td className="text-right tabular-nums">{s.subtest === 'TKP' ? '—' : fmtSec(s.wastedMs)}</td>
+                  <td className="text-right tabular-nums">{isGraded(s.subtest) ? '—' : fmtSec(s.wastedMs)}</td>
                 </tr>
               ))}
             </tbody>

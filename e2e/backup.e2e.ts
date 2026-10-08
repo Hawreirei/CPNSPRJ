@@ -121,7 +121,8 @@ test.describe('saving to a file automatically', () => {
     expect((await savedFile(page)).settings?.brandName).toBe('Bimbel Otomatis');
     await pending.getByRole('button', { name: 'Izinkan lagi' }).click();
     await expect(pending).toHaveCount(0);
-    expect((await savedFile(page)).settings?.brandName).toBe('Bimbel Izin');
+    // The card goes as soon as the write starts; wait for the file itself.
+    await expect.poll(async () => (await savedFile(page)).settings?.brandName).toBe('Bimbel Izin');
 
     // The file was moved: say so, and let the user pick it again.
     await page.evaluate(() => {
@@ -136,7 +137,7 @@ test.describe('saving to a file automatically', () => {
     await expect(page.getByText('Berkas cadangan tidak ditemukan')).toBeVisible();
     await page.getByRole('button', { name: 'Pilih berkas lagi' }).click();
     await expect(page.getByText('Berkas cadangan tidak ditemukan')).toHaveCount(0);
-    expect((await savedFile(page)).settings?.brandName).toBe('Bimbel Pindah');
+    await expect.poll(async () => (await savedFile(page)).settings?.brandName).toBe('Bimbel Pindah');
   });
 
   test('browsers without the API only offer the manual backup', async ({ page }) => {

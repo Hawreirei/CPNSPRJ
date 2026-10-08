@@ -1,4 +1,5 @@
 import { NUMERIC_TOPICS } from './blueprint';
+import { isGraded, packageOf, SKD_CPNS, specOf } from './examPackage';
 import type { BatchItem, Difficulty, Question, Subtest } from './types';
 
 export const SYSTEM_PROMPT = `Anda adalah penyusun soal latihan SKD CPNS (Seleksi Kompetensi Dasar) yang teliti.
@@ -14,7 +15,29 @@ const DIFF_GUIDE: Record<Difficulty, string> = {
   sulit: 'sulit (multi-langkah, pengecoh kuat, setara soal HOTS)',
 };
 
+/**
+ * Sub-tests of an imported exam package: what the package file says, nothing more. The package's
+ * own name and source are given so the model writes for that exam, not for SKD.
+ */
+function packageGuide(subtest: Subtest, topics: string[]): string {
+  const spec = specOf(subtest);
+  const pkg = packageOf(subtest);
+  const r = spec.scoring;
+  const what = spec.fromJobTitle
+    ? `Soal menguji kompetensi teknis yang dibutuhkan untuk jabatan ${topics.map((t) => `"${t}"`).join(', ')}: pengetahuan, aturan, dan keterampilan kerja jabatan itu. Isi kolom "topic" dengan nama jabatan tersebut.
+Jika Anda tidak yakin suatu aturan atau angka benar, isi "confidence": "low". Jangan mengarang nomor peraturan.`
+    : `Topik: ${topics.map((t) => `"${t}"`).join(', ')}.`;
+  const scoring =
+    r.kind === 'keyed'
+      ? 'Hanya satu opsi benar; pengecoh harus masuk akal.'
+      : `Kelima opsi adalah tindakan atau jawaban yang masuk akal. Setiap opsi WAJIB punya "score" ${r.min} sampai ${r.max}; tepat satu opsi mendapat skor ${r.max}. Pembahasan menjelaskan alasan skor tiap opsi. Tidak perlu "answer".`;
+  return `Sub-tes: ${subtest} (${spec.name}) untuk ${pkg.name}. Ini BUKAN soal SKD CPNS.
+${what}
+${scoring}`;
+}
+
 function subtestGuide(subtest: Subtest, topics: string[]): string {
+  if (packageOf(subtest).id !== SKD_CPNS.id) return packageGuide(subtest, topics);
   const list = topics.map((t) => `"${t}"`).join(', ');
   if (subtest === 'TWK') {
     return `Sub-tes: TWK (Tes Wawasan Kebangsaan). Topik: ${list}.
@@ -50,9 +73,9 @@ function formatSpec(subtest: Subtest): string {
       "topic": "topik sesuai daftar",
       "stem": "teks soal",
       "options": [
-        {"label": "A", "text": "..."${subtest === 'TKP' ? ', "score": 3, "rationale": "alasan skor (wajib untuk soal sulit)"' : ''}},
+        {"label": "A", "text": "..."${subtest === 'TKP' ? ', "score": 3, "rationale": "alasan skor (wajib untuk soal sulit)"' : isGraded(subtest) ? ', "score": 3' : ''}},
         ... total 5 opsi A-E
-      ],${subtest !== 'TKP' ? '\n      "answer": "C",' : ''}
+      ],${!isGraded(subtest) ? '\n      "answer": "C",' : ''}
       "explanation": "pembahasan langkah demi langkah",${subtest === 'TWK' ? '\n      "reference": "rujukan",' : ''}${
         subtest === 'TIU' ? '\n      "mathExpression": "hanya untuk soal numerik",' : ''
       }
@@ -181,7 +204,9 @@ export function buildCrossCheckPrompt(subtest: Subtest, questions: Pick<Question
   const task =
     subtest === 'TKP'
       ? 'Untuk setiap soal TKP (situasi kerja ASN), pilih SATU tindakan yang paling tepat menurut nilai pelayanan publik, integritas, dan profesionalisme ASN.'
-      : `Untuk setiap soal ${subtest}, pilih SATU opsi yang benar.`;
+      : isGraded(subtest)
+        ? `Untuk setiap soal ${subtest} (${specOf(subtest).name}), pilih SATU opsi yang paling tepat.`
+        : `Untuk setiap soal ${subtest}, pilih SATU opsi yang benar.`;
   const list = questions
     // A reading question can only be answered with its passage, given inline on the question's line.
     .map((q, i) => `${i + 1}. ${q.passage ? `[Bacaan: ${q.passage.text.replace(/\s*\n\s*/g, ' ')}] ` : ''}${q.stem.replace(/\s*\n\s*/g, ' ')}\n${q.options.map((o) => `${o.label}. ${o.figure ? '[gambar]' : o.text}`).join('\n')}`)
