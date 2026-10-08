@@ -13,6 +13,7 @@ import { isLimited, keyUsage, limitsOf, QuotaExhaustedError } from './quota';
 import { CROSS_CHECK_KINDS, isCrossCheckable, openCheckerSession, runCrossCheck } from './crosscheck';
 import { callAndParse, callAndParsePassages, openSession, type ModelSession } from './session';
 import { errorText, isQuotaError } from './storage';
+import { logError } from '../lib/errorLog';
 
 export interface GenProgress {
   setId: string;
@@ -251,6 +252,7 @@ export async function startGeneration(setId: string): Promise<void> {
           break;
         }
         failures++;
+        void logError('generation', e);
         const msg = errorText(e);
         await setBatch(setId, batch.id, { status: 'failed', error: msg }).catch(() => {});
         log(setId, 'error', `${label(batch)}: ${msg}`);

@@ -13,6 +13,7 @@ import { SUBTESTS } from '../domain/types';
 import { DEFAULT_PRICES } from '../providers/types';
 import { getTextSize, getTheme, setTextSize, setTheme, type TextSize, type Theme } from '../lib/theme';
 import { errorText } from '../engine/storage';
+import { clearErrorLog, downloadErrorLog, logError, useErrorCount } from '../lib/errorLog';
 
 export default function SettingsPage() {
   const s = useSettings();
@@ -155,6 +156,7 @@ export default function SettingsPage() {
                 const r = await importBackup(f);
                 setMsg(`Dipulihkan: ${r.sets} set, ${r.questions} soal, ${r.attempts} simulasi, ${r.reviews} catatan Buku Kesalahan.`);
               } catch (err) {
+                void logError('import', err);
                 setMsg(`Gagal: ${errorText(err)}`);
               }
             }}
@@ -168,6 +170,11 @@ export default function SettingsPage() {
       <section className="card space-y-3">
         <h2>Penyimpanan</h2>
         <StorageCard />
+      </section>
+
+      <section className="card space-y-3">
+        <h2>Log galat</h2>
+        <ErrorLogSection />
       </section>
 
       <details className="card">
@@ -430,5 +437,27 @@ function AutoBackupPanel() {
       )}
       {msg && <p className="text-sm text-red-600 dark:text-red-400">{msg}</p>}
     </div>
+  );
+}
+
+/** Download or clear the local error log; nothing is sent anywhere. */
+function ErrorLogSection() {
+  const count = useErrorCount();
+  return (
+    <>
+      <p className="muted text-sm">
+        Galat yang terjadi di aplikasi dicatat di perangkat ini (paling banyak 200 terakhir) supaya bisa dilampirkan saat melaporkan masalah. Tidak ada yang
+        dikirim ke mana pun. Isinya sudah disaring: tanpa API key, isi soal, atau prompt.
+      </p>
+      <p className="text-sm">{count ? `${count} galat tercatat.` : 'Belum ada galat yang tercatat.'}</p>
+      <div className="flex flex-wrap gap-2">
+        <button className="btn" disabled={!count} onClick={() => void downloadErrorLog()}>
+          Unduh log galat
+        </button>
+        <button className="btn btn-ghost" disabled={!count} onClick={() => void clearErrorLog()}>
+          Hapus log
+        </button>
+      </div>
+    </>
   );
 }

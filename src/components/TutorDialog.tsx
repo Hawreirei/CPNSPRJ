@@ -11,6 +11,7 @@ import { askTutor, tutorEstimate } from '../engine/tutor';
 import { RichText } from './RichText';
 import { fmtUsd, Modal } from './ui';
 import { errorText } from '../engine/storage';
+import { logError } from '../lib/errorLog';
 
 interface Turn extends TutorTurn {
   keyLooksWrong?: boolean;
@@ -66,7 +67,10 @@ export default function TutorDialog({
       const r = await askTutor(q, { question, userAnswer, history }, ctrl.current.signal);
       setTurns((t) => [...t, { role: 'tutor', text: r.answer, keyLooksWrong: r.keyLooksWrong }]);
     } catch (e) {
-      if ((e as Error).name !== 'AbortError') setError(e instanceof Error ? e.message : String(e));
+      if ((e as Error).name !== 'AbortError') {
+        void logError('tutor', e);
+        setError(errorText(e));
+      }
     } finally {
       setBusy(false);
     }

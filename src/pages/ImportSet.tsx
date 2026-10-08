@@ -4,6 +4,7 @@ import { decodeLinkData, parseShared, type SharedSet } from '../domain/share';
 import { SUBTESTS } from '../domain/types';
 import { importShared, previewImport } from '../engine/share';
 import { errorText } from '../engine/storage';
+import { logError } from '../lib/errorLog';
 
 type Preview = Awaited<ReturnType<typeof previewImport>>;
 type Loaded = { shared: SharedSet; preview: Preview } | { error: string };
@@ -14,6 +15,7 @@ async function read(raw: () => Promise<unknown>): Promise<Loaded> {
     const shared = parseShared(await raw());
     return { shared, preview: await previewImport(shared) };
   } catch (e) {
+    void logError('import', e);
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
@@ -50,6 +52,7 @@ export default function ImportSet() {
       const set = await importShared(shared);
       nav(`/sets/${set.id}`, { replace: true });
     } catch (e) {
+      void logError('import', e);
       setError(errorText(e));
       setBusy(false);
     }

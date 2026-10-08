@@ -8,6 +8,7 @@ import { pruneRequestLog } from './engine/quota';
 import { setupAutoBackup } from './lib/autoBackup';
 import { setupPwa } from './lib/pwa';
 import { applyTextSize, applyTheme, watchSystemTheme } from './lib/theme';
+import { setupErrorLog } from './lib/errorLog';
 
 applyTheme();
 applyTextSize();
@@ -18,6 +19,7 @@ void recoverInterrupted();
 whenIdle(() => void revalidateStored());
 void requestPersistence();
 void pruneRequestLog();
+setupErrorLog();
 setupPwa();
 setupAutoBackup();
 
