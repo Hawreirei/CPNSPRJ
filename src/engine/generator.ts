@@ -3,7 +3,7 @@ import { db, getSettings } from '../db';
 import { generateFigural } from '../domain/figural';
 import { buildPrompt, buildRepairPrompt, buildRewritePrompt } from '../domain/prompts';
 import { SUBTESTS } from '../domain/types';
-import { validateQuestion } from '../domain/validators';
+import { loadMath, validateQuestion } from '../domain/validators';
 import { ProviderError } from '../providers';
 import type { FlagKind, PlanBatch, QSet, Question } from '../domain/types';
 import { uid } from '../lib/id';
@@ -115,6 +115,7 @@ async function runBatch(set: QSet, batch: PlanBatch, session: ModelSession | nul
     questions = await callAndParse(session, prompt, { subtest: batch.subtest, items: batch.items, setId: set.id }, signal, (i, o) => addUsage(set.id, i, o));
     questions = questions.slice(0, batch.count);
   }
+  await loadMath();
   const validated = questions.map((q) => {
     const v = validateQuestion({ ...q, originSetId: set.id }, hashes);
     hashes.add(v.hash);
@@ -310,6 +311,7 @@ export async function rewriteQuestion(q: Question, instruction: string, keyId?: 
   const ctrl = new AbortController();
   const [nq] = await callAndParse(session, buildRewritePrompt(q, instruction), { subtest: q.subtest, items: [{ topic: q.topic, difficulty: q.difficulty }], setId: q.originSetId }, ctrl.signal, async () => {});
   if (!nq) throw new Error('AI tidak mengembalikan soal.');
+  await loadMath();
   const updated = validateQuestion({ ...nq, id: q.id, starred: q.starred, locked: q.locked, createdAt: q.createdAt, updatedAt: Date.now() });
   await db.questions.put(updated);
   return updated;
@@ -331,6 +333,7 @@ async function repairWith(session: ModelSession, questions: Question[], signal: 
     const out = await callAndParse(session, buildRepairPrompt(subtest, group), { subtest, items, setId: group[0].originSetId }, signal, onUsage);
     // Answers are matched to questions by position, so a partial reply can't be trusted.
     if (out.length !== group.length) continue;
+    await loadMath();
     for (const [i, old] of group.entries()) {
       const v = validateQuestion({ ...out[i], id: old.id, originSetId: old.originSetId, starred: old.starred, createdAt: old.createdAt, updatedAt: Date.now() });
       if (needsRepair(v)) continue;
@@ -368,6 +371,7 @@ export async function moreLikeThis(setId: string, q: Question, count: number, ke
     questions = await callAndParse(session, prompt, { subtest: q.subtest, items, setId }, ctrl.signal, (i, o) => addUsage(setId, i, o));
   }
   const hashes = await knownHashes();
+  await loadMath();
   const validated = questions.slice(0, count).map((x) => validateQuestion(x, hashes));
   await appendToSet(setId, validated, q.id);
   return validated.length;
@@ -388,6 +392,7 @@ export async function revalidateStored() {
     return;
   }
   const qs = await db.questions.filter((q) => q.subtest !== 'TKP' && q.source !== 'procedural' && !q.locked).toArray();
+  if (qs.length) await loadMath();
   const changed = qs.flatMap((q) => {
     const v = validateQuestion(q);
     // Flags from outside the validator (duplicates, a second model's opinion) survive re-checking.

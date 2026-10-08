@@ -2,8 +2,10 @@ import { NUMERIC_TOPICS } from './blueprint';
 import { approxEqual, evaluateExpression, parseNumeric } from './numeric';
 import type { Flag, OptionLabel, Question } from './types';
 
+export { loadMath } from './numeric';
+
 /**
- * Runs every reliability check and returns the question with an updated key
+ * Runs every reliability check (after `await loadMath()`) and returns the question with an updated key
  * (when the math engine can safely correct it) and a fresh list of flags.
  */
 export function validateQuestion(q: Question, knownHashes?: Set<string>): Question {

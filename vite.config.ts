@@ -17,6 +17,9 @@ const csp = [
   "base-uri 'self'",
 ].join('; ');
 
+/** Package → chunk name for libraries kept out of the startup bundle (numeric.ts, RichText.tsx, providers/index.ts). */
+const LAZY_LIBS: Record<string, string> = { mathjs: 'mathjs', katex: 'katex', '@anthropic-ai/sdk': 'anthropic' };
+
 const cspPlugin: Plugin = {
   name: 'inject-csp',
   apply: 'build',
@@ -65,10 +68,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules/mathjs')) return 'mathjs';
-          if (id.includes('node_modules/katex')) return 'katex';
-          if (id.includes('node_modules/@anthropic-ai')) return 'anthropic';
+        // Stable names for the big on-demand libraries, so the e2e test and the bundle check can spot them.
+        // They split off by themselves (dynamic imports); manualChunks would pull Vite's preload helper into one of them.
+        chunkFileNames(chunk) {
+          const lib = Object.keys(LAZY_LIBS).find((l) => chunk.moduleIds.some((id) => id.includes(`node_modules/${l}/`)));
+          return `assets/${lib ? LAZY_LIBS[lib] : '[name]'}-[hash].js`;
         },
       },
     },

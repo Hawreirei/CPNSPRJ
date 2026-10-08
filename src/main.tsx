@@ -14,11 +14,17 @@ applyTextSize();
 watchSystemTheme();
 
 void recoverInterrupted();
-void revalidateStored();
+// Re-checking stored answers may need mathjs, so it waits until the first screen is up.
+whenIdle(() => void revalidateStored());
 void requestPersistence();
 void pruneRequestLog();
 setupPwa();
 setupAutoBackup();
+
+function whenIdle(fn: () => void) {
+  if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 5000 });
+  else setTimeout(fn, 2000);
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,4 +1,3 @@
-import { completeAnthropic, listAnthropicModels } from './anthropic';
 import { getJson, postJson } from './http';
 import { ProviderError } from './types';
 import type { LlmRequest, LlmResponse, ProviderConfig } from './types';
@@ -8,6 +7,9 @@ const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const OPENAI_BASE = 'https://api.openai.com/v1';
 
 const trimSlash = (s: string) => s.replace(/\/+$/, '');
+
+// The Anthropic SDK is ~50 KB gzipped and only Anthropic keys need it, so it loads on first use.
+const anthropic = () => import('./anthropic');
 
 async function completeGemini(cfg: ProviderConfig, req: LlmRequest): Promise<LlmResponse> {
   const data = await postJson(
@@ -83,7 +85,7 @@ export async function complete(cfg: ProviderConfig, req: LlmRequest): Promise<Ll
     case 'openai':
       return completeOpenAiLike(OPENAI_BASE, cfg, req, true);
     case 'anthropic':
-      return completeAnthropic(cfg, req);
+      return (await anthropic()).completeAnthropic(cfg, req);
     case 'compat':
       if (!cfg.baseUrl) throw new ProviderError('Base URL wajib diisi untuk penyedia OpenAI-compatible.');
       return completeOpenAiLike(trimSlash(cfg.baseUrl), cfg, req, false);
@@ -117,7 +119,7 @@ export async function listModelInfo(cfg: ProviderConfig): Promise<ModelInfo[]> {
       return (d.data ?? []).map((m) => ({ id: m.id, label: m.name }));
     }
     case 'anthropic':
-      return listAnthropicModels(cfg);
+      return (await anthropic()).listAnthropicModels(cfg);
   }
 }
 

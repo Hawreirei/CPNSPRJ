@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { db } from '../db';
 import { TOPICS } from '../domain/blueprint';
 import { hashText } from '../lib/id';
-import { validateQuestion } from '../domain/validators';
+import { loadMath, validateQuestion } from '../domain/validators';
 import type { Difficulty, OptionLabel, Question } from '../domain/types';
 import { Modal } from './ui';
 
 export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => void }) {
   const [draft, setDraft] = useState<Question>(() => structuredClone(q));
+  const [error, setError] = useState('');
   const set = <K extends keyof Question>(k: K, v: Question[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
   async function save() {
@@ -15,9 +16,14 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
       ...o,
       score: draft.subtest === 'TKP' ? Math.max(1, Math.min(5, Math.round(o.score))) : o.label === draft.answer ? 5 : 0,
     }));
-    const next = validateQuestion({ ...draft, options, hash: hashText(draft.stem), updatedAt: Date.now() });
-    await db.questions.put(next);
-    onClose();
+    try {
+      await loadMath();
+      const next = validateQuestion({ ...draft, options, hash: hashText(draft.stem), updatedAt: Date.now() });
+      await db.questions.put(next);
+      onClose();
+    } catch (e) {
+      setError(`Gagal menyimpan: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   return (
@@ -105,6 +111,11 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
           <input type="checkbox" checked={draft.confidence !== 'low'} onChange={(e) => set('confidence', e.target.checked ? 'high' : 'low')} />
           Saya sudah memeriksa soal ini
         </label>
+        {error && (
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            {error}
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <button className="btn" onClick={onClose}>
             Batal
