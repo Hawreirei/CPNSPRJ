@@ -28,7 +28,7 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 | Set varian | Set baru dengan topik dan kesulitan yang sama |
 | Progres | Grafik riwayat skor per sub-tes dan penguasaan topik |
 | Unduh PDF / Word | Tombol **Unduh** di halaman set, atau pilih soal di Bank Soal lalu unduh. Isi: soal saja, soal + kunci jawaban, lengkap (dengan pembahasan), atau kunci saja; dengan nama lembaga, tanggal, dan logo. PDF berisi teks asli dan gambar soal figural |
-| Cadangan | Ekspor/impor JSON antar perangkat (API key tidak ikut) |
+| Cadangan | Ekspor/impor JSON antar perangkat (API key tidak ikut). Beranda mengingatkan bila cadangan terakhir lebih dari 7 hari atau sudah ada 3 set baru. Di Chrome/Edge desktop, cadangan bisa disimpan otomatis ke satu berkas pilihan setiap ada perubahan |
 | PWA | Bisa dipasang; set tersimpan dan simulasi berjalan offline |
 
 ## Penyedia AI

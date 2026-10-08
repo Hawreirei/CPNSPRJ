@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { db, useSettings } from '../db';
 import { attemptMode, attemptPath, examAttempts } from '../domain/practice';
 import { dueQueue, isDue } from '../engine/srs';
+import { BackupReminderCard } from '../components/BackupReminder';
 import { Badge, Stat, fmtDate } from '../components/ui';
 
 export default function Dashboard() {
@@ -60,6 +61,8 @@ export default function Dashboard() {
           </Link>
         </div>
       )}
+
+      <BackupReminderCard />
 
       {data.reviews.length > 0 && (
         <div className="card flex flex-wrap items-center justify-between gap-3">

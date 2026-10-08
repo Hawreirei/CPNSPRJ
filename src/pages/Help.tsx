@@ -76,7 +76,10 @@ export default function Help() {
         <ul className="list-disc space-y-1 pl-5">
           <li>Tidak ada server dan tidak ada login. Set, bank soal, riwayat, dan key hanya tersimpan di browser ini (IndexedDB).</li>
           <li>Teks soal yang Anda minta dikirim langsung ke penyedia AI pilihan Anda dan tunduk pada kebijakan privasi penyedia tersebut.</li>
-          <li>Data browser bisa terhapus bila Anda membersihkan data situs. Rutin unduh cadangan di Pengaturan.</li>
+          <li>
+            Data browser bisa terhapus bila Anda membersihkan data situs. Unduh cadangan di Pengaturan; Beranda mengingatkan bila cadangan sudah lebih dari 7
+            hari atau ada 3 set baru. Di Chrome/Edge desktop, pilih "Simpan otomatis ke berkas" agar cadangan diperbarui sendiri setiap ada perubahan.
+          </li>
           <li>Aplikasi bisa dipasang (Install / Add to Home Screen) dan set tersimpan serta simulasi bisa dipakai offline. Pembuatan soal baru butuh internet.</li>
         </ul>
       </section>

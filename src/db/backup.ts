@@ -1,3 +1,5 @@
+import { useLiveQuery } from 'dexie-react-hooks';
+import { SNOOZE_DAYS } from '../domain/backupReminder';
 import { db } from './index';
 import type { Attempt, QSet, Question, ReviewItem } from '../domain/types';
 
@@ -40,3 +42,35 @@ export async function importBackup(file: File): Promise<{ sets: number; question
   });
   return { sets: data.sets?.length ?? 0, questions: data.questions?.length ?? 0, attempts: data.attempts?.length ?? 0, reviews: data.reviews?.length ?? 0 };
 }
+
+export type AutoBackupError = { kind: 'permission' | 'missing' | 'other'; message: string };
+
+export interface BackupState {
+  lastBackupAt?: number;
+  lastBackupKind?: 'manual' | 'auto';
+  snoozedUntil?: number;
+  /** Present while automatic saving to a file is switched on. */
+  auto?: { fileName: string; lastWriteAt?: number; error?: AutoBackupError };
+}
+
+const STATE_KEY = 'backup';
+
+export async function getBackupState(): Promise<BackupState> {
+  return ((await db.meta.get(STATE_KEY))?.value as BackupState | undefined) ?? {};
+}
+
+export async function updateBackupState(patch: Partial<BackupState>): Promise<BackupState> {
+  return db.transaction('rw', db.meta, async () => {
+    const next = { ...(await getBackupState()), ...patch };
+    await db.meta.put({ key: STATE_KEY, value: next });
+    return next;
+  });
+}
+
+export function useBackupState(): BackupState | undefined {
+  return useLiveQuery(getBackupState, []);
+}
+
+export const markBackedUp = (kind: 'manual' | 'auto', now = Date.now()) => updateBackupState({ lastBackupAt: now, lastBackupKind: kind, snoozedUntil: undefined });
+
+export const snoozeBackupReminder = (now = Date.now()) => updateBackupState({ snoozedUntil: now + SNOOZE_DAYS * 86_400_000 });
