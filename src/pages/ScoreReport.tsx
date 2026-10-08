@@ -10,6 +10,8 @@ import { attemptQuestions } from '../engine/attempts';
 import { startGeneration } from '../engine/generator';
 import { createRemedialSet } from '../engine/sets';
 import { Recommendations, TimingCard, TkpCard, UnsureCard } from '../components/Analysis';
+import { CompareCard } from '../components/CompareCard';
+import { earlierExams } from '../domain/compare';
 import { fmtSec } from '../engine/analytics';
 import { QuestionCard } from '../components/QuestionCard';
 import { opensGroup, passageLabel } from '../domain/groups';
@@ -45,7 +47,8 @@ export default function ScoreReport() {
     const questions = await attemptQuestions(a);
     // Counted from the notebook itself, so attempts finished before it existed show nothing.
     const inNotebook = (await db.reviews.bulkGet(mistakesInAttempt(questions, a.answers, a.flagged))).filter(Boolean).length;
-    return { a, questions, inNotebook };
+    const earlier = earlierExams(a, await db.attempts.where('setId').equals(a.setId).toArray());
+    return { a, questions, inNotebook, earlier };
   }, [attemptId]);
   const [review, setReview] = useState<'none' | 'wrong' | 'all'>('none');
   const [busy, setBusy] = useState(false);
@@ -53,7 +56,7 @@ export default function ScoreReport() {
 
   if (data === undefined) return null;
   if (!data?.a.result) return <Empty title="Hasil tidak ditemukan" />;
-  const { a, questions, inNotebook } = data;
+  const { a, questions, inNotebook, earlier } = data;
   const r = a.result!;
   const weak = weakTopics(r.topics);
   const durationMs = (a.finishedAt ?? a.endsAt) - a.startedAt;
@@ -138,6 +141,8 @@ export default function ScoreReport() {
           </div>
         ))}
       </div>
+
+      {!practice && earlier.length > 0 && <CompareCard a={a} earlier={earlier} questions={questions} />}
 
       <Recommendations a={a} questions={questions} />
 
