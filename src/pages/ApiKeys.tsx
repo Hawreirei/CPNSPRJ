@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { db } from '../db';
 import type { ApiKeyRecord, KeyLimits, ProviderId } from '../domain/types';
-import { addKey, chooseKeyModel, deleteKey, loadKeyModels, providerConfig, refreshKeyModel, refreshStaleKeyModels, setDefaultKey, useAutoModel } from '../engine/keys';
+import { addKey, chooseKeyModel, deleteKey, loadKeyModels, providerConfig, refreshKeyModel, refreshStaleKeyModels, setDefaultKey, switchToAutoModel } from '../engine/keys';
 import { ModelSelect } from '../components/ModelSelect';
 import { clearQuotaBlock, defaultLimits, keyUsage, LIMIT_PRESETS, limitsOf, releaseRequest, reserveRequest } from '../engine/quota';
 import { complete, isModelUnavailable, listModelInfo, pickRecommendedModel, ProviderError, PROVIDERS, suggestedReplacement } from '../providers';
@@ -255,7 +255,7 @@ function KeyCard({ k, single }: { k: ApiKeyRecord; single: boolean }) {
                 await chooseKeyModel(k.id, c.id);
                 return `Memakai ${c.id}.`;
               }
-              const r = await useAutoModel(k.id);
+              const r = await switchToAutoModel(k.id);
               return `Otomatis: ${r.model}.`;
             })
           }

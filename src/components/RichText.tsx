@@ -56,7 +56,8 @@ export function toPlain(s: string): string {
   return (s ?? '')
     .replace(/\$\$?([^$]+)\$\$?/g, (_, m: string) =>
       m
-        .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1)/($2)')
+        // Simple fractions read naturally as 3/4; only compound parts need brackets.
+        .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, (_f, a: string, b: string) => `${/^[\w.,]+$/.test(a) ? a : `(${a})`}/${/^[\w.,]+$/.test(b) ? b : `(${b})`}`)
         .replace(/\\sqrt\{([^}]*)\}/g, '√($1)')
         .replace(/\\times/g, '×')
         .replace(/\\div/g, '÷')

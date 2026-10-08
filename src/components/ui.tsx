@@ -31,7 +31,7 @@ export function FlagList({ flags }: { flags: Flag[] }) {
           key={i}
           className={`rounded-md px-2 py-1 text-xs ${f.severity === 'warn' ? 'bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}
         >
-          {f.severity === 'warn' ? 'Perlu dicek: ' : 'Info: '}
+          {f.severity === 'warn' ? '⚠ ' : 'ℹ '}
           {f.message}
         </li>
       ))}

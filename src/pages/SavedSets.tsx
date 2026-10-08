@@ -21,16 +21,16 @@ export default function SavedSets() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1>Set Tersimpan</h1>
-          <p className="muted mt-1">Semua set tersimpan otomatis di browser ini.</p>
+          <h1>Set Saya</h1>
+          <p className="muted mt-1">Semua set soal yang pernah Anda buat. Tersimpan otomatis di browser ini.</p>
         </div>
         <Link className="btn btn-primary" to="/new">
-          + Set baru
+          + Buat soal baru
         </Link>
       </div>
       <input className="input max-w-sm" placeholder="Cari nama set…" value={q} onChange={(e) => setQ(e.target.value)} />
       {shown.length === 0 ? (
-        <Empty title="Belum ada set">Buat set pertama Anda di halaman Set Baru.</Empty>
+        <Empty title="Belum ada set">Buat set pertama Anda di halaman Buat Soal.</Empty>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {shown.map((s) => {
@@ -51,7 +51,7 @@ export default function SavedSets() {
                     Buka
                   </Link>
                   <Link className={`btn btn-sm ${s.questionIds.length ? '' : 'pointer-events-none opacity-50'}`} to={`/simulation?set=${s.id}`}>
-                    Simulasi
+                    Latihan ujian
                   </Link>
                   <button
                     className="btn btn-sm"
@@ -62,7 +62,7 @@ export default function SavedSets() {
                       nav(`/sets/${v.id}`);
                     }}
                   >
-                    Buat varian
+                    Buat set serupa
                   </button>
                   <button
                     className="btn btn-sm btn-danger ml-auto"

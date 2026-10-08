@@ -11,7 +11,7 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
   let next: Question = { ...q, options: q.options.map((o) => ({ ...o })) };
 
   if (next.options.length !== 5) {
-    flags.push({ kind: 'structure', severity: 'warn', message: `Jumlah opsi ${next.options.length}, seharusnya 5.` });
+    flags.push({ kind: 'structure', severity: 'warn', message: `Pilihan jawaban hanya ${next.options.length}, seharusnya 5.` });
   }
 
   if (next.subtest === 'TKP') {
@@ -30,14 +30,14 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
 
   if (next.subtest === 'TWK') {
     if (!next.reference?.trim()) {
-      flags.push({ kind: 'twk-unverified', severity: 'warn', message: 'Tidak ada rujukan (sila, pasal, atau fakta sejarah). Cek ke sumber resmi.' });
+      flags.push({ kind: 'twk-unverified', severity: 'warn', message: 'Belum ada sumber rujukan (sila, pasal, atau fakta sejarah). Cocokkan dengan sumber resmi.' });
     }
   }
   if (next.confidence === 'low') {
-    flags.push({ kind: 'low-confidence', severity: 'warn', message: 'AI menandai soal ini kurang yakin. Periksa ulang.' });
+    flags.push({ kind: 'low-confidence', severity: 'warn', message: 'AI kurang yakin dengan soal ini. Sebaiknya diperiksa ulang.' });
   }
   if (knownHashes?.has(next.hash)) {
-    flags.push({ kind: 'duplicate', severity: 'info', message: 'Soal serupa sudah ada di bank soal.' });
+    flags.push({ kind: 'duplicate', severity: 'info', message: 'Soal yang mirip sudah ada di Bank Soal.' });
   }
 
   return { ...next, flags };
@@ -60,18 +60,18 @@ export function checkTkp(q: Question): Flag[] {
   const flags: Flag[] = [];
   const scores = q.options.map((o) => o.score);
   if (scores.some((s) => !Number.isInteger(s) || s < 1 || s > 5)) {
-    flags.push({ kind: 'tkp-spread', severity: 'warn', message: 'Skor opsi TKP harus bilangan bulat 1–5.' });
+    flags.push({ kind: 'tkp-spread', severity: 'warn', message: 'Skor pilihan jawaban TKP tidak lengkap (harus 1 sampai 5).' });
     return flags;
   }
   const max = Math.max(...scores);
   if (scores.filter((s) => s === max).length > 1) {
-    flags.push({ kind: 'tkp-spread', severity: 'warn', message: 'Dua opsi atau lebih berbagi skor tertinggi.' });
+    flags.push({ kind: 'tkp-spread', severity: 'warn', message: 'Ada lebih dari satu jawaban dengan skor tertinggi.' });
   }
   if (max !== 5) {
-    flags.push({ kind: 'tkp-spread', severity: 'warn', message: 'Tidak ada opsi dengan skor 5.' });
+    flags.push({ kind: 'tkp-spread', severity: 'warn', message: 'Tidak ada jawaban dengan skor tertinggi (5).' });
   }
   if (new Set(scores).size < scores.length && flags.length === 0) {
-    flags.push({ kind: 'tkp-spread', severity: 'info', message: 'Ada skor kembar di opsi selain skor tertinggi; sebaran ideal 1–5 berbeda semua.' });
+    flags.push({ kind: 'tkp-spread', severity: 'info', message: 'Beberapa jawaban punya skor sama.' });
   }
   return flags;
 }
@@ -80,12 +80,12 @@ export function checkTkp(q: Question): Flag[] {
 export function checkMath(q: Question): { question: Question; flags: Flag[] } {
   const flags: Flag[] = [];
   if (!q.mathExpression) {
-    flags.push({ kind: 'math-mismatch', severity: 'info', message: 'Soal numerik tanpa ekspresi hitung; tidak diverifikasi mesin.' });
+    flags.push({ kind: 'math-mismatch', severity: 'info', message: 'Jawaban hitungan belum diperiksa otomatis.' });
     return { question: q, flags };
   }
   const value = evaluateExpression(q.mathExpression);
   if (value === null) {
-    flags.push({ kind: 'math-mismatch', severity: 'warn', message: `Ekspresi "${q.mathExpression}" tidak dapat dihitung.` });
+    flags.push({ kind: 'math-mismatch', severity: 'warn', message: 'Jawaban hitungan tidak bisa diperiksa otomatis. Cek manual.' });
     return { question: q, flags };
   }
   const matches: OptionLabel[] = q.options
@@ -102,7 +102,7 @@ export function checkMath(q: Question): { question: Question; flags: Flag[] } {
     flags.push({
       kind: 'math-corrected',
       severity: 'info',
-      message: `Kunci dikoreksi dari ${q.answer ?? '-'} ke ${answer} berdasarkan perhitungan (${formatNum(value)}).`,
+      message: `Kunci jawaban diperbaiki otomatis dari ${q.answer ?? '-'} ke ${answer} (hasil hitung: ${formatNum(value)}).`,
     });
     return {
       question: { ...q, answer, options: q.options.map((o) => ({ ...o, score: o.label === answer ? 5 : 0 })) },
@@ -110,9 +110,9 @@ export function checkMath(q: Question): { question: Question; flags: Flag[] } {
     };
   }
   if (matches.length > 1) {
-    flags.push({ kind: 'math-mismatch', severity: 'warn', message: `Lebih dari satu opsi bernilai ${formatNum(value)}.` });
+    flags.push({ kind: 'math-mismatch', severity: 'warn', message: `Lebih dari satu pilihan jawaban bernilai ${formatNum(value)}.` });
   } else {
-    flags.push({ kind: 'math-mismatch', severity: 'warn', message: `Hasil hitung ${formatNum(value)} tidak cocok dengan opsi mana pun.` });
+    flags.push({ kind: 'math-mismatch', severity: 'warn', message: `Hasil hitungan (${formatNum(value)}) tidak ada di pilihan jawaban. Cek soal ini.` });
   }
   return { question: q, flags };
 }
