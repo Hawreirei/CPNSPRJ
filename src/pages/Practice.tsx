@@ -5,7 +5,7 @@ import { attemptMode, feedback, isTimed } from '../domain/practice';
 import type { Attempt, OptionLabel, Question } from '../domain/types';
 import { attemptQuestions, finishAttempt } from '../engine/attempts';
 import { AnswerOptions, FeedbackBanner } from '../components/AnswerOptions';
-import { FigureView } from '../components/FigureView';
+import { StemMedia } from '../components/DataView';
 import { Explanation } from '../components/QuestionCard';
 import { FeedbackDialog } from '../components/FeedbackDialog';
 import { RichText } from '../components/RichText';
@@ -219,7 +219,7 @@ export default function Practice() {
           <div className="text-[15px] leading-relaxed">
             <RichText text={q.stem} />
           </div>
-          {q.figure && <FigureView figure={q.figure} />}
+          <StemMedia q={q} />
           <AnswerOptions q={q} chosen={chosen} revealed={!!fb} onAnswer={answer} />
 
           {fb && (

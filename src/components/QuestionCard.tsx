@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { wrongRate, type AnswerStats } from '../domain/quality';
 import type { Question } from '../domain/types';
-import { CellView, FigureView } from './FigureView';
+import { StemMedia } from './DataView';
+import { CellView } from './FigureView';
 import { RichText } from './RichText';
 import { Badge, FlagList, SubtestBadge } from './ui';
 
@@ -59,7 +60,7 @@ export function QuestionCard({
           <div className="leading-relaxed">
             <RichText text={q.stem} />
           </div>
-          {q.figure && <FigureView figure={q.figure} />}
+          <StemMedia q={q} />
           <ol className="mt-3 space-y-1.5">
             {q.options.map((o) => {
               const isKey = mode === 'pembahasan' && (q.subtest === 'TKP' ? o.score === 5 : o.label === q.answer);

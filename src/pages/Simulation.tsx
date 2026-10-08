@@ -4,7 +4,8 @@ import { db } from '../db';
 import type { Attempt, OptionLabel, Question } from '../domain/types';
 import { attemptQuestions, finishAttempt } from '../engine/attempts';
 import { attemptMode } from '../domain/practice';
-import { CellView, FigureView } from '../components/FigureView';
+import { CellView } from '../components/FigureView';
+import { StemMedia } from '../components/DataView';
 import { RichText } from '../components/RichText';
 import { Modal, SubtestBadge } from '../components/ui';
 
@@ -184,7 +185,7 @@ export default function Simulation() {
           <div className="text-[15px] leading-relaxed">
             <RichText text={q.stem} />
           </div>
-          {q.figure && <FigureView figure={q.figure} />}
+          <StemMedia q={q} />
           <div className="mt-4 space-y-2">
             {q.options.map((o) => {
               const sel = attempt.answers[q.id] === o.label;

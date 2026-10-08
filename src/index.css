@@ -57,3 +57,11 @@
   .print-break { break-before: page; }
   .avoid-break { break-inside: avoid; }
 }
+
+/* What chart marks sit on, for the gap between pie slices and the ring around line markers. */
+:root {
+  --chart-surface: var(--color-white);
+}
+.dark {
+  --chart-surface: var(--color-slate-900);
+}

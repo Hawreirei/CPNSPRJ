@@ -8,7 +8,7 @@ import type { Grade, OptionLabel, Question, ReasonTag, ReviewItem, Subtest } fro
 import { backfillFromHistory, gradeReview, removeReview, setReasonTags } from '../engine/review';
 import { addDays, dueQueue, fmtDue, fmtInterval, isDue, nextInterval, reviewedToday } from '../engine/srs';
 import { AnswerOptions, FeedbackBanner } from '../components/AnswerOptions';
-import { FigureView } from '../components/FigureView';
+import { StemMedia } from '../components/DataView';
 import { Explanation } from '../components/QuestionCard';
 import { FeedbackDialog } from '../components/FeedbackDialog';
 import { RichText } from '../components/RichText';
@@ -226,7 +226,7 @@ function ReviewCard({ q, item, onGrade }: { q: Question; item: ReviewItem; onGra
       <div className="text-[15px] leading-relaxed">
         <RichText text={q.stem} />
       </div>
-      {q.figure && <FigureView figure={q.figure} />}
+      <StemMedia q={q} />
       <AnswerOptions q={q} chosen={chosen} revealed={revealed} onAnswer={answer} />
 
       {!revealed ? (
@@ -365,7 +365,7 @@ function Notebook({ items, now }: { items: ReviewItem[]; now: number }) {
                 <RichText text={q.stem} />
               </span>
             </summary>
-            {q.figure && <FigureView figure={q.figure} />}
+            <StemMedia q={q} />
             <AnswerOptions q={q} revealed onAnswer={() => {}} />
             <Explanation q={q} onFeedback={() => setFeedbackFor(q)} />
           </details>

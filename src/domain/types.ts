@@ -26,6 +26,24 @@ export interface Figure {
   cells: (FigureCell | null)[];
 }
 
+export interface DataSeries {
+  name: string;
+  values: number[];
+}
+
+/** Numbers drawn by the app for a data-analysis question. */
+export interface DataFigure {
+  kind: 'table' | 'bar' | 'line' | 'pie';
+  title: string;
+  /** Unit of the values ("ton", "orang"); a pie chart's values are percentages. */
+  unit: string;
+  /** Heading of the category column, e.g. "Tahun" or "Kecamatan". */
+  category: string;
+  labels: string[];
+  /** Charts plot one series (one axis, no legend); a table may have several columns. */
+  series: DataSeries[];
+}
+
 export interface QuestionOption {
   label: OptionLabel;
   text: string;
@@ -82,6 +100,8 @@ export interface Question {
   /** TIU numerical: expression that mathjs evaluates to the correct answer. */
   mathExpression?: string;
   figure?: Figure;
+  /** TIU data analysis: the numbers the question is about, shown as a table or a chart. */
+  data?: DataFigure;
   flags: Flag[];
   locked: boolean;
   starred: boolean;

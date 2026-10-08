@@ -54,8 +54,8 @@ describe('what gets checked', () => {
     const est = estimateCrossCheck(planBatches(buildPreset('full', DEFAULT_SETTINGS), 20));
     expect(est.questions).toBeGreaterThan(75);
     expect(est.questions).toBeLessThan(110);
-    // 30 TWK → 2, 45 TKP → 3, ~18 TIU → 2.
-    expect(est.requests).toBe(7);
+    // 30 TWK → 2, 45 TKP → 3, 15 TIU (verbal and logic topics; the app draws figural and data questions) → 1.
+    expect(est.requests).toBe(6);
   });
 });
 

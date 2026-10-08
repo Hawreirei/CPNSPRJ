@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { db, getSettings } from '../db';
-import { generateFigural } from '../domain/figural';
+import { generateProcedural } from '../domain/procedural';
 import { buildPrompt, buildRepairPrompt, buildRewritePrompt } from '../domain/prompts';
 import { SUBTESTS } from '../domain/types';
 import { loadMath, validateQuestion } from '../domain/validators';
@@ -102,7 +102,7 @@ async function addUsage(setId: string, inputTokens: number, outputTokens: number
 async function runBatch(set: QSet, batch: PlanBatch, session: ModelSession | null, hashes: Set<string>, signal: AbortSignal) {
   let questions: Question[];
   if (isProcedural(batch)) {
-    questions = generateFigural(batch.items[0].topic, batch.items[0].difficulty, batch.count);
+    questions = generateProcedural(batch.items[0].topic, batch.items[0].difficulty, batch.count);
   } else {
     if (!session) throw new Error('Belum ada API key.');
     const basedOn = batch.basedOn ? ((await db.questions.bulkGet(batch.basedOn)).filter(Boolean) as Question[]) : undefined;
@@ -358,7 +358,7 @@ export async function repairQuestion(q: Question, keyId?: string): Promise<void>
 export async function moreLikeThis(setId: string, q: Question, count: number, keyId?: string): Promise<number> {
   let questions: Question[];
   if (q.source === 'procedural') {
-    questions = generateFigural(q.topic, q.difficulty, count);
+    questions = generateProcedural(q.topic, q.difficulty, count);
   } else {
     const session = await openSession(keyId);
     const items = Array.from({ length: count }, () => ({ topic: q.topic, difficulty: q.difficulty }));

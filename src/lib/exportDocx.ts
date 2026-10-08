@@ -1,8 +1,10 @@
 import { getSettings } from '../db';
 import { SUBTEST_NAMES } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
-import type { Question } from '../domain/types';
+import { fmtNum } from '../domain/dataAnalysis';
+import type { DataFigure, Question } from '../domain/types';
 import { toPlain } from '../components/RichText';
+import { dataChartSvg } from './dataSvg';
 import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
 
 export type PackKind = 'soal' | 'soal-kunci' | 'lengkap' | 'kunci' | 'pembahasan';
@@ -30,9 +32,9 @@ export function keyText(q: Question): string {
 
 export async function exportDocx(meta: ExportMeta, questions: Question[], pack: PackKind): Promise<Blob> {
   const d = await import('docx');
-  const { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, Footer, PageBreak } = d;
+  const { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, Footer, PageBreak, Table, TableRow, TableCell } = d;
   const settings = await getSettings();
-  type Child = InstanceType<typeof Paragraph>;
+  type Child = InstanceType<typeof Paragraph> | InstanceType<typeof Table>;
 
   const text = (s: string, opts: { bold?: boolean; size?: number; italics?: boolean; color?: string } = {}) =>
     toPlain(s)
@@ -74,10 +76,24 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
     return out;
   }
 
+  /** A data question's numbers: a real table, or the chart as an image under its title. */
+  async function dataBlock(data: DataFigure): Promise<Child[]> {
+    const title = new Paragraph({ keepNext: true, spacing: { before: 80 }, children: [new TextRun({ text: data.title, bold: true, size: 20 })] });
+    if (data.kind !== 'table') return [title, new Paragraph({ keepNext: true, children: [await image(dataChartSvg(data, '#111', '#fff'))] })];
+    const cell = (text: string, opts: { bold?: boolean; right?: boolean } = {}) =>
+      new TableCell({ children: [new Paragraph({ alignment: opts.right ? AlignmentType.RIGHT : AlignmentType.LEFT, children: [new TextRun({ text, bold: opts.bold, size: 20 })] })] });
+    const rows = [
+      new TableRow({ tableHeader: true, children: [cell(data.category, { bold: true }), ...data.series.map((s) => cell(s.name, { bold: true, right: true }))] }),
+      ...data.labels.map((l, i) => new TableRow({ children: [cell(l), ...data.series.map((s) => cell(fmtNum(s.values[i]), { right: true }))] })),
+    ];
+    return [title, new Table({ rows })];
+  }
+
   async function questionBlock(q: Question, n: number, withKey: boolean): Promise<Child[]> {
     const out: Child[] = [];
     out.push(new Paragraph({ spacing: { before: 200 }, keepNext: true, children: [new TextRun({ text: `${n}. `, bold: true }), ...text(q.stem)] }));
     if (hasStemFigure(q.figure)) out.push(new Paragraph({ keepNext: true, children: [await image(figureSvg(q.figure, 72, '#111'))] }));
+    if (q.data) out.push(...(await dataBlock(q.data)));
     for (const o of q.options) {
       const runs = o.figure ? [await image(cellSvg(o.figure, 56, '#111'))] : text(o.text);
       const suffix = withKey && q.subtest === 'TKP' ? [new TextRun({ text: `  (skor ${o.score})`, italics: true, color: '555555' })] : [];
