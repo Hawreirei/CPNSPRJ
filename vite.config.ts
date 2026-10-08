@@ -24,6 +24,10 @@ const cspPlugin: Plugin = {
 };
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify((process.env.GITHUB_SHA ?? 'dev').slice(0, 7)),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   // Relative base so the static build works on any host or sub-path.
   base: './',
   plugins: [
@@ -32,6 +36,8 @@ export default defineConfig({
     cspPlugin,
     VitePWA({
       registerType: 'autoUpdate',
+      // Registered from src/lib/pwa.ts so updates apply without a manual hard refresh.
+      injectRegister: false,
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'CPNS SKD Set Builder',

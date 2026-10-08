@@ -111,5 +111,5 @@ export async function listModels(cfg: ProviderConfig): Promise<string[]> {
 }
 
 export { PROVIDERS, DEFAULT_PRICES, FALLBACK_PRICE, ProviderError } from './types';
-export { pickRecommendedModel, groupModels, isModelUnavailable } from './models';
+export { pickRecommendedModel, groupModels, isModelUnavailable, suggestedReplacement } from './models';
 export type { ProviderConfig, LlmResponse } from './types';

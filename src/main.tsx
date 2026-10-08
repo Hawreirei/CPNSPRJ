@@ -5,6 +5,7 @@ import './index.css';
 import { recoverInterrupted } from './engine/generator';
 import { requestPersistence } from './db';
 import { pruneRequestLog } from './engine/quota';
+import { setupPwa } from './lib/pwa';
 import { applyTheme, watchSystemTheme } from './lib/theme';
 
 applyTheme();
@@ -13,6 +14,7 @@ watchSystemTheme();
 void recoverInterrupted();
 void requestPersistence();
 void pruneRequestLog();
+setupPwa();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

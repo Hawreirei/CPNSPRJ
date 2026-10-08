@@ -1,10 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { db } from '../db';
 import type { ApiKeyRecord, KeyLimits, ProviderId } from '../domain/types';
-import { addKey, deleteKey, providerConfig, refreshKeyModel, setDefaultKey } from '../engine/keys';
+import { addKey, deleteKey, providerConfig, refreshKeyModel, refreshStaleKeyModels, setDefaultKey } from '../engine/keys';
 import { clearQuotaBlock, defaultLimits, keyUsage, LIMIT_PRESETS, limitsOf, releaseRequest, reserveRequest } from '../engine/quota';
-import { complete, groupModels, listModels, pickRecommendedModel, PROVIDERS } from '../providers';
+import { complete, groupModels, isModelUnavailable, listModels, pickRecommendedModel, ProviderError, PROVIDERS, suggestedReplacement } from '../providers';
 import type { ProviderConfig } from '../providers';
 import { Badge, fmtDate } from '../components/ui';
 
@@ -87,6 +87,10 @@ function LimitsEditor({ value, onChange }: { value: KeyLimits; onChange: (l: Key
 
 export default function ApiKeys() {
   const keys = useLiveQuery(() => db.keys.orderBy('provider').toArray(), []);
+  // Bring old keys (e.g. still on a retired model) up to date as soon as this page opens.
+  useEffect(() => {
+    void refreshStaleKeyModels();
+  }, []);
   const [provider, setProvider] = useState<ProviderId>('gemini');
   const [label, setLabel] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -224,7 +228,14 @@ export default function ApiKeys() {
             onClick={() =>
               run(async () => {
                 const r = autoModel ? await discover() : { model, note: '' };
-                setStatus({ ok: true, msg: `${r.note ? r.note + ' ' : ''}${await testConnection(cfgFor(r.model))}` });
+                try {
+                  setStatus({ ok: true, msg: `${r.note ? r.note + ' ' : ''}${await testConnection(cfgFor(r.model))}` });
+                } catch (e) {
+                  const hint = e instanceof ProviderError && isModelUnavailable(e.status, e.message) ? suggestedReplacement(e.message) : undefined;
+                  if (!hint || hint === r.model) throw e;
+                  setModel(hint);
+                  setStatus({ ok: true, msg: `${r.model} sudah tidak tersedia; diganti ke ${hint}. ${await testConnection(cfgFor(hint))}` });
+                }
               })
             }
           >
@@ -317,7 +328,19 @@ function KeyRow({ k }: { k: ApiKeyRecord }) {
                   return await testConnection(await providerConfig(k.id));
                 } catch (e) {
                   await releaseRequest(slot);
-                  throw e;
+                  if (!(e instanceof ProviderError) || !isModelUnavailable(e.status, e.message)) throw e;
+                  // The model was retired: switch (auto keys) or tell the user what to pick (manual keys).
+                  const hint = suggestedReplacement(e.message);
+                  if (!auto) throw new Error(`Model ${k.model} sudah tidak tersedia.${hint ? ` Penyedia menyarankan ${hint}.` : ''} Pilih model lain atau aktifkan "otomatis".`);
+                  const r = await refreshKeyModel(k.id, { exclude: k.model, hint });
+                  if (!r.changed) throw e;
+                  const retry = await reserveRequest(k, 200);
+                  try {
+                    return `Model ${k.model} sudah tidak tersedia; otomatis diganti ke ${r.model}. ${await testConnection(await providerConfig(k.id))}`;
+                  } catch (e2) {
+                    await releaseRequest(retry);
+                    throw e2;
+                  }
                 }
               })
             }
