@@ -51,11 +51,16 @@ export async function gradeReview(questionId: string, grade: Grade, now = Date.n
     if (!item) return;
     const next = schedule(item, grade, now);
     await db.reviews.put(next);
-    const days = await getReviewDays();
-    const today = dayKey(now);
-    if (!days.includes(today)) await db.meta.put({ key: REVIEW_DAYS_KEY, value: logDay(days, today) });
+    await logReviewDay(now);
     return next;
   });
+}
+
+/** Record that reviews were graded today, for the streak (notebook questions and flashcards alike). */
+export async function logReviewDay(now = Date.now()): Promise<void> {
+  const days = await getReviewDays();
+  const today = dayKey(now);
+  if (!days.includes(today)) await db.meta.put({ key: REVIEW_DAYS_KEY, value: logDay(days, today) });
 }
 
 export async function setReasonTags(questionId: string, reasonTags: ReasonTag[]): Promise<void> {

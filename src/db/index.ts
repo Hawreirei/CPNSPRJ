@@ -2,7 +2,7 @@ import Dexie, { type EntityTable } from 'dexie';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
 import { setCustomPackages } from '../domain/examPackage';
-import type { ApiKeyRecord, Attempt, QSet, Question, RequestLog, ReviewItem, Settings } from '../domain/types';
+import type { ApiKeyRecord, Attempt, CardState, QSet, Question, RequestLog, ReviewItem, Settings } from '../domain/types';
 
 interface MetaRow {
   key: string;
@@ -17,6 +17,7 @@ export class AppDB extends Dexie {
   meta!: EntityTable<MetaRow, 'key'>;
   requests!: EntityTable<RequestLog, 'id'>;
   reviews!: EntityTable<ReviewItem, 'questionId'>;
+  cards!: EntityTable<CardState, 'cardId'>;
 
   constructor() {
     // Dexie's query cache served a page it had already shown a stale list: an exam finished
@@ -34,6 +35,8 @@ export class AppDB extends Dexie {
     this.version(2).stores({ requests: '++id, keyId, at, [keyId+at]' });
     // v3: mistake notebook with spaced-repetition schedule, one row per question.
     this.version(3).stores({ reviews: 'questionId, due, lastReviewedAt' });
+    // v4: flashcards being learned (Kartu Hafalan TWK), one row per card.
+    this.version(4).stores({ cards: 'cardId, due, lastReviewedAt' });
   }
 }
 

@@ -9,6 +9,7 @@ import { RichText } from './RichText';
 import { Badge, FlagList, SubtestBadge } from './ui';
 import { isGraded, isTopOption } from '../domain/examPackage';
 import { hasKamus, kamusPath } from '../domain/kamus';
+import { uudRefs } from '../domain/cards';
 
 // The tutor, its prompts and the similar-question generator load only when someone asks.
 const TutorDialog = lazy(() => import('./TutorDialog'));
@@ -139,6 +140,16 @@ export function Explanation({
       {q.reference && (
         <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
           Rujukan: <RichText text={q.reference} />
+          {onFeedback &&
+            uudRefs(q.reference).map((id) => (
+              <span key={id}>
+                {' · '}
+                {/* The official text in a new tab, to check the reference against. */}
+                <a className="text-brand-600 dark:text-brand-300 underline" href={`#/kartu?pasal=${encodeURIComponent(id)}`} target="_blank" rel="noreferrer">
+                  Lihat teks resmi Pasal {id} (tab baru)
+                </a>
+              </span>
+            ))}
         </div>
       )}
       {q.subtest === 'TKP' && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Skor TKP adalah rasional berbasis nilai pelayanan publik, bukan kunci resmi.</p>}

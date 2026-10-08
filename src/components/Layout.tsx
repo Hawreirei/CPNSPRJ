@@ -14,6 +14,7 @@ const NAV = [
   { to: '/simulation', label: 'Latihan Ujian' },
   { to: '/review', label: 'Buku Kesalahan' },
   { to: '/progress', label: 'Progres Belajar' },
+  { to: '/kartu', label: 'Kartu Hafalan TWK' },
   { to: '/kamus', label: 'Kamus Rumus TIU' },
   { to: '/keys', label: 'API Key' },
   { to: '/settings', label: 'Pengaturan' },
