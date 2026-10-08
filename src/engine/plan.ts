@@ -99,6 +99,10 @@ export function batchLabel(b: PlanBatch): string {
 }
 
 export const OUT_PER_Q = { TWK: 420, TIU: 420, TKP: 650 } as const;
+
+/** USD per million input and output tokens for a model: the learner's own price first, then the known ones. */
+export const priceFor = (model: string, settings: Pick<Settings, 'priceOverrides'>) =>
+  settings.priceOverrides[model] ?? DEFAULT_PRICES[model] ?? familyPrice(model) ?? FALLBACK_PRICE;
 const IN_PER_REQ = 1300;
 
 export interface PlanEstimate {
@@ -122,7 +126,7 @@ export function estimatePlan(
   const aiQuestions = ai.reduce((n, b) => n + b.count, 0);
   const inputTokens = ai.length * IN_PER_REQ;
   const outputTokens = ai.reduce((n, b) => n + b.count * OUT_PER_Q[b.subtest], 0);
-  const price = settings.priceOverrides[model] ?? DEFAULT_PRICES[model] ?? familyPrice(model) ?? FALLBACK_PRICE;
+  const price = priceFor(model, settings);
   const cost = (inputTokens * price.input + outputTokens * price.output) / 1e6;
   // Rate-limited keys run one request at a time and may wait for the per-minute window.
   const conc = limits?.rpm ? 1 : Math.max(1, settings.concurrency);

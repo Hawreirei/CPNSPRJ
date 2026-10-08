@@ -229,7 +229,12 @@ export default function Practice() {
           {fb && (
             <div aria-live="polite">
               <FeedbackBanner q={q} answer={chosen!} />
-              <Explanation q={q} onFeedback={() => setFeedbackOpen(true)} />
+              <Explanation
+                q={q}
+                userAnswer={chosen}
+                onFeedback={() => setFeedbackOpen(true)}
+                onChanged={(saved) => setQuestions((qs) => qs.map((x) => (x.id === saved.id ? saved : x)))}
+              />
             </div>
           )}
 

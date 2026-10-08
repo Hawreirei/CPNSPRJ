@@ -1,5 +1,5 @@
 import { SUBTESTS } from './types';
-import type { Blueprint, DifficultyChoice, ExamNumbers, KisiProfile, KisiTopic, Settings, Subtest } from './types';
+import type { Blueprint, Difficulty, DifficultyChoice, ExamNumbers, KisiProfile, KisiTopic, Settings, Subtest } from './types';
 
 export const TOPICS: Record<Subtest, string[]> = {
   TWK: [
@@ -111,6 +111,9 @@ export const examNumbersOf = (s: Pick<Settings, 'counts' | 'passing' | 'duration
   passing: { ...s.passing },
   durationMinutes: s.durationMinutes,
 });
+
+/** One step easier, for "similar but easier" questions. */
+export const easier = (d: Difficulty): Difficulty => (d === 'sulit' ? 'sedang' : 'mudah');
 
 export type PresetId = 'full' | 'twk' | 'tiu' | 'tkp' | 'mini';
 

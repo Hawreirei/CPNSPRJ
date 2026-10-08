@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { db, getSettings } from '../db';
 import { generateProcedural } from '../domain/procedural';
 import { endOfGroup } from '../domain/groups';
+import { easier } from '../domain/blueprint';
 import { buildPassagePrompt, buildPrompt, buildRepairPrompt, buildRewritePrompt } from '../domain/prompts';
 import { SUBTESTS } from '../domain/types';
 import { loadMath, validateQuestion } from '../domain/validators';
@@ -363,18 +364,20 @@ export async function repairQuestion(q: Question, keyId?: string): Promise<void>
 }
 
 /** Generate `count` new questions modelled on `q` and insert them right after it. */
-export async function moreLikeThis(setId: string, q: Question, count: number, keyId?: string): Promise<number> {
+/** New questions like `q`, added after it in the set; `easier` asks for one difficulty step down. */
+export async function moreLikeThis(setId: string, q: Question, count: number, keyId?: string, opts: { easier?: boolean } = {}): Promise<number> {
   let questions: Question[];
+  const difficulty = opts.easier ? easier(q.difficulty) : q.difficulty;
   if (q.source === 'procedural') {
-    questions = generateProcedural(q.topic, q.difficulty, count);
+    questions = generateProcedural(q.topic, difficulty, count);
   } else {
     const session = await openSession(keyId);
-    const items = Array.from({ length: count }, () => ({ topic: q.topic, difficulty: q.difficulty }));
+    const items = Array.from({ length: count }, () => ({ topic: q.topic, difficulty }));
     const prompt = buildPrompt({
       subtest: q.subtest,
       items,
       avoid: [q.stem],
-      instruction: `Semua soal meniru gaya, jenis, dan tingkat kesulitan soal contoh ini, tetapi dengan isi, angka, dan konteks berbeda: "${q.stem.slice(0, 600)}"`,
+      instruction: `Semua soal meniru gaya dan jenis soal contoh ini${opts.easier ? ', tetapi lebih mudah' : ', dengan tingkat kesulitan yang sama'}, dengan isi, angka, dan konteks berbeda: "${q.stem.slice(0, 600)}"`,
     });
     const ctrl = new AbortController();
     questions = await callAndParse(session, prompt, { subtest: q.subtest, items, setId }, ctrl.signal, (i, o) => addUsage(setId, i, o));

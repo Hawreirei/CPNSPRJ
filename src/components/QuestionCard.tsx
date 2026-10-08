@@ -1,11 +1,15 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { wrongRate, type AnswerStats } from '../domain/quality';
-import type { Question } from '../domain/types';
+import type { OptionLabel, Question } from '../domain/types';
+import { deleteNote } from '../engine/notes';
 import { StemMedia } from './DataView';
 import { PassageView } from './PassageView';
 import { CellView } from './FigureView';
 import { RichText } from './RichText';
 import { Badge, FlagList, SubtestBadge } from './ui';
+
+// The tutor, its prompts and the similar-question generator load only when someone asks.
+const TutorDialog = lazy(() => import('./TutorDialog'));
 
 export type CardMode = 'soal' | 'kunci' | 'pembahasan';
 
@@ -19,6 +23,7 @@ export function QuestionCard({
   onFeedback,
   passage = 'closed',
   passageLabel,
+  userAnswer,
 }: {
   q: Question;
   index?: number;
@@ -32,6 +37,8 @@ export function QuestionCard({
   /** How to show a reading passage: in full (first question of its group), folded, or not at all (print). */
   passage?: 'open' | 'closed' | 'hidden';
   passageLabel?: string;
+  /** The learner's answer, for the tutor's "why was mine wrong?". */
+  userAnswer?: OptionLabel;
 }) {
   const warn = q.flags.some((f) => f.severity === 'warn');
   const rate = wrongRate(stats);
@@ -91,7 +98,7 @@ export function QuestionCard({
 
       {mode === 'kunci' && <KeyLine q={q} />}
 
-      {mode === 'pembahasan' && <Explanation q={q} onFeedback={onFeedback} />}
+      {mode === 'pembahasan' && <Explanation q={q} onFeedback={onFeedback} userAnswer={userAnswer} />}
 
       {/* Only problems worth acting on; purely informational notes stay hidden. */}
       {showFlags && <FlagList flags={q.flags.filter((f) => f.severity === 'warn' || f.kind === 'math-corrected')} />}
@@ -99,7 +106,20 @@ export function QuestionCard({
   );
 }
 
-export function Explanation({ q, onFeedback }: { q: Question; onFeedback?: () => void }) {
+export function Explanation({
+  q,
+  onFeedback,
+  userAnswer,
+  onChanged,
+}: {
+  q: Question;
+  /** Interactive explanations (not print) offer rating, reporting and the tutor. */
+  onFeedback?: () => void;
+  userAnswer?: OptionLabel;
+  /** For pages that hold their own copy of the questions: called after a note is added or removed. */
+  onChanged?: (q: Question) => void;
+}) {
+  const [tutorOpen, setTutorOpen] = useState(false);
   return (
     <div className="mt-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-800">
       <div className="mb-1 font-semibold">
@@ -114,10 +134,44 @@ export function Explanation({ q, onFeedback }: { q: Question; onFeedback?: () =>
         </div>
       )}
       {q.subtest === 'TKP' && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Skor TKP adalah rasional berbasis nilai pelayanan publik, bukan kunci resmi.</p>}
+      {!!q.notes?.length && (
+        <div className="mt-3 space-y-1.5">
+          <div className="text-xs font-semibold">Catatan Anda</div>
+          {q.notes.map((n) => (
+            <div key={n.at} className="rounded-md bg-amber-50 px-2 py-1.5 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              <RichText text={n.text} />
+              {onFeedback && (
+                <button className="ml-2 text-xs text-slate-500 underline dark:text-slate-400" onClick={() => void deleteNote(q.id, n.at).then((x) => x && onChanged?.(x))}>
+                  Hapus catatan
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       {onFeedback && (
-        <button className="mt-2 text-xs text-brand-600 underline dark:text-brand-300" onClick={onFeedback}>
-          {q.report ? 'Soal ini sudah Anda laporkan · ubah' : 'Kunci salah atau soal bermasalah? Laporkan atau beri nilai'}
-        </button>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <button className="btn btn-sm" onClick={() => setTutorOpen(true)}>
+            Tanya AI
+          </button>
+          <button className="text-xs text-brand-600 underline dark:text-brand-300" onClick={onFeedback}>
+            {q.report ? 'Soal ini sudah Anda laporkan · ubah' : 'Kunci salah atau soal bermasalah? Laporkan atau beri nilai'}
+          </button>
+        </div>
+      )}
+      {tutorOpen && (
+        <Suspense fallback={null}>
+          <TutorDialog
+            q={q}
+            userAnswer={userAnswer}
+            onClose={() => setTutorOpen(false)}
+            onChanged={onChanged}
+            onReport={() => {
+              setTutorOpen(false);
+              onFeedback?.();
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

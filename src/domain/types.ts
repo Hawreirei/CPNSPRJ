@@ -26,6 +26,11 @@ export interface Figure {
   cells: (FigureCell | null)[];
 }
 
+export interface QuestionNote {
+  text: string;
+  at: number;
+}
+
 export interface Passage {
   id: string;
   title?: string;
@@ -126,6 +131,8 @@ export interface Question {
   report?: QuestionReport;
   /** The learner's 1–5 rating. Low-rated questions are picked last from the bank. */
   rating?: number;
+  /** Notes the learner kept, e.g. a tutor's explanation. */
+  notes?: QuestionNote[];
   source: 'ai' | 'procedural' | 'manual';
   createdAt: number;
   updatedAt: number;

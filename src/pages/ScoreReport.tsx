@@ -189,6 +189,7 @@ export default function ScoreReport() {
                 showFlags={false}
                 passage={opensGroup(shownQuestions, q) ? 'open' : 'closed'}
                 passageLabel={passageLabel(questions, q)}
+                userAnswer={a.answers[q.id]}
                 onFeedback={() => setFeedbackFor(q)}
                 actions={
                   <Badge tone={isCorrect(q, ans) ? 'green' : 'red'}>

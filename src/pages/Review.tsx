@@ -246,7 +246,7 @@ function ReviewCard({ q, item, onGrade }: { q: Question; item: ReviewItem; onGra
               Fokus TKP: pahami <b>mengapa opsi {best}</b> paling sesuai dengan nilai pelayanan publik dan profesionalisme, lalu bandingkan dengan pilihan Anda.
             </p>
           )}
-          <Explanation q={q} onFeedback={() => setFeedbackOpen(true)} />
+          <Explanation q={q} userAnswer={chosen} onFeedback={() => setFeedbackOpen(true)} />
           {feedbackOpen && <FeedbackDialog q={q} onClose={() => setFeedbackOpen(false)} />}
           <ReasonTags item={item} />
 

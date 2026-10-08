@@ -23,6 +23,8 @@ export interface GeminiMock {
   served: Record<'TWK' | 'TIU' | 'TKP', number>;
   /** generateContent calls received from the cross-checker. */
   checkCalls: number;
+  /** Prompts received by the tutor ("Tanya AI"). */
+  tutorPrompts: string[];
   /**
    * The checker's answer to question `no` (1-based) of a check request for `subtest`.
    * Defaults to the key (A; option A also scores 5 in TKP), i.e. agreement.
@@ -94,7 +96,7 @@ export function fakePassages(prompt: string) {
 }
 
 export async function mockGemini(page: Page): Promise<GeminiMock> {
-  const stats: GeminiMock = { generateCalls: 0, served: { TWK: 0, TIU: 0, TKP: 0 }, checkCalls: 0, checkAnswer: () => 'A' };
+  const stats: GeminiMock = { generateCalls: 0, served: { TWK: 0, TIU: 0, TKP: 0 }, checkCalls: 0, tutorPrompts: [], checkAnswer: () => 'A' };
   await page.route(`https://${GEMINI_HOST}/**`, async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -111,6 +113,15 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
     if (req.method() === 'POST' && url.pathname.endsWith(':generateContent')) {
       const body = req.postDataJSON() as { systemInstruction: { parts: { text: string }[] }; contents: { parts: { text: string }[] }[] };
       const prompt = body.contents[0].parts[0].text;
+      if (body.systemInstruction.parts[0].text.startsWith('Anda tutor')) {
+        // The tutor doubts the key only when the learner asks whether it is wrong.
+        stats.tutorPrompts.push(prompt);
+        const question = /Pertanyaan pengguna: (.*)$/m.exec(prompt)?.[1] ?? '';
+        const reply = { answer: `Penjelasan uji ${stats.tutorPrompts.length}: kunci A sesuai pembahasan.`, keyLooksWrong: /salah\?$/.test(question) && question.includes('kunci') };
+        return route.fulfill({
+          json: { candidates: [{ content: { parts: [{ text: JSON.stringify(reply) }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 80 } },
+        });
+      }
       if (body.systemInstruction.parts[0].text.includes('penguji')) {
         stats.checkCalls++;
         const subtest = /Untuk setiap soal (TWK|TIU|TKP)/.exec(prompt)?.[1] ?? '';
