@@ -13,6 +13,7 @@ import ApiKeys from './pages/ApiKeys';
 import SettingsPage from './pages/Settings';
 import Help from './pages/Help';
 import PrintView from './pages/PrintView';
+import Practice from './pages/Practice';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
       <Routes>
         <Route path="/print/:setId" element={<PrintView />} />
         <Route path="/cat/:attemptId" element={<Simulation />} />
+        <Route path="/practice/:attemptId" element={<Practice />} />
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="new" element={<NewSet />} />

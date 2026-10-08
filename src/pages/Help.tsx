@@ -22,6 +22,10 @@ export default function Help() {
             <b>Simulasi CAT</b>: timer, grid nomor, ragu-ragu, kirim otomatis. Laporan menampilkan skor per sub-tes terhadap ambang batas dan topik lemah.
           </li>
           <li>
+            <b>Mode Latihan</b>: di halaman Latihan Ujian pilih "Latihan". Kunci dan pembahasan tampil langsung setelah menjawab, jawaban tidak bisa diubah,
+            dan Anda bisa memilih topik tertentu. Hasil latihan tidak masuk grafik skor ujian di Progres. Dari Laporan Skor, klik "Latih ulang topik ini".
+          </li>
+          <li>
             <b>Bank Soal</b>: semua soal tersimpan dan bisa dipakai ulang untuk set baru tanpa AI. Centang soal lalu klik Unduh untuk mendapatkan file
             PDF/Word.
           </li>

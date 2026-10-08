@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../db';
+import { attemptMode, feedback, isTimed } from '../domain/practice';
 import type { Attempt, OptionLabel, Question } from '../domain/types';
 import { attemptQuestions, finishAttempt } from '../engine/attempts';
-import { attemptMode } from '../domain/practice';
 import { CellView, FigureView } from '../components/FigureView';
+import { Explanation } from '../components/QuestionCard';
 import { RichText } from '../components/RichText';
-import { Modal, SubtestBadge } from '../components/ui';
+import { Badge, Modal, SubtestBadge } from '../components/ui';
 
-export default function Simulation() {
+/**
+ * Practice mode: each answer is final and immediately reveals the key and explanation.
+ * Kept apart from the CAT page so the exam flow stays exactly as it is.
+ */
+export default function Practice() {
   const { attemptId = '' } = useParams();
   const nav = useNavigate();
   const [attempt, setAttemptState] = useState<Attempt | null>(null);
@@ -33,8 +38,8 @@ export default function Simulation() {
         nav(`/results/${a.id}`, { replace: true });
         return;
       }
-      if (attemptMode(a) === 'practice') {
-        nav(`/practice/${a.id}`, { replace: true });
+      if (attemptMode(a) !== 'practice') {
+        nav(`/cat/${a.id}`, { replace: true });
         return;
       }
       setQuestions(await attemptQuestions(a));
@@ -43,7 +48,10 @@ export default function Simulation() {
     })();
   }, [attemptId, nav]);
 
-  /** Persist a patch and credit time spent on the current question. */
+  /**
+   * Persist a patch. Time counts only until the current question is answered,
+   * so reading the explanation does not inflate time-per-question.
+   */
   const commit = useCallback(
     (patch: Partial<Attempt>) => {
       const a = attemptRef.current;
@@ -51,7 +59,7 @@ export default function Simulation() {
       const q = questions[a.currentIndex];
       const spent = Date.now() - enteredAt.current;
       enteredAt.current = Date.now();
-      const timeSpent = q ? { ...a.timeSpent, [q.id]: (a.timeSpent[q.id] ?? 0) + spent } : a.timeSpent;
+      const timeSpent = q && !a.answers[q.id] ? { ...a.timeSpent, [q.id]: (a.timeSpent[q.id] ?? 0) + spent } : a.timeSpent;
       const next = { ...a, timeSpent, ...patch };
       setAttempt(next);
       void db.attempts.update(a.id, { timeSpent: next.timeSpent, answers: next.answers, flagged: next.flagged, currentIndex: next.currentIndex });
@@ -69,24 +77,29 @@ export default function Simulation() {
     nav(`/results/${a.id}`, { replace: true });
   }, [commit, nav]);
 
+  const timed = attempt ? isTimed(attempt) : false;
   useEffect(() => {
+    if (!timed) return;
     const t = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(t);
-  }, []);
+  }, [timed]);
 
   useEffect(() => {
-    if (attempt && now >= attempt.endsAt) void submit();
-  }, [now, attempt, submit]);
+    if (attempt && timed && now >= attempt.endsAt) void submit();
+  }, [now, attempt, timed, submit]);
 
   useEffect(() => {
     if (!attempt) return;
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT') return;
+      // A focused button already handles Enter through its own click.
+      if (e.key === 'Enter' && tag === 'BUTTON') return;
       const k = e.key.toUpperCase();
       const cur = attemptRef.current;
       if (!cur || e.ctrlKey || e.metaKey || e.altKey) return;
       if (['A', 'B', 'C', 'D', 'E'].includes(k)) answer(k as OptionLabel);
-      if (e.key === 'ArrowRight') go(cur.currentIndex + 1);
+      if (e.key === 'ArrowRight' || (e.key === 'Enter' && cur.answers[questions[cur.currentIndex].id])) go(cur.currentIndex + 1);
       if (e.key === 'ArrowLeft') go(cur.currentIndex - 1);
     };
     window.addEventListener('keydown', onKey);
@@ -97,25 +110,28 @@ export default function Simulation() {
 
   const idx = attempt.currentIndex;
   const q = questions[idx];
+  const chosen = attempt.answers[q.id];
+  const fb = chosen ? feedback(q, chosen) : null;
+  const isFlagged = attempt.flagged.includes(q.id);
+  const isLast = idx === questions.length - 1;
+  const answeredCount = questions.filter((x) => attempt.answers[x.id]).length;
+  const correctCount = questions.filter((x) => attempt.answers[x.id] && feedback(x, attempt.answers[x.id]).correct).length;
   const remaining = Math.max(0, attempt.endsAt - now);
   const mm = Math.floor(remaining / 60000);
   const ss = Math.floor((remaining % 60000) / 1000);
-  const answeredCount = Object.keys(attempt.answers).filter((id) => attempt.questionIds.includes(id)).length;
-  const isFlagged = attempt.flagged.includes(q.id);
 
   function go(i: number) {
     if (i < 0 || i >= questions.length) return;
     commit({ currentIndex: i });
     setGridOpen(false);
   }
+  /** Answers are final in practice: the key is already on screen once one is chosen. */
   function answer(label: OptionLabel) {
     const a = attemptRef.current;
     if (!a) return;
     const id = questions[a.currentIndex].id;
-    const answers = { ...a.answers };
-    if (answers[id] === label) delete answers[id];
-    else answers[id] = label;
-    commit({ answers });
+    if (a.answers[id]) return;
+    commit({ answers: { ...a.answers, [id]: label } });
   }
   function toggleFlag() {
     const a = attemptRef.current;
@@ -128,14 +144,21 @@ export default function Simulation() {
   const grid = (
     <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
       {questions.map((x, i) => {
-        const ans = !!attempt.answers[x.id];
-        const fl = attempt.flagged.includes(x.id);
+        const ans = attempt.answers[x.id];
+        const f = ans ? feedback(x, ans) : null;
+        const color = !f
+          ? 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+          : f.correct
+            ? 'bg-green-600 text-white'
+            : x.subtest === 'TKP'
+              ? 'bg-sky-500 text-white'
+              : 'bg-red-600 text-white';
         return (
           <button
             key={x.id}
             onClick={() => go(i)}
-            className={`h-8 rounded text-xs font-medium ${i === idx ? 'ring-2 ring-brand-500' : ''} ${
-              fl ? 'bg-amber-400 text-black' : ans ? 'bg-green-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+            className={`h-8 rounded text-xs font-medium ${color} ${i === idx ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900' : ''} ${
+              attempt.flagged.includes(x.id) ? 'outline-2 outline-amber-400' : ''
             }`}
             aria-label={`Soal ${i + 1}`}
           >
@@ -149,10 +172,19 @@ export default function Simulation() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900">
-        <div className="min-w-0 flex-1 truncate text-sm font-semibold">{attempt.setName}</div>
-        <div className={`rounded-lg px-3 py-1 font-mono text-lg font-bold tabular-nums ${remaining < 5 * 60000 ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-slate-100 dark:bg-slate-800'}`}>
-          {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
+        <div className="min-w-0 flex-1 truncate text-sm font-semibold">
+          <Badge tone="blue">Latihan</Badge> {attempt.setName}
         </div>
+        <div className="hidden text-sm sm:block">
+          Benar <b>{correctCount}</b> / {answeredCount}
+        </div>
+        {timed && (
+          <div
+            className={`rounded-lg px-3 py-1 font-mono text-lg font-bold tabular-nums ${remaining < 5 * 60000 ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-slate-100 dark:bg-slate-800'}`}
+          >
+            {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
+          </div>
+        )}
         <button className="btn btn-sm lg:hidden" onClick={() => setGridOpen(true)}>
           Nomor
         </button>
@@ -163,34 +195,57 @@ export default function Simulation() {
 
       <div className="mx-auto grid w-full max-w-6xl flex-1 gap-4 p-4 lg:grid-cols-[1fr_260px]">
         <main className="card">
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="font-semibold">Soal {idx + 1}</span>
             <SubtestBadge subtest={q.subtest} />
+            <Badge>{q.topic}</Badge>
             {isFlagged && <span className="badge bg-amber-100 text-amber-800">ragu-ragu</span>}
           </div>
           <div className="text-[15px] leading-relaxed">
             <RichText text={q.stem} />
           </div>
           {q.figure && <FigureView figure={q.figure} />}
-          <div className="mt-4 space-y-2">
+          {/* Keyed per question so the previous answer's colors never fade over the next question. */}
+          <div key={q.id} className="mt-4 space-y-2">
             {q.options.map((o) => {
-              const sel = attempt.answers[q.id] === o.label;
+              const sel = chosen === o.label;
+              const isBest = !!fb && fb.best.includes(o.label);
+              const tone = !fb
+                ? 'border-slate-200 hover:border-slate-400 dark:border-slate-700'
+                : isBest
+                  ? 'border-green-500 bg-green-50 dark:bg-green-950'
+                  : sel
+                    ? q.subtest === 'TKP'
+                      ? 'border-sky-500 bg-sky-50 dark:bg-sky-950'
+                      : 'border-red-500 bg-red-50 dark:bg-red-950'
+                    : 'border-slate-200 opacity-70 dark:border-slate-700';
               return (
                 <button
                   key={o.label}
                   onClick={() => answer(o.label)}
-                  className={`flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm transition ${
-                    sel ? 'border-brand-500 bg-brand-50 dark:bg-slate-800' : 'border-slate-200 hover:border-slate-400 dark:border-slate-700'
-                  }`}
+                  disabled={!!fb}
+                  aria-pressed={sel}
+                  className={`flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm transition disabled:cursor-default ${tone}`}
                 >
-                  <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${sel ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-400'}`}>
+                  <span
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${sel ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-400'}`}
+                  >
                     {o.label}
                   </span>
                   <span className="flex-1 pt-0.5">{o.figure ? <CellView cell={o.figure} /> : <RichText text={o.text} />}</span>
+                  {fb && q.subtest === 'TKP' && <Badge tone={o.score === 5 ? 'green' : 'slate'}>{o.score}</Badge>}
                 </button>
               );
             })}
           </div>
+
+          {fb && (
+            <div aria-live="polite">
+              <FeedbackBanner q={q} answer={chosen!} />
+              <Explanation q={q} />
+            </div>
+          )}
+
           <div className="mt-6 flex flex-wrap gap-2">
             <button className="btn" disabled={idx === 0} onClick={() => go(idx - 1)}>
               ← Sebelumnya
@@ -198,17 +253,25 @@ export default function Simulation() {
             <button className={`btn ${isFlagged ? 'border-amber-400 bg-amber-100 text-amber-900' : ''}`} onClick={toggleFlag}>
               Ragu-ragu
             </button>
-            <button className="btn btn-primary ml-auto" disabled={idx === questions.length - 1} onClick={() => go(idx + 1)}>
-              Berikutnya →
-            </button>
+            {isLast ? (
+              <button className="btn btn-primary ml-auto" onClick={() => setConfirmOpen(true)}>
+                Selesai & lihat hasil
+              </button>
+            ) : (
+              <button className="btn btn-primary ml-auto" onClick={() => go(idx + 1)}>
+                {fb ? 'Berikutnya →' : 'Lewati →'}
+              </button>
+            )}
           </div>
-          <p className="muted mt-3 text-xs">Pintasan: A–E memilih jawaban (tekan lagi untuk membatalkan), ← → pindah soal.</p>
+          <p className="muted mt-3 text-xs">
+            Pintasan: A–E memilih jawaban, Enter atau → ke soal berikutnya, ← soal sebelumnya. Jawaban tidak bisa diubah setelah pembahasan tampil.
+          </p>
         </main>
 
         <aside className="hidden lg:block">
           <div className="card sticky top-16 space-y-3">
             <div className="text-sm">
-              Terjawab <b>{answeredCount}</b> / {questions.length}
+              Terjawab <b>{answeredCount}</b> / {questions.length} · benar <b>{correctCount}</b>
             </div>
             {grid}
             <Legend />
@@ -223,21 +286,36 @@ export default function Simulation() {
         </div>
       </Modal>
 
-      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Akhiri simulasi?">
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Akhiri latihan?">
         <p className="text-sm">
-          Terjawab {answeredCount} dari {questions.length} soal.
-          {questions.length - answeredCount > 0 && ` ${questions.length - answeredCount} soal belum dijawab.`}
-          {attempt.flagged.length > 0 && ` ${attempt.flagged.length} ditandai ragu-ragu.`}
+          Terjawab {answeredCount} dari {questions.length} soal, {correctCount} benar.
+          {questions.length - answeredCount > 0 && ` ${questions.length - answeredCount} soal dilewati dan dihitung kosong.`}
         </p>
         <div className="mt-4 flex justify-end gap-2">
           <button className="btn" onClick={() => setConfirmOpen(false)}>
             Kembali
           </button>
           <button className="btn btn-primary" onClick={submit}>
-            Kirim jawaban
+            Lihat hasil
           </button>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+function FeedbackBanner({ q, answer }: { q: Question; answer: OptionLabel }) {
+  const fb = feedback(q, answer);
+  if (q.subtest === 'TKP') {
+    return (
+      <div className={`mt-4 rounded-lg px-3 py-2 text-sm font-medium ${fb.correct ? 'bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200' : 'bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200'}`}>
+        {fb.correct ? 'Skor 5 dari 5. Pilihan terbaik.' : `Skor ${fb.score} dari 5. Pilihan terbaik: ${fb.best.join(', ') || '—'}.`}
+      </div>
+    );
+  }
+  return (
+    <div className={`mt-4 rounded-lg px-3 py-2 text-sm font-medium ${fb.correct ? 'bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200' : 'bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200'}`}>
+      {fb.correct ? 'Benar. +5' : `Kurang tepat. Jawaban yang benar: ${fb.best.join(', ') || '—'}.`}
     </div>
   );
 }
@@ -246,13 +324,19 @@ function Legend() {
   return (
     <div className="flex flex-wrap gap-3 text-xs">
       <span className="flex items-center gap-1">
-        <span className="h-3 w-3 rounded bg-green-600" /> terjawab
+        <span className="h-3 w-3 rounded bg-green-600" /> benar / TKP skor 5
       </span>
       <span className="flex items-center gap-1">
-        <span className="h-3 w-3 rounded bg-amber-400" /> ragu-ragu
+        <span className="h-3 w-3 rounded bg-red-600" /> salah
       </span>
       <span className="flex items-center gap-1">
-        <span className="h-3 w-3 rounded bg-slate-300" /> kosong
+        <span className="h-3 w-3 rounded bg-sky-500" /> TKP skor 1–4
+      </span>
+      <span className="flex items-center gap-1">
+        <span className="h-3 w-3 rounded bg-slate-300" /> belum
+      </span>
+      <span className="flex items-center gap-1">
+        <span className="h-3 w-3 rounded outline-2 outline-amber-400" /> ragu-ragu
       </span>
     </div>
   );

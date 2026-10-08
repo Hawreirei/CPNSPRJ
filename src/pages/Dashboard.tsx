@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { db } from '../db';
+import { attemptMode, attemptPath, examAttempts } from '../domain/practice';
 import { Badge, Stat, fmtDate } from '../components/ui';
 
 export default function Dashboard() {
@@ -17,7 +18,7 @@ export default function Dashboard() {
   });
   if (!data) return null;
   const finished = data.attempts.filter((a) => a.result);
-  const last = finished[0];
+  const last = examAttempts(finished)[0];
   const inProgress = data.attempts.find((a) => !a.finishedAt);
 
   return (
@@ -46,10 +47,10 @@ export default function Dashboard() {
       {inProgress && (
         <div className="card flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="font-semibold">Latihan ujian belum selesai</div>
+            <div className="font-semibold">{attemptMode(inProgress) === 'practice' ? 'Latihan belum selesai' : 'Latihan ujian belum selesai'}</div>
             <div className="muted">{inProgress.setName}</div>
           </div>
-          <Link className="btn btn-primary" to={`/cat/${inProgress.id}`}>
+          <Link className="btn btn-primary" to={attemptPath(inProgress)}>
             Lanjutkan
           </Link>
         </div>
@@ -60,7 +61,7 @@ export default function Dashboard() {
         <Stat label="Soal di bank" value={data.questions} hint={data.flagged ? `${data.flagged} perlu dicek` : undefined} />
         <Stat label="Latihan selesai" value={finished.length} />
         <Stat
-          label="Skor terakhir"
+          label="Skor ujian terakhir"
           value={last?.result ? `${last.result.total}/${last.result.maxTotal}` : '—'}
           hint={last?.result ? (last.result.passedAll ? 'Lulus ambang batas' : 'Belum lulus ambang batas') : undefined}
         />

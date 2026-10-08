@@ -147,12 +147,18 @@ export interface AttemptResult {
   passedAll: boolean;
 }
 
+/** `exam`: CAT simulation, answers hidden until submit. `practice`: key and explanation shown after each answer. */
+export type AttemptMode = 'exam' | 'practice';
+
 export interface Attempt {
   id: string;
   setId: string;
   setName: string;
+  /** Missing on attempts saved before practice mode existed; those are exams. */
+  mode?: AttemptMode;
   questionIds: string[];
   startedAt: number;
+  /** `UNTIMED` when the attempt has no time limit. */
   endsAt: number;
   finishedAt?: number;
   answers: Record<string, OptionLabel>;

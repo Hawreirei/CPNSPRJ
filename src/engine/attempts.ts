@@ -1,14 +1,27 @@
 import { db, getSetQuestions } from '../db';
 import { computeResult } from '../domain/scoring';
+import { filterQuestions, UNTIMED, type QuestionFilter } from '../domain/practice';
 import { SUBTESTS } from '../domain/types';
-import type { Attempt, Question } from '../domain/types';
+import type { Attempt, AttemptMode, Question } from '../domain/types';
 import { shuffle, uid } from '../lib/id';
 import { passingForSet } from './sets';
 
-export async function startAttempt(setId: string, opts: { shuffleQuestions: boolean; durationMinutes: number }): Promise<Attempt> {
+export async function startAttempt(
+  setId: string,
+  opts: {
+    shuffleQuestions: boolean;
+    /** 0 = no time limit (practice only). */
+    durationMinutes: number;
+    mode?: AttemptMode;
+    filter?: QuestionFilter;
+  },
+): Promise<Attempt> {
   const set = await db.sets.get(setId);
   if (!set) throw new Error('Set tidak ditemukan');
+  const mode = opts.mode ?? 'exam';
   let questions = await getSetQuestions(set);
+  if (mode === 'practice') questions = filterQuestions(questions, opts.filter);
+  if (!questions.length) throw new Error('Tidak ada soal yang cocok dengan pilihan ini.');
   if (opts.shuffleQuestions) {
     questions = SUBTESTS.flatMap((s) => shuffle(questions.filter((q) => q.subtest === s)));
   }
@@ -17,9 +30,10 @@ export async function startAttempt(setId: string, opts: { shuffleQuestions: bool
     id: uid(),
     setId,
     setName: set.name,
+    mode,
     questionIds: questions.map((q) => q.id),
     startedAt: now,
-    endsAt: now + opts.durationMinutes * 60_000,
+    endsAt: opts.durationMinutes > 0 ? now + opts.durationMinutes * 60_000 : UNTIMED,
     answers: {},
     flagged: [],
     timeSpent: {},

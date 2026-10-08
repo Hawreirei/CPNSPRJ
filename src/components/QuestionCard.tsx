@@ -60,26 +60,30 @@ export function QuestionCard({
 
       {mode === 'kunci' && <KeyLine q={q} />}
 
-      {mode === 'pembahasan' && (
-        <div className="mt-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-800">
-          <div className="mb-1 font-semibold">
-            Pembahasan {q.subtest !== 'TKP' && <span className="font-normal">· Jawaban: {q.answer}</span>}
-          </div>
-          <div className="leading-relaxed text-slate-700 dark:text-slate-300">
-            <RichText text={q.explanation || '—'} />
-          </div>
-          {q.reference && (
-            <div className="mt-2 text-xs text-slate-500">
-              Rujukan: <RichText text={q.reference} />
-            </div>
-          )}
-          {q.subtest === 'TKP' && <p className="mt-2 text-xs text-slate-500">Skor TKP adalah rasional berbasis nilai pelayanan publik, bukan kunci resmi.</p>}
-        </div>
-      )}
+      {mode === 'pembahasan' && <Explanation q={q} />}
 
       {/* Only problems worth acting on; purely informational notes stay hidden. */}
       {showFlags && <FlagList flags={q.flags.filter((f) => f.severity === 'warn' || f.kind === 'math-corrected')} />}
     </article>
+  );
+}
+
+export function Explanation({ q }: { q: Question }) {
+  return (
+    <div className="mt-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-800">
+      <div className="mb-1 font-semibold">
+        Pembahasan {q.subtest !== 'TKP' && <span className="font-normal">· Jawaban: {q.answer}</span>}
+      </div>
+      <div className="leading-relaxed text-slate-700 dark:text-slate-300">
+        <RichText text={q.explanation || '—'} />
+      </div>
+      {q.reference && (
+        <div className="mt-2 text-xs text-slate-500">
+          Rujukan: <RichText text={q.reference} />
+        </div>
+      )}
+      {q.subtest === 'TKP' && <p className="mt-2 text-xs text-slate-500">Skor TKP adalah rasional berbasis nilai pelayanan publik, bukan kunci resmi.</p>}
+    </div>
   );
 }
 
