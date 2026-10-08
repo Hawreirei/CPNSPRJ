@@ -23,10 +23,10 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 | Simulasi CAT | Timer (default 100 menit), grid nomor, ragu-ragu, pintasan keyboard, kirim otomatis, bisa dilanjutkan setelah refresh |
 | Buku Kesalahan | Soal yang salah, kosong, atau ragu-ragu dari ujian dan latihan masuk otomatis, lalu diulang terjadwal (spaced repetition SM-2): jawab dulu, lihat pembahasan, nilai diri Lupa/Sulit/Baik/Mudah. Batas ulangan per hari, tag alasan salah, daftar semua catatan dengan filter |
 | Mode Latihan | Kunci, skor TKP, dan pembahasan tampil langsung setelah menjawab; jawaban terkunci setelah dipilih; pilih topik tertentu; timer opsional. Tidak masuk grafik skor ujian di Progres |
-| Laporan skor | Skor per sub-tes vs ambang batas, topik lemah, waktu per soal, tinjau jawaban, set latihan topik lemah (bank dulu, AI bila kurang) |
+| Laporan skor | Skor per sub-tes vs ambang batas, maksimal 3 saran konkret dengan tautan ke latihan, topik lemah, analisis waktu (rata-rata, soal lama, waktu di soal salah), ketepatan tanda ragu-ragu, kemungkinan tebakan, pola jawaban TKP, tinjau jawaban, set latihan topik lemah (bank dulu, AI bila kurang) |
 | Bank soal | Pencarian dan filter; susun set baru tanpa biaya AI |
 | Set varian | Set baru dengan topik dan kesulitan yang sama |
-| Progres | Grafik riwayat skor per sub-tes dan penguasaan topik |
+| Progres | Grafik riwayat skor per sub-tes, tren dan perkiraan kasar ujian berikutnya (mulai 3 ujian), topik paling membaik/menurun, alasan salah tersering dari Buku Kesalahan, penguasaan topik |
 | Unduh PDF / Word | Tombol **Unduh** di halaman set, atau pilih soal di Bank Soal lalu unduh. Isi: soal saja, soal + kunci jawaban, lengkap (dengan pembahasan), atau kunci saja; dengan nama lembaga, tanggal, dan logo. PDF berisi teks asli dan gambar soal figural |
 | Cadangan | Ekspor/impor JSON antar perangkat (API key tidak ikut). Beranda mengingatkan bila cadangan terakhir lebih dari 7 hari atau sudah ada 3 set baru. Di Chrome/Edge desktop, cadangan bisa disimpan otomatis ke satu berkas pilihan setiap ada perubahan |
 | PWA | Bisa dipasang; set tersimpan dan simulasi berjalan offline |
