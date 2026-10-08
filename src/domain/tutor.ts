@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { describeData } from './dataAnalysis';
-import { describeCell, describeFigure } from './figural';
+import { describeCell, describeData, describeFigure } from './describe';
 import { extractJson } from './schemas';
 import type { OptionLabel, Question } from './types';
 

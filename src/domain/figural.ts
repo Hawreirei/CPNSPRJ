@@ -1,15 +1,12 @@
 import { hashText, shuffle, uid } from '../lib/id';
 import { OPTION_LABELS } from './types';
+import { describeCell, FILL_NAMES, SHAPE_NAMES } from './describe';
 import type { Difficulty, Figure, FigureCell, Fill, OptionLabel, Question, ShapeKind } from './types';
+
+export { describeCell, describeFigure } from './describe';
 
 const SHAPES: ShapeKind[] = ['circle', 'square', 'triangle', 'diamond', 'star', 'arrow', 'pentagon'];
 const FILLS: Fill[] = ['solid', 'empty', 'striped'];
-const SHAPE_NAMES: Record<ShapeKind, string> = {
-  circle: 'lingkaran', square: 'persegi', triangle: 'segitiga', diamond: 'belah ketupat',
-  star: 'bintang', arrow: 'panah', pentagon: 'segi lima',
-};
-const FILL_NAMES: Record<Fill, string> = { solid: 'hitam penuh', empty: 'kosong', striped: 'arsir' };
-
 export type Rand = () => number;
 const pick = <T,>(arr: T[], r: Rand) => arr[Math.floor(r() * arr.length)];
 const sameCell = (a: FigureCell, b: FigureCell) =>
@@ -110,10 +107,6 @@ function distractors(answer: FigureCell, r: Rand): FigureCell[] {
   return out;
 }
 
-export function describeCell(c: FigureCell): string {
-  const rot = c.rotation ? `, diputar ${c.rotation}°` : '';
-  return `${c.count} ${SHAPE_NAMES[c.shape]} ${FILL_NAMES[c.fill]}${rot}`;
-}
 
 type FiguralTopic = 'Deret Figural' | 'Analogi Figural' | 'Matriks Figural' | 'Transformasi Figural' | 'Figural Berbeda';
 
@@ -383,14 +376,6 @@ export function generateFiguralOddOne(difficulty: Difficulty, r: Rand = Math.ran
   }
 }
 
-/** Screen-reader text for a stem figure. */
-export function describeFigure(f: Figure): string {
-  const d = (c: FigureCell | null) => (c ? describeCell(c) : 'tanda tanya');
-  if (f.layout === 'matrix') return [0, 1, 2].map((i) => `Baris ${i + 1}: ${f.cells.slice(i * 3, i * 3 + 3).map(d).join('; ')}`).join('. ');
-  if (f.layout === 'analogy') return `${d(f.cells[0])} berbanding ${d(f.cells[1])}, seperti ${d(f.cells[2])} berbanding ${d(f.cells[3])}`;
-  if (f.layout === 'transform') return `Gambar awal: ${d(f.cells[0])}. Hasil: tanda tanya`;
-  return f.cells.map((c, i) => `${i + 1}: ${d(c)}`).join('; ');
-}
 
 const GENERATORS: Record<FiguralTopic, (d: Difficulty) => Question> = {
   'Deret Figural': generateFiguralSeries,

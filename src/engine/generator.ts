@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from 'react';
 import { db, getSettings } from '../db';
-import { generateProcedural } from '../domain/procedural';
 import { endOfGroup } from '../domain/groups';
 import { easier } from '../domain/blueprint';
 import { buildPassagePrompt, buildPrompt, buildRepairPrompt, buildRewritePrompt } from '../domain/prompts';
@@ -103,10 +102,13 @@ async function addUsage(setId: string, inputTokens: number, outputTokens: number
   });
 }
 
+// The figural and data generators are only needed while questions are being made.
+const procedural = () => import('../domain/procedural');
+
 async function runBatch(set: QSet, batch: PlanBatch, session: ModelSession | null, hashes: Set<string>, signal: AbortSignal) {
   let questions: Question[];
   if (isProcedural(batch)) {
-    questions = generateProcedural(batch.items[0].topic, batch.items[0].difficulty, batch.count);
+    questions = (await procedural()).generateProcedural(batch.items[0].topic, batch.items[0].difficulty, batch.count);
   } else if (isPassageBatch(batch)) {
     if (!session) throw new Error('Belum ada API key.');
     const sizes = passageSizes(batch.count);
@@ -369,7 +371,7 @@ export async function moreLikeThis(setId: string, q: Question, count: number, ke
   let questions: Question[];
   const difficulty = opts.easier ? easier(q.difficulty) : q.difficulty;
   if (q.source === 'procedural') {
-    questions = generateProcedural(q.topic, difficulty, count);
+    questions = (await procedural()).generateProcedural(q.topic, difficulty, count);
   } else {
     const session = await openSession(keyId);
     const items = Array.from({ length: count }, () => ({ topic: q.topic, difficulty }));

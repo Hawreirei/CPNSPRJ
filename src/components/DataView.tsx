@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { fmtNum } from '../domain/dataAnalysis';
+import { fmtNum } from '../domain/describe';
 import type { DataFigure, Question } from '../domain/types';
 import { dataChartSvg } from '../lib/dataSvg';
 import { FigureView } from './FigureView';

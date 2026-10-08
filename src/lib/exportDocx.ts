@@ -1,7 +1,7 @@
 import { getSettings } from '../db';
 import { SUBTEST_NAMES } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
-import { fmtNum } from '../domain/dataAnalysis';
+import { fmtNum } from '../domain/describe';
 import type { DataFigure, Question } from '../domain/types';
 import { toPlain } from '../components/RichText';
 import { dataChartSvg } from './dataSvg';

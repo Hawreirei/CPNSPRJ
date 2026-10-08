@@ -1,4 +1,4 @@
-import { fmtNum } from '../domain/dataAnalysis';
+import { fmtNum } from '../domain/describe';
 import type { DataFigure } from '../domain/types';
 
 /*

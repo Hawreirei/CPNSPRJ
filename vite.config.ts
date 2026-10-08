@@ -74,6 +74,10 @@ export default defineConfig({
           const lib = Object.keys(LAZY_LIBS).find((l) => chunk.moduleIds.some((id) => id.includes(`node_modules/${l}/`)));
           return `assets/${lib ? LAZY_LIBS[lib] : '[name]'}-[hash].js`;
         },
+        // App code shared by several pages goes in one chunk, not a dozen tiny ones: each file is a round trip.
+        codeSplitting: {
+          groups: [{ name: 'shared', test: /[\\/]src[\\/]/, minShareCount: 2 }],
+        },
       },
     },
   },

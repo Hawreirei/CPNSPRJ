@@ -1,6 +1,9 @@
 import { hashText, shuffle, uid } from '../lib/id';
 import { OPTION_LABELS } from './types';
+import { fmtNum } from './describe';
 import type { DataFigure, Difficulty, OptionLabel, Question } from './types';
+
+export { describeData, fmtNum } from './describe';
 
 /**
  * TIU data analysis, drawn by the app: the numbers are random, every key is computed from them,
@@ -14,7 +17,6 @@ type Rand = () => number;
 const pick = <T,>(arr: readonly T[], r: Rand) => arr[Math.floor(r() * arr.length)];
 const int = (lo: number, hi: number, r: Rand) => lo + Math.floor(r() * (hi - lo + 1));
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
-export const fmtNum = (n: number) => n.toLocaleString('id-ID', { maximumFractionDigits: 2 });
 const fmtPct = (fraction: number) => `${fmtNum(Math.round(fraction * 10000) / 100)}%`;
 
 const PLACES = ['Sukamaju', 'Sukasari', 'Mekarjaya', 'Cibening', 'Karanganyar', 'Tanjungsari', 'Sindangsari'];
@@ -350,9 +352,3 @@ export function generateDataAnalysis(difficulty: Difficulty, r: Rand = Math.rand
   };
 }
 
-/** Screen-reader and export text for a data figure: the numbers, row by row. */
-export function describeData(d: DataFigure): string {
-  const unit = d.kind === 'pie' ? '%' : ` ${d.unit}`;
-  const rows = d.labels.map((l, i) => `${l}: ${d.series.map((s) => `${d.series.length > 1 ? `${s.name} ` : ''}${fmtNum(s.values[i])}${unit}`).join(', ')}`);
-  return `${d.title}. ${rows.join('; ')}.`;
-}

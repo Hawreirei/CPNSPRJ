@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { describeCell, describeFigure } from '../domain/figural';
+import { describeCell, describeFigure } from '../domain/describe';
 import { cellSvg, figureSvg, hasStemFigure } from '../lib/figureSvg';
 import type { Figure, FigureCell } from '../domain/types';
 

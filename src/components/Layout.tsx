@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Disclaimer } from './Disclaimer';
 import { useUpdateWaiting } from '../lib/pwa';
@@ -63,7 +63,10 @@ export default function Layout() {
         )}
         <Disclaimer />
         <div className="mx-auto max-w-6xl p-4 md:p-6">
-          <Outlet />
+          {/* Pages load on first visit; the menu stays put meanwhile. */}
+          <Suspense fallback={null}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
     </div>
