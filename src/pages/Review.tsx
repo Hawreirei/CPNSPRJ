@@ -10,6 +10,7 @@ import { addDays, dueQueue, fmtDue, fmtInterval, isDue, nextInterval, reviewedTo
 import { AnswerOptions, FeedbackBanner } from '../components/AnswerOptions';
 import { FigureView } from '../components/FigureView';
 import { Explanation } from '../components/QuestionCard';
+import { FeedbackDialog } from '../components/FeedbackDialog';
 import { RichText } from '../components/RichText';
 import { Badge, Empty, SubtestBadge } from '../components/ui';
 
@@ -183,6 +184,7 @@ function ReviewCard({ q, item, onGrade }: { q: Question; item: ReviewItem; onGra
   const [chosen, setChosen] = useState<OptionLabel | undefined>();
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const fb = chosen ? feedback(q, chosen) : null;
   const best = feedback(q, 'A').best.join(', ');
   const suggested: Grade = fb?.correct ? 'baik' : 'lupa';
@@ -242,7 +244,8 @@ function ReviewCard({ q, item, onGrade }: { q: Question; item: ReviewItem; onGra
               Fokus TKP: pahami <b>mengapa opsi {best}</b> paling sesuai dengan nilai pelayanan publik dan profesionalisme, lalu bandingkan dengan pilihan Anda.
             </p>
           )}
-          <Explanation q={q} />
+          <Explanation q={q} onFeedback={() => setFeedbackOpen(true)} />
+          {feedbackOpen && <FeedbackDialog q={q} onClose={() => setFeedbackOpen(false)} />}
           <ReasonTags item={item} />
 
           <div className="mt-4 border-t border-slate-200 pt-3 dark:border-slate-800">
@@ -300,6 +303,7 @@ function ReasonTags({ item }: { item: ReviewItem }) {
 function Notebook({ items, now }: { items: ReviewItem[]; now: number }) {
   const [subtest, setSubtest] = useState<Subtest | ''>('');
   const [tag, setTag] = useState<ReasonTag | ''>('');
+  const [feedbackFor, setFeedbackFor] = useState<Question | null>(null);
   const questions = useLiveQuery(async () => {
     const rows = await db.questions.bulkGet(items.map((r) => r.questionId));
     return new Map(rows.filter((q): q is Question => !!q).map((q) => [q.id, q]));
@@ -363,10 +367,11 @@ function Notebook({ items, now }: { items: ReviewItem[]; now: number }) {
             </summary>
             {q.figure && <FigureView figure={q.figure} />}
             <AnswerOptions q={q} revealed onAnswer={() => {}} />
-            <Explanation q={q} />
+            <Explanation q={q} onFeedback={() => setFeedbackFor(q)} />
           </details>
         </article>
       ))}
+      {feedbackFor && <FeedbackDialog q={feedbackFor} onClose={() => setFeedbackFor(null)} />}
     </div>
   );
 }

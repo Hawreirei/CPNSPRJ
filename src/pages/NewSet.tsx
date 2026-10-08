@@ -36,6 +36,8 @@ export default function NewSet() {
   /** Model for this set only; empty = follow the key's setting. */
   const [setModel, setSetModel] = useState<string>('');
   const [busy, setBusy] = useState(false);
+  const [includeReported, setIncludeReported] = useState(false);
+  const reportedCount = useLiveQuery(() => db.questions.filter((q) => !!q.report).count(), []);
   const [msg, setMsg] = useState<string | null>(null);
 
   // Re-seed once real settings load from IndexedDB.
@@ -98,7 +100,7 @@ export default function NewSet() {
 
   async function fromBank() {
     setBusy(true);
-    const { picked, shortfall } = await pickFromBank(bp);
+    const { picked, shortfall } = await pickFromBank(bp, { includeReported });
     if (!picked.length) {
       setMsg('Bank Soal belum punya soal yang cocok. Buat soal dengan AI dulu.');
       setBusy(false);
@@ -403,6 +405,12 @@ export default function NewSet() {
             <button className="btn w-full" disabled={busy || !total} onClick={fromBank} title="Memakai soal yang sudah pernah dibuat. Tidak memakai kuota AI.">
               Ambil dari Bank Soal (tanpa AI)
             </button>
+            {!!reportedCount && (
+              <label className="muted flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={includeReported} onChange={(e) => setIncludeReported(e.target.checked)} />
+                Pakai juga {reportedCount} soal yang Anda laporkan
+              </label>
+            )}
           </div>
         </aside>
       </div>

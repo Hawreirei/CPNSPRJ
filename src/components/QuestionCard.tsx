@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { wrongRate, type AnswerStats } from '../domain/quality';
 import type { Question } from '../domain/types';
 import { CellView, FigureView } from './FigureView';
 import { RichText } from './RichText';
@@ -12,14 +13,21 @@ export function QuestionCard({
   mode,
   actions,
   showFlags = true,
+  stats,
+  onFeedback,
 }: {
   q: Question;
   index?: number;
   mode: CardMode;
   actions?: ReactNode;
   showFlags?: boolean;
+  /** How the learner has fared on this question; shown once there are enough answers. */
+  stats?: AnswerStats;
+  /** Offers "rate or report" under the explanation. */
+  onFeedback?: () => void;
 }) {
   const warn = q.flags.some((f) => f.severity === 'warn');
+  const rate = wrongRate(stats);
   return (
     <article className={`card avoid-break ${warn && showFlags ? 'border-amber-300 dark:border-amber-800' : ''}`}>
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
@@ -27,6 +35,14 @@ export function QuestionCard({
         <SubtestBadge subtest={q.subtest} />
         <Badge>{q.topic}</Badge>
         <Badge>{q.difficulty}</Badge>
+        {rate !== null && (
+          <span title="Kesulitan menurut jawaban Anda di ujian dan latihan">
+            <Badge tone={rate >= 0.6 ? 'red' : rate <= 0.2 ? 'green' : 'slate'}>
+              {Math.round(rate * 100)}% salah dari {stats!.answered} jawaban
+            </Badge>
+          </span>
+        )}
+        {q.rating !== undefined && <Badge>nilai {q.rating}/5</Badge>}
         {q.locked && <Badge tone="blue">🔒 terkunci</Badge>}
         {warn && showFlags && <Badge tone="amber">perlu dicek</Badge>}
         {showFlags && q.flags.some((f) => f.kind === 'cross-checked') && (
@@ -66,7 +82,7 @@ export function QuestionCard({
 
       {mode === 'kunci' && <KeyLine q={q} />}
 
-      {mode === 'pembahasan' && <Explanation q={q} />}
+      {mode === 'pembahasan' && <Explanation q={q} onFeedback={onFeedback} />}
 
       {/* Only problems worth acting on; purely informational notes stay hidden. */}
       {showFlags && <FlagList flags={q.flags.filter((f) => f.severity === 'warn' || f.kind === 'math-corrected')} />}
@@ -74,7 +90,7 @@ export function QuestionCard({
   );
 }
 
-export function Explanation({ q }: { q: Question }) {
+export function Explanation({ q, onFeedback }: { q: Question; onFeedback?: () => void }) {
   return (
     <div className="mt-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-800">
       <div className="mb-1 font-semibold">
@@ -89,6 +105,11 @@ export function Explanation({ q }: { q: Question }) {
         </div>
       )}
       {q.subtest === 'TKP' && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Skor TKP adalah rasional berbasis nilai pelayanan publik, bukan kunci resmi.</p>}
+      {onFeedback && (
+        <button className="mt-2 text-xs text-brand-600 underline dark:text-brand-300" onClick={onFeedback}>
+          {q.report ? 'Soal ini sudah Anda laporkan · ubah' : 'Kunci salah atau soal bermasalah? Laporkan atau beri nilai'}
+        </button>
+      )}
     </div>
   );
 }

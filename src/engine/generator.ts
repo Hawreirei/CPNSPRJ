@@ -312,7 +312,8 @@ export async function rewriteQuestion(q: Question, instruction: string, keyId?: 
   const [nq] = await callAndParse(session, buildRewritePrompt(q, instruction), { subtest: q.subtest, items: [{ topic: q.topic, difficulty: q.difficulty }], setId: q.originSetId }, ctrl.signal, async () => {});
   if (!nq) throw new Error('AI tidak mengembalikan soal.');
   await loadMath();
-  const updated = validateQuestion({ ...nq, id: q.id, starred: q.starred, locked: q.locked, createdAt: q.createdAt, updatedAt: Date.now() });
+  // A report stays until the learner withdraws it, also through a rewrite; the old rating no longer applies.
+  const updated = validateQuestion({ ...nq, id: q.id, starred: q.starred, locked: q.locked, report: q.report, createdAt: q.createdAt, updatedAt: Date.now() });
   await db.questions.put(updated);
   return updated;
 }
@@ -335,7 +336,7 @@ async function repairWith(session: ModelSession, questions: Question[], signal: 
     if (out.length !== group.length) continue;
     await loadMath();
     for (const [i, old] of group.entries()) {
-      const v = validateQuestion({ ...out[i], id: old.id, originSetId: old.originSetId, starred: old.starred, createdAt: old.createdAt, updatedAt: Date.now() });
+      const v = validateQuestion({ ...out[i], id: old.id, originSetId: old.originSetId, starred: old.starred, report: old.report, rating: old.rating, createdAt: old.createdAt, updatedAt: Date.now() });
       if (needsRepair(v)) continue;
       await db.questions.put(v);
       fixed++;

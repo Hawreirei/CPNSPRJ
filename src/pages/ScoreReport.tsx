@@ -5,6 +5,7 @@ import { db } from '../db';
 import { isCorrect, scoreQuestion, weakTopics } from '../domain/scoring';
 import { SUBTEST_NAMES } from '../domain/blueprint';
 import { attemptMode } from '../domain/practice';
+import type { Question } from '../domain/types';
 import { mistakesInAttempt } from '../engine/srs';
 import { attemptQuestions } from '../engine/attempts';
 import { startGeneration } from '../engine/generator';
@@ -12,6 +13,7 @@ import { createRemedialSet } from '../engine/sets';
 import { Recommendations, TimingCard, TkpCard, UnsureCard } from '../components/Analysis';
 import { fmtSec } from '../engine/analytics';
 import { QuestionCard } from '../components/QuestionCard';
+import { FeedbackDialog } from '../components/FeedbackDialog';
 import { Badge, Empty, fmtDate, ProgressBar, SubtestBadge } from '../components/ui';
 
 export default function ScoreReport() {
@@ -27,6 +29,7 @@ export default function ScoreReport() {
   }, [attemptId]);
   const [review, setReview] = useState<'none' | 'wrong' | 'all'>('none');
   const [busy, setBusy] = useState(false);
+  const [feedbackFor, setFeedbackFor] = useState<Question | null>(null);
 
   if (data === undefined) return null;
   if (!data?.a.result) return <Empty title="Hasil tidak ditemukan" />;
@@ -182,6 +185,7 @@ export default function ScoreReport() {
                 index={i}
                 mode="pembahasan"
                 showFlags={false}
+                onFeedback={() => setFeedbackFor(q)}
                 actions={
                   <Badge tone={isCorrect(q, ans) ? 'green' : 'red'}>
                     Jawaban Anda: {ans ?? '—'} · skor {scoreQuestion(q, ans)}
@@ -191,6 +195,7 @@ export default function ScoreReport() {
             );
           })}
       </section>
+      {feedbackFor && <FeedbackDialog q={feedbackFor} onClose={() => setFeedbackFor(null)} />}
     </div>
   );
 }

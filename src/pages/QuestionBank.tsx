@@ -9,6 +9,8 @@ import { createBankSet } from '../engine/sets';
 import { normalizeText } from '../lib/id';
 import { QuestionCard, type CardMode } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
+import { FeedbackDialog } from '../components/FeedbackDialog';
+import { answerStats, isReported } from '../domain/quality';
 import { Empty } from '../components/ui';
 import { DownloadDialog } from '../components/DownloadDialog';
 
@@ -22,11 +24,14 @@ export default function QuestionBank() {
   const [sub, setSub] = useState<Subtest | ''>('');
   const [topic, setTopic] = useState('');
   const [diff, setDiff] = useState('');
-  const [only, setOnly] = useState<'' | 'starred' | 'flagged'>('');
+  const [only, setOnly] = useState<'' | 'starred' | 'flagged' | 'reported'>('');
   const [mode, setMode] = useState<CardMode>('soal');
   const [limit, setLimit] = useState(PAGE);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Question | null>(null);
+  const [feedbackFor, setFeedbackFor] = useState<Question | null>(null);
+  const attempts = useLiveQuery(() => db.attempts.toArray(), []);
+  const stats = useMemo(() => answerStats(attempts ?? [], all ?? []), [attempts, all]);
   const [downloading, setDownloading] = useState(false);
 
   const filtered = useMemo(() => {
@@ -39,6 +44,7 @@ export default function QuestionBank() {
         (!diff || x.difficulty === diff) &&
         (only !== 'starred' || x.starred) &&
         (only !== 'flagged' || x.flags.some((f) => f.severity === 'warn')) &&
+        (only !== 'reported' || isReported(x)) &&
         (!needle || normalizeText(`${x.stem} ${x.options.map((o) => o.text).join(' ')} ${x.topic}`).includes(needle)),
     );
   }, [all, q, sub, topic, diff, only]);
@@ -137,6 +143,7 @@ export default function QuestionBank() {
                 <option value="">Semua soal</option>
                 <option value="starred">Berbintang saja</option>
                 <option value="flagged">Perlu dicek saja</option>
+                <option value="reported">Dilaporkan saja</option>
               </select>
             </div>
           </details>
@@ -186,6 +193,8 @@ export default function QuestionBank() {
                 <QuestionCard
                   q={x}
                   mode={mode}
+                  stats={stats.get(x.id)}
+                  onFeedback={() => setFeedbackFor(x)}
                   actions={
                     <>
                       <button className="btn btn-ghost btn-sm" title={x.starred ? 'Hapus bintang' : 'Beri bintang'} onClick={() => db.questions.update(x.id, { starred: !x.starred })}>
@@ -193,6 +202,9 @@ export default function QuestionBank() {
                       </button>
                       <button className="btn btn-ghost btn-sm" disabled={x.locked} onClick={() => setEditing(x)}>
                         Edit
+                      </button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setFeedbackFor(x)}>
+                        {x.report ? 'Laporan' : 'Laporkan'}
                       </button>
                     </>
                   }
@@ -208,6 +220,7 @@ export default function QuestionBank() {
         </div>
       )}
       {editing && <QuestionEditor q={editing} onClose={() => setEditing(null)} />}
+      {feedbackFor && <FeedbackDialog q={feedbackFor} onClose={() => setFeedbackFor(null)} />}
       {downloading && (
         <DownloadDialog
           open

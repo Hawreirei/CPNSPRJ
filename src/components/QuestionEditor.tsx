@@ -9,6 +9,7 @@ import { Modal } from './ui';
 export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => void }) {
   const [draft, setDraft] = useState<Question>(() => structuredClone(q));
   const [error, setError] = useState('');
+  const [withdrawReport, setWithdrawReport] = useState(false);
   const set = <K extends keyof Question>(k: K, v: Question[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
   async function save() {
@@ -18,7 +19,8 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
     }));
     try {
       await loadMath();
-      const next = validateQuestion({ ...draft, options, hash: hashText(draft.stem), updatedAt: Date.now() });
+      const report = withdrawReport ? undefined : draft.report;
+      const next = validateQuestion({ ...draft, report, options, hash: hashText(draft.stem), updatedAt: Date.now() });
       await db.questions.put(next);
       onClose();
     } catch (e) {
@@ -111,6 +113,12 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
           <input type="checkbox" checked={draft.confidence !== 'low'} onChange={(e) => set('confidence', e.target.checked ? 'high' : 'low')} />
           Saya sudah memeriksa soal ini
         </label>
+        {draft.report && (
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={withdrawReport} onChange={(e) => setWithdrawReport(e.target.checked)} />
+            Masalah yang Anda laporkan sudah diperbaiki: cabut laporan
+          </label>
+        )}
         {error && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {error}

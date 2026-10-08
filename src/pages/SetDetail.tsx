@@ -9,6 +9,8 @@ import { crossCheckQuestions, isCrossCheckable, needsCrossCheck, type CrossCheck
 import { moveInSet, removeFromSet } from '../engine/sets';
 import { QuestionCard, type CardMode } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
+import { FeedbackDialog } from '../components/FeedbackDialog';
+import { answerStats } from '../domain/quality';
 import { DownloadDialog } from '../components/DownloadDialog';
 import { Badge, Empty, ProgressBar } from '../components/ui';
 
@@ -22,6 +24,8 @@ export default function SetDetail() {
   const [filter, setFilter] = useState<'all' | 'flagged' | 'starred'>('all');
   const [sub, setSub] = useState<Subtest | 'all'>('all');
   const [editing, setEditing] = useState<Question | null>(null);
+  const [feedbackFor, setFeedbackFor] = useState<Question | null>(null);
+  const attempts = useLiveQuery(() => db.attempts.toArray(), []);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -34,6 +38,7 @@ export default function SetDetail() {
 
   const flaggedCount = questions.filter((q) => q.flags.some((f) => f.severity === 'warn')).length;
   const starredCount = questions.filter((q) => q.starred).length;
+  const stats = answerStats(attempts ?? [], questions);
   const shown = questions
     .map((q, i) => ({ q, i }))
     .filter(({ q }) => (sub === 'all' || q.subtest === sub) && (filter === 'all' || (filter === 'flagged' ? q.flags.some((f) => f.severity === 'warn') : q.starred)));
@@ -154,6 +159,8 @@ export default function SetDetail() {
               q={q}
               index={i}
               mode={mode}
+              stats={stats.get(q.id)}
+              onFeedback={() => setFeedbackFor(q)}
               actions={
                 busyId === q.id ? (
                   <Badge tone="blue">memproses…</Badge>
@@ -170,6 +177,7 @@ export default function SetDetail() {
                     <ActionMenu
                       items={[
                         { label: 'Edit soal', disabled: q.locked, onClick: () => setEditing(q) },
+                        { label: q.report ? 'Ubah laporan atau nilai' : 'Laporkan atau nilai soal', onClick: () => setFeedbackFor(q) },
                         {
                           label: 'Tulis ulang dengan AI',
                           disabled: q.locked || q.source === 'procedural',
@@ -215,6 +223,7 @@ export default function SetDetail() {
         </div>
       )}
       {editing && <QuestionEditor q={editing} onClose={() => setEditing(null)} />}
+      {feedbackFor && <FeedbackDialog q={feedbackFor} onClose={() => setFeedbackFor(null)} />}
       {downloading && (
         <DownloadDialog open onClose={() => setDownloading(false)} meta={{ name: set.name, durationMinutes: set.blueprint.durationMinutes }} questions={questions} />
       )}

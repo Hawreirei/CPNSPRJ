@@ -44,7 +44,17 @@ export type FlagKind =
   /** A second model, shown no key, picked the same option. */
   | 'cross-checked'
   /** Cross-check was on but could not run for this question (e.g. quota used up). */
-  | 'cross-check-pending';
+  | 'cross-check-pending'
+  /** The learner reported a problem; mirrors `Question.report` until they withdraw it. */
+  | 'user-report';
+
+export type ReportReason = 'kunci-salah' | 'ambigu' | 'usang' | 'typo' | 'lainnya';
+
+export interface QuestionReport {
+  reason: ReportReason;
+  note?: string;
+  at: number;
+}
 
 export interface Flag {
   kind: FlagKind;
@@ -73,6 +83,10 @@ export interface Question {
   starred: boolean;
   hash: string;
   originSetId?: string;
+  /** A problem the learner reported. Kept until they withdraw it; never cleared automatically. */
+  report?: QuestionReport;
+  /** The learner's 1–5 rating. Low-rated questions are picked last from the bank. */
+  rating?: number;
   source: 'ai' | 'procedural' | 'manual';
   createdAt: number;
   updatedAt: number;

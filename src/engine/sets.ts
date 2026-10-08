@@ -1,5 +1,6 @@
 import { db, getSettings } from '../db';
 import { scaledPassing } from '../domain/blueprint';
+import { bankPriority, isReported } from '../domain/quality';
 import { SUBTESTS } from '../domain/types';
 import { shuffle, uid } from '../lib/id';
 import type { BatchItem, Blueprint, PlanBatch, QSet, Question, Subtest, TopicResult } from '../domain/types';
@@ -26,8 +27,11 @@ export async function createAiSet(name: string, blueprint: Blueprint, keyId?: st
   return set;
 }
 
-/** Pick questions from the bank matching the blueprint. No AI cost. */
-export async function pickFromBank(blueprint: Blueprint, opts: { starredOnly?: boolean; excludeFlagged?: boolean } = {}) {
+/**
+ * Pick questions from the bank matching the blueprint. No AI cost. Reported questions are left
+ * out unless asked for, and low-rated ones are only used once the rest of a topic runs out.
+ */
+export async function pickFromBank(blueprint: Blueprint, opts: { starredOnly?: boolean; excludeFlagged?: boolean; includeReported?: boolean } = {}) {
   const picked: Question[] = [];
   const shortfall: { subtest: Subtest; missing: number }[] = [];
   for (const sec of blueprint.sections) {
@@ -39,12 +43,13 @@ export async function pickFromBank(blueprint: Blueprint, opts: { starredOnly?: b
           sec.topics.includes(q.topic) &&
           (sec.difficulty === 'campuran' || q.difficulty === sec.difficulty) &&
           (!opts.starredOnly || q.starred) &&
-          (!opts.excludeFlagged || !q.flags.some((f) => f.severity === 'warn')),
+          (!opts.excludeFlagged || !q.flags.some((f) => f.severity === 'warn')) &&
+          (opts.includeReported || !isReported(q)),
       )
       .toArray();
-    // Spread across topics: round-robin over shuffled per-topic pools.
+    // Spread across topics: round-robin over shuffled per-topic pools, best-rated first within each.
     const byTopic = new Map<string, Question[]>();
-    for (const q of shuffle(pool)) byTopic.set(q.topic, [...(byTopic.get(q.topic) ?? []), q]);
+    for (const q of shuffle(pool).sort((a, b) => bankPriority(a) - bankPriority(b))) byTopic.set(q.topic, [...(byTopic.get(q.topic) ?? []), q]);
     const lists = shuffle([...byTopic.values()]);
     const chosen: Question[] = [];
     while (chosen.length < sec.count && lists.some((l) => l.length)) {
@@ -92,7 +97,9 @@ export async function createRemedialSet(weak: TopicResult[], perTopic = 5, attem
   const batches: PlanBatch[] = [];
   const needed: Record<Subtest, BatchItem[]> = { TWK: [], TIU: [], TKP: [] };
   for (const t of weak) {
-    const pool = shuffle(await db.questions.where('topic').equals(t.topic).filter((q) => q.subtest === t.subtest && !exclude.has(q.id)).toArray());
+    const pool = shuffle(await db.questions.where('topic').equals(t.topic).filter((q) => q.subtest === t.subtest && !exclude.has(q.id) && !isReported(q)).toArray()).sort(
+      (a, b) => bankPriority(a) - bankPriority(b),
+    );
     const take = pool.slice(0, perTopic);
     picked.push(...take);
     const missing = perTopic - take.length;
