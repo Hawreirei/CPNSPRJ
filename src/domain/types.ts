@@ -33,6 +33,7 @@ export interface QuestionOption {
 export type FlagKind =
   | 'math-mismatch'
   | 'math-corrected'
+  | 'explanation-mismatch'
   | 'tkp-spread'
   | 'twk-unverified'
   | 'low-confidence'

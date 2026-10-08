@@ -43,15 +43,25 @@ function normalizeSeparators(s: string): string {
     const hasComma = num.includes(',');
     if (hasDot && hasComma) return num.replace(/\./g, '').replace(',', '.');
     if (hasComma) return num.replace(',', '.');
-    if (hasDot && /^\d{1,3}(\.\d{3})+$/.test(num)) return num.replace(/\./g, '');
+    // "1.500" is a thousands separator, but "0.300" is a decimal.
+    if (hasDot && /^[1-9]\d{0,2}(\.\d{3})+$/.test(num)) return num.replace(/\./g, '');
     return num;
   });
 }
 
+/**
+ * Evaluate the model's `mathExpression`. It is asked for plain mathjs syntax
+ * ("0.3 + 0.4", "1200000 * 0.85"), so that is tried first; Indonesian number
+ * formatting ("1.200.000", "0,15") is only a fallback.
+ */
 export function evaluateExpression(expr: string): number | null {
+  const base = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/:/g, '/');
+  return evalNumber(base) ?? evalNumber(normalizeSeparators(base));
+}
+
+function evalNumber(expr: string): number | null {
   try {
-    const cleaned = normalizeSeparators(expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/:/g, '/'));
-    const v = evaluate(cleaned);
+    const v = evaluate(expr);
     if (typeof v === 'number' && Number.isFinite(v)) return v;
     if (v && typeof v === 'object' && 'valueOf' in v) {
       const n = Number(v.valueOf());

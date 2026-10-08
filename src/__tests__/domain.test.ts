@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { computeResult, scoreQuestion, weakTopics } from '../domain/scoring';
 import { parseNumeric, evaluateExpression } from '../domain/numeric';
-import { checkTkp, validateQuestion } from '../domain/validators';
+import { checkTkp, explainedOption, validateQuestion } from '../domain/validators';
 import { generateFigural, generateFiguralAnalogy, generateFiguralSeries } from '../domain/figural';
 import { extractJson, parseAiQuestions } from '../domain/schemas';
 import { buildPrompt } from '../domain/prompts';
@@ -111,6 +111,38 @@ describe('validators', () => {
   it('flags TWK without reference and low confidence', () => {
     const v = validateQuestion(mkQ({ subtest: 'TWK', topic: 'UUD 1945', confidence: 'low' }));
     expect(v.flags.map((f) => f.kind).sort()).toEqual(['low-confidence', 'twk-unverified']);
+  });
+  it('reads decimals in the math formula as decimals', () => {
+    expect(evaluateExpression('0.300 + 0.4')).toBeCloseTo(0.7);
+    expect(evaluateExpression('1.200.000 * 0.85')).toBe(1020000);
+    expect(evaluateExpression('0,15 * 100')).toBeCloseTo(15);
+    expect(parseNumeric('0.300')).toBeCloseTo(0.3);
+  });
+  it('reads the answer the explanation concludes with', () => {
+    expect(explainedOption(mkQ({ explanation: 'Langkah... Jawaban: C.' }))).toBe('C');
+    expect(explainedOption(mkQ({ explanation: 'Jadi jawaban yang benar adalah opsi D (6).' }))).toBe('D');
+    expect(explainedOption(mkQ({ explanation: 'Dengan demikian, jawaban yang benar adalah 4.' }))).toBe('B');
+    expect(explainedOption(mkQ({ explanation: 'Dengan demikian, jawaban yang benar adalah 40.' }))).toBeUndefined();
+    expect(explainedOption(mkQ({ explanation: 'Pilihan A salah karena terlalu kecil.' }))).toBeUndefined();
+  });
+  it('flags a key that disagrees with the explanation', () => {
+    const v = validateQuestion(mkQ({ subtest: 'TWK', topic: 'Pancasila', reference: 'Sila 3', explanation: 'Jawaban: D.' }));
+    expect(v.flags.map((f) => f.kind)).toEqual(['explanation-mismatch']);
+    expect(validateQuestion(mkQ({ subtest: 'TWK', topic: 'Pancasila', reference: 'Sila 3', explanation: 'Jawaban: B.' })).flags).toEqual([]);
+  });
+  it('keeps the key when the explanation backs it against the formula', () => {
+    // The formula says 5 (option C), but key and explanation both say B.
+    const v = validateQuestion(mkQ({ mathExpression: '2 + 3', explanation: 'Hasilnya 4. Jawaban: B.' }));
+    expect(v.answer).toBe('B');
+    expect(v.flags.some((f) => f.kind === 'math-mismatch' && f.severity === 'warn')).toBe(true);
+    // A formula that matches no option is only a note when key and explanation agree.
+    const w = validateQuestion(mkQ({ mathExpression: '300.4', explanation: 'Jawaban yang benar adalah 4.' }));
+    expect(w.flags.every((f) => f.severity === 'info')).toBe(true);
+  });
+  it('corrects the key when formula and explanation agree against it', () => {
+    const v = validateQuestion(mkQ({ mathExpression: '2 + 3', explanation: 'Hasilnya 5. Jawaban: C.' }));
+    expect(v.answer).toBe('C');
+    expect(v.flags.some((f) => f.severity === 'warn')).toBe(false);
   });
   it('flags duplicates', () => {
     const v = validateQuestion(mkQ({ subtest: 'TWK', topic: 'UUD 1945', reference: 'Pasal 1', hash: 'abc' }), new Set(['abc']));
