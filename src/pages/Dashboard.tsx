@@ -2,8 +2,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { db, useSettings } from '../db';
 import { attemptMode, attemptPath, examAttempts } from '../domain/practice';
+import { weakTopics } from '../domain/scoring';
+import { recommendations } from '../engine/analytics';
+import { attemptQuestions } from '../engine/attempts';
 import { dueQueue, isDue } from '../engine/srs';
 import { BackupReminderCard } from '../components/BackupReminder';
+import { StudyPlanCard } from '../components/StudyPlanCard';
 import { Badge, Stat, fmtDate } from '../components/ui';
 
 export default function Dashboard() {
@@ -18,7 +22,15 @@ export default function Dashboard() {
     ]);
     const setCount = await db.sets.count();
     const flagged = await db.questions.filter((q) => q.flags.some((f) => f.severity === 'warn')).count();
-    return { sets, setCount, questions, keys, attempts, flagged, reviews, now: Date.now() };
+    // Topics to practise today: the latest attempt's weak-topic advice, else its weakest topics.
+    let weak: { topics: string[]; setId: string } | undefined;
+    const latest = attempts.find((a) => a.result);
+    if (latest && (await db.sets.get(latest.setId))) {
+      const advice = recommendations(latest, await attemptQuestions(latest)).find((r) => r.kind === 'weak-topic')?.practiceTopics;
+      const topics = advice ?? weakTopics(latest.result!.topics).slice(0, 3).map((t) => t.topic);
+      if (topics.length) weak = { topics, setId: latest.setId };
+    }
+    return { sets, setCount, questions, keys, attempts, flagged, reviews, weak, now: Date.now() };
   });
   if (!data) return null;
   const finished = data.attempts.filter((a) => a.result);
@@ -62,9 +74,12 @@ export default function Dashboard() {
         </div>
       )}
 
+      <StudyPlanCard settings={settings} attempts={data.attempts} reviews={data.reviews} weak={data.weak} now={data.now} />
+
       <BackupReminderCard />
 
-      {data.reviews.length > 0 && (
+      {/* With a plan, today's reviews are one of its targets; no separate card. */}
+      {data.reviews.length > 0 && !settings.studyPlan && (
         <div className="card flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="font-semibold">Ulangan hari ini: {reviewToday} soal</div>

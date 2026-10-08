@@ -248,6 +248,17 @@ export interface RequestLog {
   inputTokens: number;
 }
 
+/** The learner's own plan. Every field is optional: a plan without an exam date still sets daily targets. */
+export interface StudyPlan {
+  /** Local calendar date, YYYY-MM-DD. */
+  examDate?: string;
+  /** Target per sub-test on the full-length scale; missing ones default to the pass mark + 10%. */
+  targets?: Partial<Record<Subtest, number>>;
+  minutesPerDay?: number;
+  /** Day of the weekly full simulation, 0 = Sunday … 6 = Saturday. */
+  simulationDay?: number;
+}
+
 export interface Settings {
   passing: Record<Subtest, number>;
   counts: Record<Subtest, number>;
@@ -259,6 +270,8 @@ export interface Settings {
   brandLogo?: string;
   /** Most reviews offered per day in the mistake notebook. */
   reviewDailyLimit: number;
+  /** Absent until the learner creates a plan. */
+  studyPlan?: StudyPlan;
   /** USD per 1M tokens, keyed by model id; fallback used when unknown. */
   priceOverrides: Record<string, { input: number; output: number }>;
 }

@@ -26,6 +26,10 @@ export default function Help() {
             dan Anda bisa memilih topik tertentu. Hasil latihan tidak masuk grafik skor ujian di Progres. Dari Laporan Skor, klik "Latih ulang topik ini".
           </li>
           <li>
+            <b>Rencana belajar</b>: di Pengaturan, isi waktu belajar per hari dan, bila sudah ada, tanggal ujian. Beranda lalu menampilkan hitung mundur,
+            target hari ini, dan kesiapan Anda dibanding skor target. Jadwal simulasi mingguan bisa diunduh ke kalender (.ics).
+          </li>
+          <li>
             <b>Buku Kesalahan</b>: soal yang salah, kosong, atau ditandai ragu-ragu masuk otomatis. Setiap hari buka "Ulangan hari ini", jawab soalnya, lihat
             pembahasan, lalu nilai seberapa ingat Anda (Lupa, Sulit, Baik, Mudah). Soal yang mudah diingat makin jarang muncul; yang terlupa muncul lagi
             besok. Batas ulangan per hari bisa diubah di Pengaturan.

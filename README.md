@@ -26,6 +26,7 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 | Laporan skor | Skor per sub-tes vs ambang batas, maksimal 3 saran konkret dengan tautan ke latihan, topik lemah, analisis waktu (rata-rata, soal lama, waktu di soal salah), ketepatan tanda ragu-ragu, kemungkinan tebakan, pola jawaban TKP, tinjau jawaban, set latihan topik lemah (bank dulu, AI bila kurang) |
 | Bank soal | Pencarian dan filter; susun set baru tanpa biaya AI |
 | Set varian | Set baru dengan topik dan kesulitan yang sama |
+| Rencana belajar | Tanggal ujian (opsional), waktu belajar per hari, hari simulasi mingguan, dan skor target. Beranda menampilkan hitung mundur, target hari ini (ulangan Buku Kesalahan, latihan topik lemah, simulasi mingguan) dan kesiapan menurut ujian terakhir. Jadwal bisa diunduh sebagai berkas kalender `.ics` |
 | Progres | Grafik riwayat skor per sub-tes, tren dan perkiraan kasar ujian berikutnya (mulai 3 ujian), topik paling membaik/menurun, alasan salah tersering dari Buku Kesalahan, penguasaan topik |
 | Unduh PDF / Word | Tombol **Unduh** di halaman set, atau pilih soal di Bank Soal lalu unduh. Isi: soal saja, soal + kunci jawaban, lengkap (dengan pembahasan), atau kunci saja; dengan nama lembaga, tanggal, dan logo. PDF berisi teks asli dan gambar soal figural |
 | Cadangan | Ekspor/impor JSON antar perangkat (API key tidak ikut). Beranda mengingatkan bila cadangan terakhir lebih dari 7 hari atau sudah ada 3 set baru. Di Chrome/Edge desktop, cadangan bisa disimpan otomatis ke satu berkas pilihan setiap ada perubahan |
