@@ -55,6 +55,13 @@ export default function Help() {
             PDF/Word.
           </li>
           <li>
+            <b>Impor dari foto/PDF</b>: di Bank Soal, klik "Impor dari foto/PDF", potret halaman soal atau pilih gambar/PDF. Setiap halaman dikirim sebagai satu
+            request ke penyedia AI pada API key Anda (perkiraan biaya tampil sebelum mengirim). AI menyalin soal dan opsinya; kunci dan pembahasan diusulkan AI
+            bila halaman tidak memuatnya. Tinjau dan perbaiki setiap soal di samping gambar aslinya sebelum menyimpan; soal tersimpan bertanda "perlu dicek".
+            Soal bergambar dilewati. Hanya untuk materi milik Anda sendiri atau yang lisensinya membolehkan disalin; soal hasil impor tidak ikut dibagikan kecuali
+            Anda memilihnya.
+          </li>
+          <li>
             <b>Unduh PDF / Word</b>: di halaman set atau Bank Soal, klik Unduh, pilih format (PDF atau Word) dan isinya (soal saja, soal + kunci, atau
             lengkap dengan pembahasan).
           </li>

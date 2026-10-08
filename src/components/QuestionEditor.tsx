@@ -8,7 +8,8 @@ import { Modal } from './ui';
 import { errorText } from '../engine/storage';
 import { clampGraded, isGraded, keyedScore } from '../domain/examPackage';
 
-export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => void }) {
+/** Edits a question in the bank, or, with `onSave`, a draft not saved yet (photo import) that is handed back instead. */
+export function QuestionEditor({ q, onClose, onSave }: { q: Question; onClose: () => void; onSave?: (q: Question) => void }) {
   const settings = useSettings();
   const [draft, setDraft] = useState<Question>(() => structuredClone(q));
   const [error, setError] = useState('');
@@ -26,6 +27,10 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
       const passage = draft.passage ? { ...draft.passage, text: draft.passage.text.trim() } : undefined;
       const hash = hashText((passage?.text ?? '') + draft.stem);
       const next = validateQuestion({ ...draft, report, passage, options, hash, updatedAt: Date.now() });
+      if (onSave) {
+        onSave(next);
+        return onClose();
+      }
       await db.transaction('rw', db.questions, async () => {
         await db.questions.put(next);
         // The passage is shared: an edit to it applies to every question of the group.
@@ -131,10 +136,12 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
           </label>
           <textarea id="qe-explanation" className="input min-h-28" value={draft.explanation} onChange={(e) => set('explanation', e.target.value)} />
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={draft.confidence !== 'low'} onChange={(e) => set('confidence', e.target.checked ? 'high' : 'low')} />
-          Saya sudah memeriksa soal ini
-        </label>
+        {!onSave && (
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={draft.confidence !== 'low'} onChange={(e) => set('confidence', e.target.checked ? 'high' : 'low')} />
+            Saya sudah memeriksa soal ini
+          </label>
+        )}
         {draft.report && (
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={withdrawReport} onChange={(e) => setWithdrawReport(e.target.checked)} />

@@ -93,7 +93,9 @@ export type FlagKind =
   /** Cross-check was on but could not run for this question (e.g. quota used up). */
   | 'cross-check-pending'
   /** The learner reported a problem; mirrors `Question.report` until they withdraw it. */
-  | 'user-report';
+  | 'user-report'
+  /** Copied from a photo or PDF page by a model, and not yet marked as checked by the learner. */
+  | 'import-unchecked';
 
 export type ReportReason = 'kunci-salah' | 'ambigu' | 'usang' | 'typo' | 'lainnya';
 
@@ -145,7 +147,8 @@ export interface Question {
   notes?: QuestionNote[];
   /** Came in a shared set from someone else: which set, and when it was imported. */
   importedFrom?: { name: string; at: number };
-  source: 'ai' | 'procedural' | 'manual';
+  /** `import`: copied from the learner's photo or PDF page by a model (#38). */
+  source: 'ai' | 'procedural' | 'manual' | 'import';
   createdAt: number;
   updatedAt: number;
 }
