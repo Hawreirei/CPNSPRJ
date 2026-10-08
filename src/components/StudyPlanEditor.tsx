@@ -22,6 +22,7 @@ export function StudyPlanEditor({ settings }: { settings: Settings }) {
   }
 
   const simDay = plan.simulationDay ?? DEFAULT_SIMULATION_DAY;
+  const studyDays = plan.studyDays?.length ? plan.studyDays : WEEKDAYS.map((_, i) => i);
   const downloadIcs = () => {
     const ics = buildIcs({ now: Date.now(), examDate: parseLocalDate(plan.examDate), simulationDay: simDay, simulationMinutes: settings.durationMinutes });
     downloadBlob(new Blob([ics], { type: 'text/calendar;charset=utf-8' }), 'jadwal-belajar-skd.ics');
@@ -63,6 +64,29 @@ export function StudyPlanEditor({ settings }: { settings: Settings }) {
           </select>
         </div>
       </div>
+      <fieldset>
+        <legend className="label">Hari belajar</legend>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {WEEKDAYS.map((d, i) => {
+            const on = studyDays.includes(i);
+            return (
+              <label key={d} className="flex items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={on}
+                  disabled={on && studyDays.length === 1}
+                  onChange={() => {
+                    const next = on ? studyDays.filter((x) => x !== i) : [...studyDays, i].sort((a, b) => a - b);
+                    void save({ studyDays: next.length === WEEKDAYS.length ? undefined : next });
+                  }}
+                />
+                {d}
+              </label>
+            );
+          })}
+        </div>
+        <p className="muted mt-1 text-xs">Hari di luar hari belajar tidak memutus streak.</p>
+      </fieldset>
       <p className="muted text-xs">Jadwal resmi seleksi bisa berubah. Cek SSCASN/BKN dan perbarui tanggal di sini bila perlu.</p>
 
       <div>

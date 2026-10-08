@@ -327,6 +327,22 @@ export interface StudyPlan {
   minutesPerDay?: number;
   /** Day of the weekly full simulation, 0 = Sunday … 6 = Saturday. */
   simulationDay?: number;
+  /** Weekdays the learner plans to study (0 = Sunday); missing means every day. Other days never break a streak. */
+  studyDays?: number[];
+}
+
+/** A break from the streak (illness, holiday): local dates, inclusive; no `to` while it lasts. */
+export interface StreakPause {
+  from: string;
+  to?: string;
+}
+
+export interface StreakSettings {
+  /** Hides the streak, the "target met" mark and badges everywhere. */
+  off?: boolean;
+  pauses?: StreakPause[];
+  /** Badges already earned, so each is announced once. */
+  earned?: { id: string; at: number }[];
 }
 
 export interface KisiTopic {
@@ -385,6 +401,8 @@ export interface Settings {
   crossCheck?: CrossCheckSettings;
   /** Syllabus profiles the learner added, and which one is in use. Absent means the built-in one. */
   kisi?: KisiSettings;
+  /** Streak and badges; on unless switched off. */
+  streak?: StreakSettings;
   /** USD per 1M tokens, keyed by model id; fallback used when unknown. */
   priceOverrides: Record<string, { input: number; output: number }>;
 }

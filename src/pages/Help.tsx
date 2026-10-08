@@ -30,6 +30,10 @@ export default function Help() {
             target hari ini, dan kesiapan Anda dibanding skor target. Jadwal simulasi mingguan bisa diunduh ke kalender (.ics).
           </li>
           <li>
+            <b>Streak dan lencana</b>: Beranda menghitung hari berturut-turut Anda menyelesaikan latihan, ujian, atau ulangan Buku Kesalahan. Hari di luar hari
+            belajar yang dipilih di rencana tidak memutus streak; saat sakit atau libur, tekan "Jeda streak". Semuanya bisa dimatikan di Pengaturan.
+          </li>
+          <li>
             <b>Buku Kesalahan</b>: soal yang salah, kosong, atau ditandai ragu-ragu masuk otomatis. Setiap hari buka "Ulangan hari ini", jawab soalnya, lihat
             pembahasan, lalu nilai seberapa ingat Anda (Lupa, Sulit, Baik, Mudah). Soal yang mudah diingat makin jarang muncul; yang terlupa muncul lagi
             besok. Batas ulangan per hari bisa diubah di Pengaturan.

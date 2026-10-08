@@ -108,6 +108,18 @@ export default function SettingsPage() {
       </section>
 
       <section className="card space-y-3">
+        <h2>Streak dan lencana</h2>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={!s.streak?.off} onChange={(e) => saveSettings({ streak: { ...s.streak, off: !e.target.checked } })} />
+          Tampilkan streak, tanda target harian tercapai, dan lencana
+        </label>
+        <p className="muted text-xs">
+          Streak dihitung dari latihan, ujian, dan ulangan Buku Kesalahan yang selesai, menurut tanggal di perangkat ini. Saat dimatikan, semuanya disembunyikan; lencana
+          yang sudah diraih tetap tersimpan.
+        </p>
+      </section>
+
+      <section className="card space-y-3">
         <h2>Pemeriksa silang (opsional)</h2>
         <CrossCheckEditor settings={s} />
       </section>

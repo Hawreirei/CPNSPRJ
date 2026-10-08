@@ -1,6 +1,14 @@
 import { db } from '../db';
 import type { Attempt, Grade, Question, ReasonTag, ReviewItem } from '../domain/types';
 import { mistakesInAttempt, newReview, relapse, schedule } from './srs';
+import { dayKey, logDay } from './streak';
+
+/** Meta row with the days reviews were graded, for the streak (see engine/streak.ts). */
+export const REVIEW_DAYS_KEY = 'reviewDays';
+
+export async function getReviewDays(): Promise<string[]> {
+  return ((await db.meta.get(REVIEW_DAYS_KEY))?.value as string[] | undefined) ?? [];
+}
 
 /**
  * Add an attempt's mistakes to the notebook. New questions are due today; questions already
@@ -38,11 +46,14 @@ export async function backfillFromHistory(now = Date.now()): Promise<number> {
 }
 
 export async function gradeReview(questionId: string, grade: Grade, now = Date.now()): Promise<ReviewItem | undefined> {
-  return db.transaction('rw', db.reviews, async () => {
+  return db.transaction('rw', db.reviews, db.meta, async () => {
     const item = await db.reviews.get(questionId);
     if (!item) return;
     const next = schedule(item, grade, now);
     await db.reviews.put(next);
+    const days = await getReviewDays();
+    const today = dayKey(now);
+    if (!days.includes(today)) await db.meta.put({ key: REVIEW_DAYS_KEY, value: logDay(days, today) });
     return next;
   });
 }
