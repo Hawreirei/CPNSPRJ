@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, useSettings } from '../db';
-import { TOPICS } from '../domain/blueprint';
+import { topicsFor } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
 import type { Blueprint, Question, Subtest } from '../domain/types';
 import { createBankSet } from '../engine/sets';
@@ -33,6 +33,12 @@ export default function QuestionBank() {
   const attempts = useLiveQuery(() => db.attempts.toArray(), []);
   const stats = useMemo(() => answerStats(attempts ?? [], all ?? []), [attempts, all]);
   const [downloading, setDownloading] = useState(false);
+
+  // The profile's topics, plus any older ones questions in the bank still carry.
+  const topicOptions = useMemo(() => {
+    const subs = sub ? [sub] : SUBTESTS;
+    return [...new Set([...subs.flatMap((x) => topicsFor(settings, x)), ...(all ?? []).filter((x) => subs.includes(x.subtest)).map((x) => x.topic)])];
+  }, [settings, sub, all]);
 
   const filtered = useMemo(() => {
     if (!all) return [];
@@ -129,7 +135,7 @@ export default function QuestionBank() {
             <div className="mt-2 grid gap-2 sm:grid-cols-3">
               <select className="input" value={topic} onChange={(e) => setTopic(e.target.value)}>
                 <option value="">Semua topik</option>
-                {(sub ? TOPICS[sub] : SUBTESTS.flatMap((x) => TOPICS[x])).map((t) => (
+                {topicOptions.map((t) => (
                   <option key={t}>{t}</option>
                 ))}
               </select>

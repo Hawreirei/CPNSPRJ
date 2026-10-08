@@ -97,6 +97,8 @@ export interface SectionSpec {
   count: number;
   topics: string[];
   difficulty: DifficultyChoice;
+  /** Relative share per topic from the syllabus profile; missing means an even spread. */
+  weights?: Record<string, number>;
 }
 
 export interface Blueprint {
@@ -279,6 +281,37 @@ export interface StudyPlan {
   simulationDay?: number;
 }
 
+export interface KisiTopic {
+  name: string;
+  /** Relative share of questions; 1 when missing. */
+  weight?: number;
+}
+
+/** The exam's shape a syllabus profile can carry; applied to Settings when the profile is chosen. */
+export interface ExamNumbers {
+  counts: Record<Subtest, number>;
+  passing: Record<Subtest, number>;
+  durationMinutes: number;
+}
+
+/** Topics per sub-test, and optionally the exam's numbers, as a shareable file. */
+export interface KisiProfile {
+  version: 1;
+  id: string;
+  name: string;
+  /** Where the topics come from, e.g. an official decree, or "bawaan aplikasi". */
+  source?: string;
+  /** Date of the source, YYYY-MM-DD. */
+  date?: string;
+  topics: Record<Subtest, KisiTopic[]>;
+  exam?: ExamNumbers;
+}
+
+export interface KisiSettings {
+  activeId: string;
+  custom: KisiProfile[];
+}
+
 export interface CrossCheckSettings {
   enabled: boolean;
   /** Key used for checking; defaults to the set's key. */
@@ -302,6 +335,8 @@ export interface Settings {
   studyPlan?: StudyPlan;
   /** Second-opinion check of new questions by another model. Off unless enabled. */
   crossCheck?: CrossCheckSettings;
+  /** Syllabus profiles the learner added, and which one is in use. Absent means the built-in one. */
+  kisi?: KisiSettings;
   /** USD per 1M tokens, keyed by model id; fallback used when unknown. */
   priceOverrides: Record<string, { input: number; output: number }>;
 }

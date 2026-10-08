@@ -33,13 +33,39 @@ export function chunkItems(subtest: Subtest, items: BatchItem[], batchSize: numb
   return batches;
 }
 
+/**
+ * The topic of each of `count` questions. Without weights the topics simply take turns. With
+ * weights each topic gets its share (largest remainder), still interleaved so a short set
+ * covers as many topics as it can.
+ */
+export function topicSequence(topics: string[], count: number, weights?: Record<string, number>): string[] {
+  const w = topics.map((t) => Math.max(0, weights?.[t] ?? 1));
+  const total = w.reduce((a, b) => a + b, 0);
+  if (!weights || !total || w.every((x) => x === w[0])) return Array.from({ length: count }, (_, i) => topics[i % topics.length]);
+  const exact = w.map((x) => (count * x) / total);
+  const left = exact.map(Math.floor);
+  const byRemainder = exact.map((x, i) => ({ i, r: x - Math.floor(x) })).sort((a, b) => b.r - a.r || a.i - b.i);
+  for (let k = 0; k < count - left.reduce((a, b) => a + b, 0); k++) left[byRemainder[k].i]++;
+  const out: string[] = [];
+  while (out.length < count) {
+    topics.forEach((t, i) => {
+      if (left[i] > 0) {
+        out.push(t);
+        left[i]--;
+      }
+    });
+  }
+  return out;
+}
+
 /** Spread each section's questions over its topics and difficulties, then batch them. */
 export function planBatches(blueprint: Blueprint, batchSize: number): PlanBatch[] {
   const batches: PlanBatch[] = [];
   for (const sec of blueprint.sections) {
     if (!sec.count || !sec.topics.length) continue;
+    const sequence = topicSequence(sec.topics, sec.count, sec.weights);
     const items: BatchItem[] = Array.from({ length: sec.count }, (_, i) => ({
-      topic: sec.topics[i % sec.topics.length],
+      topic: sequence[i],
       // Rotate the mix per topic round so a topic doesn't always get the same difficulty.
       difficulty: sec.difficulty === 'campuran' ? MIX[(i + Math.floor(i / sec.topics.length) * 3) % MIX.length] : sec.difficulty,
     }));

@@ -1,4 +1,5 @@
-import type { Blueprint, DifficultyChoice, Settings, Subtest } from './types';
+import { SUBTESTS } from './types';
+import type { Blueprint, DifficultyChoice, ExamNumbers, KisiProfile, KisiTopic, Settings, Subtest } from './types';
 
 export const TOPICS: Record<Subtest, string[]> = {
   TWK: [
@@ -64,6 +65,47 @@ export const DEFAULT_SETTINGS: Settings = {
   priceOverrides: {},
 };
 
+/* ------------------------------------------------------- syllabus profiles */
+
+export const BUILTIN_ID = 'bawaan';
+
+/** The topics the app has always used. Not an official syllabus, and labelled as such. */
+export const BUILTIN_PROFILE: KisiProfile = {
+  version: 1,
+  id: BUILTIN_ID,
+  name: 'Bawaan aplikasi',
+  source: 'Bawaan aplikasi, bukan kisi-kisi resmi',
+  topics: Object.fromEntries(SUBTESTS.map((s) => [s, TOPICS[s].map((name) => ({ name }))])) as Record<Subtest, KisiTopic[]>,
+  exam: { counts: DEFAULT_SETTINGS.counts, passing: DEFAULT_SETTINGS.passing, durationMinutes: DEFAULT_SETTINGS.durationMinutes },
+};
+
+export function allProfiles(settings: Pick<Settings, 'kisi'>): KisiProfile[] {
+  return [BUILTIN_PROFILE, ...(settings.kisi?.custom ?? [])];
+}
+
+export function activeProfile(settings: Pick<Settings, 'kisi'>): KisiProfile {
+  const id = settings.kisi?.activeId;
+  return settings.kisi?.custom.find((p) => p.id === id) ?? BUILTIN_PROFILE;
+}
+
+/** Topics offered for new questions in a sub-test. Existing questions may carry others; they stay valid. */
+export function topicsFor(settings: Pick<Settings, 'kisi'>, s: Subtest): string[] {
+  return activeProfile(settings).topics[s].map((t) => t.name);
+}
+
+/** Per-topic shares, or undefined when the profile spreads questions evenly. */
+export function weightsFor(settings: Pick<Settings, 'kisi'>, s: Subtest): Record<string, number> | undefined {
+  const topics = activeProfile(settings).topics[s];
+  if (topics.every((t) => (t.weight ?? 1) === 1)) return undefined;
+  return Object.fromEntries(topics.map((t) => [t.name, t.weight ?? 1]));
+}
+
+export const examNumbersOf = (s: Pick<Settings, 'counts' | 'passing' | 'durationMinutes'>): ExamNumbers => ({
+  counts: { ...s.counts },
+  passing: { ...s.passing },
+  durationMinutes: s.durationMinutes,
+});
+
 export type PresetId = 'full' | 'twk' | 'tiu' | 'tkp' | 'mini';
 
 export const PRESETS: { id: PresetId; name: string; description: string }[] = [
@@ -75,7 +117,10 @@ export const PRESETS: { id: PresetId; name: string; description: string }[] = [
 ];
 
 export function buildPreset(id: PresetId, settings: Settings, difficulty: DifficultyChoice = 'campuran'): Blueprint {
-  const all = (s: Subtest, count: number) => ({ subtest: s, count, topics: [...TOPICS[s]], difficulty });
+  const all = (s: Subtest, count: number) => {
+    const weights = weightsFor(settings, s);
+    return { subtest: s, count, topics: topicsFor(settings, s), difficulty, ...(weights ? { weights } : {}) };
+  };
   const c = settings.counts;
   const sections = {
     full: [all('TWK', c.TWK), all('TIU', c.TIU), all('TKP', c.TKP)],

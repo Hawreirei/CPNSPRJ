@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { db } from '../db';
-import { TOPICS } from '../domain/blueprint';
+import { db, useSettings } from '../db';
+import { topicsFor } from '../domain/blueprint';
 import { hashText } from '../lib/id';
 import { loadMath, validateQuestion } from '../domain/validators';
 import type { Difficulty, OptionLabel, Question } from '../domain/types';
 import { Modal } from './ui';
 
 export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => void }) {
+  const settings = useSettings();
   const [draft, setDraft] = useState<Question>(() => structuredClone(q));
   const [error, setError] = useState('');
   const [withdrawReport, setWithdrawReport] = useState(false);
@@ -37,7 +38,7 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
               Topik
             </label>
             <select id="qe-topic" className="input" value={draft.topic} onChange={(e) => set('topic', e.target.value)}>
-              {[...new Set([draft.topic, ...TOPICS[draft.subtest]])].map((t) => (
+              {[...new Set([draft.topic, ...topicsFor(settings, draft.subtest)])].map((t) => (
                 <option key={t}>{t}</option>
               ))}
             </select>
