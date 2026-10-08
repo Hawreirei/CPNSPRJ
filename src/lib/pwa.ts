@@ -17,12 +17,12 @@ export function useUpdateWaiting(): boolean {
   );
 }
 
-const isBusy = () => isAnyGenerationRunning() || location.hash.startsWith('#/cat/');
+const isBusy = () => isAnyGenerationRunning() || location.hash.startsWith('#/cat/') || location.hash.startsWith('#/practice/');
 
 /**
  * Register the service worker so a new deploy replaces the cached app on the
  * next load, without the user needing a hard refresh. A reload is deferred while
- * questions are being generated or a CAT simulation is open.
+ * questions are being generated or a CAT simulation or practice session is open.
  */
 export function setupPwa() {
   if (!('serviceWorker' in navigator)) return;

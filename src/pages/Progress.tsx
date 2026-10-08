@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { db, useSettings } from '../db';
 import { SUBTEST_NAMES } from '../domain/blueprint';
+import { attemptMode, examAttempts } from '../domain/practice';
 import { SUBTESTS } from '../domain/types';
 import type { Subtest } from '../domain/types';
 import { ScoreTrend } from '../components/ScoreTrend';
@@ -25,9 +26,12 @@ export default function Progress() {
     );
   }
 
+  // Practice reveals the key as you go, so only exams are comparable on the score chart.
+  const exams = examAttempts(attempts);
+  const practiceCount = attempts.length - exams.length;
   // Only full-length sub-tests are comparable on the raw-score chart; partial ones are rescaled to the full maximum.
   const series = (s: Subtest) =>
-    attempts.flatMap((a) => {
+    exams.flatMap((a) => {
       const r = a.result!.perSubtest.find((p) => p.subtest === s);
       if (!r) return [];
       const fullMax = settings.counts[s] * 5;
@@ -35,7 +39,8 @@ export default function Progress() {
       return [{ label: `${new Date(a.startedAt).toLocaleDateString('id-ID')} · ${a.setName}`, value, max: fullMax }];
     });
 
-  // Topic mastery: recency-weighted share of max score across all attempts.
+  // Topic mastery: recency-weighted share of max score across all attempts. Practice counts too:
+  // each answer is given before its explanation is shown.
   const mastery = new Map<string, { subtest: Subtest; topic: string; w: number; ws: number; n: number }>();
   attempts.forEach((a, idx) => {
     const weight = 0.7 ** (attempts.length - 1 - idx);
@@ -55,7 +60,8 @@ export default function Progress() {
       <div>
         <h1>Progres</h1>
         <p className="muted mt-1">
-          {attempts.length} simulasi selesai. Skor set yang tidak penuh diskalakan ke skor maksimum standar agar sebanding.
+          {exams.length} ujian{practiceCount > 0 && ` dan ${practiceCount} latihan`} selesai. Grafik skor hanya memakai ujian; skor set yang tidak penuh diskalakan ke
+          skor maksimum standar agar sebanding.
         </p>
       </div>
 
@@ -67,7 +73,7 @@ export default function Progress() {
 
       <section className="card">
         <h2>Penguasaan topik</h2>
-        <p className="muted mb-3 text-xs">Rata-rata tertimbang (simulasi terbaru lebih berbobot). Di bawah 60% ditandai lemah.</p>
+        <p className="muted mb-3 text-xs">Rata-rata tertimbang dari ujian dan latihan (yang terbaru lebih berbobot). Di bawah 60% ditandai lemah.</p>
         <div className="grid gap-x-8 gap-y-2 md:grid-cols-2">
           {topics.map((t) => (
             <div key={t.subtest + t.topic}>
@@ -109,7 +115,8 @@ export default function Progress() {
                 <td className="pr-3">
                   <Link className="hover:underline" to={`/results/${a.id}`}>
                     {a.setName}
-                  </Link>
+                  </Link>{' '}
+                  {attemptMode(a) === 'practice' && <Badge tone="blue">latihan</Badge>}
                 </td>
                 {SUBTESTS.map((s) => {
                   const r = a.result!.perSubtest.find((p) => p.subtest === s);
@@ -120,9 +127,7 @@ export default function Progress() {
                   );
                 })}
                 <td className="pr-3 text-right font-medium tabular-nums">{a.result!.total}</td>
-                <td>
-                  <Badge tone={a.result!.passedAll ? 'green' : 'red'}>{a.result!.passedAll ? 'lulus' : 'belum'}</Badge>
-                </td>
+                <td>{attemptMode(a) === 'exam' && <Badge tone={a.result!.passedAll ? 'green' : 'red'}>{a.result!.passedAll ? 'lulus' : 'belum'}</Badge>}</td>
               </tr>
             ))}
           </tbody>

@@ -76,8 +76,9 @@ export default function QuestionBank() {
   async function deleteSelected() {
     if (!confirm(`Hapus ${selected.size} soal dari bank? Soal juga dikeluarkan dari semua set.`)) return;
     const ids = [...selected];
-    await db.transaction('rw', db.questions, db.sets, async () => {
+    await db.transaction('rw', [db.questions, db.sets, db.reviews], async () => {
       await db.questions.bulkDelete(ids);
+      await db.reviews.bulkDelete(ids);
       await db.sets.toCollection().modify((s) => {
         s.questionIds = s.questionIds.filter((id) => !selected.has(id));
       });

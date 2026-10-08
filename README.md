@@ -21,12 +21,14 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 | TIU figural | Deret dan analogi gambar dibuat oleh aplikasi (SVG) dari aturan pasti: gratis dan kuncinya selalu benar |
 | Kontrol soal | Edit, tulis ulang dengan AI, kunci, bintangi, pindah, hapus, "Serupa+" |
 | Simulasi CAT | Timer (default 100 menit), grid nomor, ragu-ragu, pintasan keyboard, kirim otomatis, bisa dilanjutkan setelah refresh |
+| Buku Kesalahan | Soal yang salah, kosong, atau ragu-ragu dari ujian dan latihan masuk otomatis, lalu diulang terjadwal (spaced repetition SM-2): jawab dulu, lihat pembahasan, nilai diri Lupa/Sulit/Baik/Mudah. Batas ulangan per hari, tag alasan salah, daftar semua catatan dengan filter |
+| Mode Latihan | Kunci, skor TKP, dan pembahasan tampil langsung setelah menjawab; jawaban terkunci setelah dipilih; pilih topik tertentu; timer opsional. Tidak masuk grafik skor ujian di Progres |
 | Laporan skor | Skor per sub-tes vs ambang batas, topik lemah, waktu per soal, tinjau jawaban, set latihan topik lemah (bank dulu, AI bila kurang) |
 | Bank soal | Pencarian dan filter; susun set baru tanpa biaya AI |
 | Set varian | Set baru dengan topik dan kesulitan yang sama |
 | Progres | Grafik riwayat skor per sub-tes dan penguasaan topik |
 | Unduh PDF / Word | Tombol **Unduh** di halaman set, atau pilih soal di Bank Soal lalu unduh. Isi: soal saja, soal + kunci jawaban, lengkap (dengan pembahasan), atau kunci saja; dengan nama lembaga, tanggal, dan logo. PDF berisi teks asli dan gambar soal figural |
-| Cadangan | Ekspor/impor JSON antar perangkat (API key tidak ikut) |
+| Cadangan | Ekspor/impor JSON antar perangkat (API key tidak ikut). Beranda mengingatkan bila cadangan terakhir lebih dari 7 hari atau sudah ada 3 set baru. Di Chrome/Edge desktop, cadangan bisa disimpan otomatis ke satu berkas pilihan setiap ada perubahan |
 | PWA | Bisa dipasang; set tersimpan dan simulasi berjalan offline |
 
 ## Penyedia AI
@@ -69,11 +71,23 @@ Durasi default 100 menit. Semua angka dapat diubah di **Pengaturan** karena atur
 npm install
 npm run dev        # server pengembangan
 npm test           # unit test (vitest)
+npm run test:e2e   # uji end-to-end di browser (Playwright, memakai build produksi)
 npm run typecheck
 npm run lint
 npm run build      # build statis ke dist/
 npm run preview
 ```
+
+### Uji end-to-end
+
+`npm run test:e2e` membangun aplikasi lalu menjalankan Playwright terhadap `vite preview`, sehingga CSP, router hash, dan base relatif sama dengan yang dipakai pengguna. Sekali saja di mesin baru: `npx playwright install chromium`.
+
+- Penyedia AI tidak pernah dihubungi. `e2e/fixtures.ts` berisi Gemini tiruan yang menjawab daftar model dan pembuatan soal sesuai prompt (kunci selalu A, opsi A TKP bernilai 5). Setiap request lain ke luar `localhost` dibatalkan dan membuat tes gagal.
+- Waktu tidak ditunggu sungguhan: timer ujian, jeda cadangan otomatis, dan "besok" di Buku Kesalahan dimajukan dengan `page.clock`.
+- Simpan otomatis ke berkas memakai berkas asli di origin-private file system karena dialog pilih berkas tidak bisa tampil di browser headless.
+- Bila gagal, trace dan screenshot ada di `test-results/` (`npx playwright show-trace <trace.zip>`). Di CI (`.github/workflows/e2e.yml`) keduanya diunggah sebagai artefak.
+
+Cakupan: tambah API key → buat set → ujian (termasuk kirim otomatis saat waktu habis) → laporan & progres; unduh PDF/Word; cadangan ekspor/impor ke browser bersih, pengingat, dan simpan otomatis; Mode Latihan; Buku Kesalahan.
 
 Hasil build adalah situs statis (router berbasis hash, `base: './'`), sehingga bisa di-host di Netlify, Cloudflare Pages, GitHub Pages, dan sejenisnya tanpa konfigurasi rewrite.
 

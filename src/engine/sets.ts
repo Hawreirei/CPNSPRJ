@@ -125,14 +125,16 @@ export async function createRemedialSet(weak: TopicResult[], perTopic = 5, attem
 }
 
 export async function deleteSet(id: string, alsoQuestions: boolean) {
-  await db.transaction('rw', db.sets, db.questions, db.attempts, async () => {
+  await db.transaction('rw', [db.sets, db.questions, db.attempts, db.reviews], async () => {
     const set = await db.sets.get(id);
     if (!set) return;
     if (alsoQuestions) {
       // Only delete questions not used by another set.
       const others = await db.sets.filter((s) => s.id !== id).toArray();
       const used = new Set(others.flatMap((s) => s.questionIds));
-      await db.questions.bulkDelete(set.questionIds.filter((q) => !used.has(q)));
+      const unused = set.questionIds.filter((q) => !used.has(q));
+      await db.questions.bulkDelete(unused);
+      await db.reviews.bulkDelete(unused);
     }
     await db.sets.delete(id);
   });

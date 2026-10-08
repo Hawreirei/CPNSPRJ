@@ -9,6 +9,7 @@ const NAV = [
   { to: '/sets', label: 'Set Saya' },
   { to: '/bank', label: 'Bank Soal' },
   { to: '/simulation', label: 'Latihan Ujian' },
+  { to: '/review', label: 'Buku Kesalahan' },
   { to: '/progress', label: 'Progres Belajar' },
   { to: '/keys', label: 'API Key' },
   { to: '/settings', label: 'Pengaturan' },

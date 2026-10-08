@@ -1,11 +1,13 @@
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useRef, useState } from 'react';
 import { db, saveSettings, useSettings } from '../db';
-import { exportBackup, importBackup } from '../db/backup';
+import { getBackupState, importBackup } from '../db/backup';
+import { fmtAgo } from '../domain/backupReminder';
+import { autoBackupNow, chooseBackupFile, downloadBackup, isAutoBackupSupported, stopAutoBackup } from '../lib/autoBackup';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
 import { DEFAULT_PRICES } from '../providers/types';
 import { getTheme, setTheme, type Theme } from '../lib/theme';
-import { downloadBlob } from '../components/ui';
 
 export default function SettingsPage() {
   const s = useSettings();
@@ -25,8 +27,10 @@ export default function SettingsPage() {
         <h2>Tampilan & kop dokumen</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="label">Nama lembaga/bimbel (tampil di file unduhan)</label>
-            <input className="input" value={s.brandName} onChange={(e) => saveSettings({ brandName: e.target.value })} />
+            <label className="label" htmlFor="brand-name">
+              Nama lembaga/bimbel (tampil di file unduhan)
+            </label>
+            <input id="brand-name" className="input" value={s.brandName} onChange={(e) => saveSettings({ brandName: e.target.value })} />
           </div>
           <div>
             <label className="label">Logo (PNG/JPG, maks 300 KB)</label>
@@ -72,9 +76,10 @@ export default function SettingsPage() {
 
       <section className="card space-y-3">
         <h2>Cadangan data</h2>
-        <p className="muted text-sm">Simpan semua set, bank soal, dan riwayat latihan ke satu file, lalu pulihkan di perangkat lain. API key tidak ikut tersimpan.</p>
+        <p className="muted text-sm">Simpan semua set, bank soal, riwayat latihan, dan Buku Kesalahan ke satu file, lalu pulihkan di perangkat lain. API key tidak ikut tersimpan.</p>
+        <LastBackup />
         <div className="flex flex-wrap gap-2">
-          <button className="btn btn-primary" onClick={async () => downloadBlob(await exportBackup(), `skd-backup-${new Date().toISOString().slice(0, 10)}.json`)}>
+          <button className="btn btn-primary" onClick={() => void downloadBackup()}>
             Unduh cadangan
           </button>
           <button className="btn" onClick={() => fileRef.current?.click()}>
@@ -91,7 +96,7 @@ export default function SettingsPage() {
               if (!f) return;
               try {
                 const r = await importBackup(f);
-                setMsg(`Dipulihkan: ${r.sets} set, ${r.questions} soal, ${r.attempts} simulasi.`);
+                setMsg(`Dipulihkan: ${r.sets} set, ${r.questions} soal, ${r.attempts} simulasi, ${r.reviews} catatan Buku Kesalahan.`);
               } catch (err) {
                 setMsg(`Gagal: ${(err as Error).message}`);
               }
@@ -99,6 +104,8 @@ export default function SettingsPage() {
           />
         </div>
         {msg && <p className="text-sm">{msg}</p>}
+        <AutoBackupPanel />
+        <p className="muted text-xs">Berkas cadangan tidak dienkripsi dan berisi riwayat belajar Anda. Simpan di tempat yang aman.</p>
       </section>
 
       <details className="card">
@@ -148,6 +155,25 @@ export default function SettingsPage() {
           <p className="muted text-xs">
             Ambang batas berbeda per tahun dan formasi. Cocokkan dengan pengumuman resmi KemenPANRB/BKN terbaru. Perubahan berlaku untuk set baru.
           </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2>Buku Kesalahan</h2>
+          <div>
+            <label className="label" htmlFor="review-limit">
+              Batas ulangan per hari
+            </label>
+            <input
+              id="review-limit"
+              type="number"
+              min={1}
+              max={200}
+              className="input w-28"
+              value={s.reviewDailyLimit}
+              onChange={(e) => saveSettings({ reviewDailyLimit: Math.min(200, num(e.target.value, 1)) })}
+            />
+          </div>
+          <p className="muted text-xs">Jumlah soal yang ditawarkan untuk diulang setiap hari. Sisa soal yang jatuh tempo menunggu hari berikutnya.</p>
         </section>
 
         <section className="space-y-3">
@@ -235,6 +261,105 @@ function AddPrice({ onAdd }: { onAdd: (model: string) => void }) {
       >
         Tambah
       </button>
+    </div>
+  );
+}
+
+function useBackupInfo() {
+  // `now` comes with the data so relative times refresh on every change without Date.now() during render.
+  return useLiveQuery(async () => ({ state: await getBackupState(), now: Date.now() }), []);
+}
+
+function LastBackup() {
+  const info = useBackupInfo();
+  if (!info) return null;
+  const { state, now } = info;
+  return (
+    <p className="text-sm">
+      {state.lastBackupAt ? (
+        <>
+          Terakhir dicadangkan: <b>{fmtAgo(state.lastBackupAt, now)}</b> ({state.lastBackupKind === 'auto' ? 'otomatis' : 'unduh manual'})
+        </>
+      ) : (
+        'Belum pernah dicadangkan.'
+      )}
+    </p>
+  );
+}
+
+/** Automatic saving to one file the user picks (File System Access API, Chromium desktop only). */
+function AutoBackupPanel() {
+  const info = useBackupInfo();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  if (!info) return null;
+  const { state, now } = info;
+  const auto = state.auto;
+
+  const act = (fn: () => Promise<unknown>) => async () => {
+    setBusy(true);
+    setMsg('');
+    try {
+      await fn();
+    } catch (e) {
+      setMsg(`Gagal: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+      <h3 className="text-sm font-semibold">Simpan otomatis ke berkas</h3>
+      {!isAutoBackupSupported() ? (
+        <p className="muted text-sm">
+          Hanya tersedia di Chrome atau Edge versi desktop. Di browser ini, unduh cadangan secara berkala; aplikasi akan mengingatkan di Beranda.
+        </p>
+      ) : !auto ? (
+        <>
+          <p className="muted text-sm">
+            Pilih satu berkas sekali saja. Setelah itu setiap perubahan (set baru, hasil ujian, catatan Buku Kesalahan, pengaturan) ditulis ke berkas itu
+            beberapa detik kemudian, tanpa klik lagi.
+          </p>
+          <button className="btn" disabled={busy} onClick={act(chooseBackupFile)}>
+            Pilih berkas…
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-sm">
+            Aktif: menulis ke <b>{auto.fileName}</b>
+            {auto.lastWriteAt ? <> · terakhir {fmtAgo(auto.lastWriteAt, now)}</> : null}
+          </p>
+          {auto.error && (
+            <p className="rounded-md bg-amber-50 px-2 py-1 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">{auto.error.message}</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {auto.error?.kind === 'missing' ? (
+              <button className="btn btn-primary" disabled={busy} onClick={act(chooseBackupFile)}>
+                Pilih berkas lagi
+              </button>
+            ) : (
+              <button className={`btn ${auto.error ? 'btn-primary' : ''}`} disabled={busy} onClick={act(() => autoBackupNow({ request: true }))}>
+                {auto.error?.kind === 'permission' ? 'Izinkan lagi' : 'Simpan sekarang'}
+              </button>
+            )}
+            {auto.error?.kind !== 'missing' && (
+              <button className="btn" disabled={busy} onClick={act(chooseBackupFile)}>
+                Ganti berkas
+              </button>
+            )}
+            <button className="btn btn-ghost" disabled={busy} onClick={act(stopAutoBackup)}>
+              Matikan
+            </button>
+          </div>
+          <p className="muted text-xs">
+            Browser bisa meminta izin lagi setelah aplikasi ditutup. Bila muncul pilihan untuk selalu mengizinkan situs ini, pilih itu agar tidak perlu klik
+            ulang.
+          </p>
+        </>
+      )}
+      {msg && <p className="text-sm text-red-600 dark:text-red-400">{msg}</p>}
     </div>
   );
 }

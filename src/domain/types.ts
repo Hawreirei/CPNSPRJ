@@ -147,12 +147,18 @@ export interface AttemptResult {
   passedAll: boolean;
 }
 
+/** `exam`: CAT simulation, answers hidden until submit. `practice`: key and explanation shown after each answer. */
+export type AttemptMode = 'exam' | 'practice';
+
 export interface Attempt {
   id: string;
   setId: string;
   setName: string;
+  /** Missing on attempts saved before practice mode existed; those are exams. */
+  mode?: AttemptMode;
   questionIds: string[];
   startedAt: number;
+  /** `UNTIMED` when the attempt has no time limit. */
   endsAt: number;
   finishedAt?: number;
   answers: Record<string, OptionLabel>;
@@ -161,6 +167,41 @@ export interface Attempt {
   currentIndex: number;
   passing: Record<Subtest, number>;
   result?: AttemptResult;
+}
+
+/** Self-assessment after seeing the explanation in a review. */
+export type Grade = 'lupa' | 'sulit' | 'baik' | 'mudah';
+export const GRADES: Grade[] = ['lupa', 'sulit', 'baik', 'mudah'];
+
+/** Why a question went wrong, tagged by the learner (optional). */
+export type ReasonTag = 'konsep' | 'hitung' | 'terburu' | 'tebakan' | 'paham-soal' | 'waktu';
+export const REASON_TAGS: { id: ReasonTag; label: string }[] = [
+  { id: 'konsep', label: 'Salah konsep' },
+  { id: 'hitung', label: 'Salah hitung' },
+  { id: 'terburu', label: 'Terburu-buru' },
+  { id: 'tebakan', label: 'Tebakan' },
+  { id: 'paham-soal', label: 'Tidak paham soal' },
+  { id: 'waktu', label: 'Kehabisan waktu' },
+];
+
+/** One entry in the mistake notebook, scheduled with SM-2. Keyed by question. */
+export interface ReviewItem {
+  questionId: string;
+  /** Local midnight of the day the item is due. */
+  due: number;
+  /** Days until the next review; 0 = never reviewed. */
+  interval: number;
+  ease: number;
+  /** Successful reviews in a row. */
+  reps: number;
+  /** Times forgotten: graded "Lupa", or wrong again in a later attempt. */
+  lapses: number;
+  reasonTags: ReasonTag[];
+  addedAt: number;
+  lastReviewedAt?: number;
+  lastGrade?: Grade;
+  /** Attempt that first added the question. */
+  sourceAttemptId?: string;
 }
 
 export type ProviderId = 'gemini' | 'openai' | 'anthropic' | 'compat';
@@ -216,6 +257,8 @@ export interface Settings {
   concurrency: number;
   brandName: string;
   brandLogo?: string;
+  /** Most reviews offered per day in the mistake notebook. */
+  reviewDailyLimit: number;
   /** USD per 1M tokens, keyed by model id; fallback used when unknown. */
   priceOverrides: Record<string, { input: number; output: number }>;
 }

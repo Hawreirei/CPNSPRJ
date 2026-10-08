@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { db } from '../db';
 import { isCorrect, scoreQuestion, weakTopics } from '../domain/scoring';
 import { SUBTEST_NAMES } from '../domain/blueprint';
+import { attemptMode } from '../domain/practice';
+import { mistakesInAttempt } from '../engine/srs';
 import { attemptQuestions } from '../engine/attempts';
 import { startGeneration } from '../engine/generator';
 import { createRemedialSet } from '../engine/sets';
@@ -17,17 +19,22 @@ export default function ScoreReport() {
   const nav = useNavigate();
   const data = useLiveQuery(async () => {
     const a = await db.attempts.get(attemptId);
-    return a ? { a, questions: await attemptQuestions(a) } : null;
+    if (!a) return null;
+    const questions = await attemptQuestions(a);
+    // Counted from the notebook itself, so attempts finished before it existed show nothing.
+    const inNotebook = (await db.reviews.bulkGet(mistakesInAttempt(questions, a.answers, a.flagged))).filter(Boolean).length;
+    return { a, questions, inNotebook };
   }, [attemptId]);
   const [review, setReview] = useState<'none' | 'wrong' | 'all'>('none');
   const [busy, setBusy] = useState(false);
 
   if (data === undefined) return null;
   if (!data?.a.result) return <Empty title="Hasil tidak ditemukan" />;
-  const { a, questions } = data;
+  const { a, questions, inNotebook } = data;
   const r = a.result!;
   const weak = weakTopics(r.topics);
   const durationMs = (a.finishedAt ?? a.endsAt) - a.startedAt;
+  const practice = attemptMode(a) === 'practice';
   const timed = questions.map((q) => ({ q, ms: a.timeSpent[q.id] ?? 0 })).sort((x, y) => y.ms - x.ms);
 
   async function remedial() {
@@ -45,13 +52,15 @@ export default function ScoreReport() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1>Laporan Skor</h1>
+          <h1>
+            Laporan Skor {practice && <Badge tone="blue">Latihan</Badge>}
+          </h1>
           <p className="muted mt-1">
             {a.setName} · {fmtDate(a.startedAt)} · durasi {fmtSec(durationMs)}
           </p>
         </div>
         <div className="flex gap-2">
-          <Link className="btn" to={`/simulation?set=${a.setId}`}>
+          <Link className="btn" to={`/simulation?set=${a.setId}${practice ? '&mode=practice' : ''}`}>
             Ulangi
           </Link>
           <Link className="btn" to="/progress">
@@ -60,13 +69,26 @@ export default function ScoreReport() {
         </div>
       </div>
 
-      <div className={`card border-2 ${r.passedAll ? 'border-green-500' : 'border-red-400'}`}>
+      <div className={`card ${practice ? '' : `border-2 ${r.passedAll ? 'border-green-500' : 'border-red-400'}`}`}>
         <div className="flex flex-wrap items-center gap-4">
           <div className="text-4xl font-bold">{r.total}</div>
           <div className="muted">dari {r.maxTotal}</div>
-          <Badge tone={r.passedAll ? 'green' : 'red'}>{r.passedAll ? 'Memenuhi semua ambang batas' : 'Belum memenuhi ambang batas'}</Badge>
+          {!practice && <Badge tone={r.passedAll ? 'green' : 'red'}>{r.passedAll ? 'Memenuhi semua ambang batas' : 'Belum memenuhi ambang batas'}</Badge>}
         </div>
-        <p className="muted mt-2 text-xs">Kelulusan SKD mensyaratkan setiap sub-tes mencapai ambang batasnya masing-masing.</p>
+        <p className="muted mt-2 text-xs">
+          {practice
+            ? 'Hasil latihan: kunci tampil setiap selesai menjawab, jadi skor ini tidak masuk grafik skor ujian di Progres.'
+            : 'Kelulusan SKD mensyaratkan setiap sub-tes mencapai ambang batasnya masing-masing.'}
+        </p>
+        {inNotebook > 0 && (
+          <p className="mt-2 text-sm">
+            {inNotebook} soal yang salah, kosong, atau ragu-ragu masuk{' '}
+            <Link className="text-brand-600 underline" to="/review">
+              Buku Kesalahan
+            </Link>{' '}
+            untuk diulang terjadwal.
+          </p>
+        )}
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -109,10 +131,20 @@ export default function ScoreReport() {
                   </li>
                 ))}
               </ul>
-              <button className="btn btn-primary mt-3" disabled={busy} onClick={remedial}>
-                Buat set latihan topik lemah
-              </button>
-              <p className="muted mt-1 text-xs">Diambil dari bank soal dulu; AI hanya dipakai bila bank kurang.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link
+                  className="btn"
+                  to={`/simulation?set=${a.setId}&mode=practice&topics=${encodeURIComponent(weak.map((t) => t.topic).join('|'))}`}
+                >
+                  Latih ulang topik ini
+                </Link>
+                <button className="btn btn-primary" disabled={busy} onClick={remedial}>
+                  Buat set latihan topik lemah
+                </button>
+              </div>
+              <p className="muted mt-1 text-xs">
+                "Latih ulang" memakai soal set ini dengan pembahasan langsung. "Buat set" mengambil soal lain dari bank soal dulu; AI hanya dipakai bila bank kurang.
+              </p>
             </>
           )}
         </section>

@@ -1,14 +1,28 @@
 import { db, getSetQuestions } from '../db';
 import { computeResult } from '../domain/scoring';
+import { filterQuestions, UNTIMED, type QuestionFilter } from '../domain/practice';
 import { SUBTESTS } from '../domain/types';
-import type { Attempt, Question } from '../domain/types';
+import type { Attempt, AttemptMode, Question } from '../domain/types';
 import { shuffle, uid } from '../lib/id';
+import { recordMistakes } from './review';
 import { passingForSet } from './sets';
 
-export async function startAttempt(setId: string, opts: { shuffleQuestions: boolean; durationMinutes: number }): Promise<Attempt> {
+export async function startAttempt(
+  setId: string,
+  opts: {
+    shuffleQuestions: boolean;
+    /** 0 = no time limit (practice only). */
+    durationMinutes: number;
+    mode?: AttemptMode;
+    filter?: QuestionFilter;
+  },
+): Promise<Attempt> {
   const set = await db.sets.get(setId);
   if (!set) throw new Error('Set tidak ditemukan');
+  const mode = opts.mode ?? 'exam';
   let questions = await getSetQuestions(set);
+  if (mode === 'practice') questions = filterQuestions(questions, opts.filter);
+  if (!questions.length) throw new Error('Tidak ada soal yang cocok dengan pilihan ini.');
   if (opts.shuffleQuestions) {
     questions = SUBTESTS.flatMap((s) => shuffle(questions.filter((q) => q.subtest === s)));
   }
@@ -17,9 +31,10 @@ export async function startAttempt(setId: string, opts: { shuffleQuestions: bool
     id: uid(),
     setId,
     setName: set.name,
+    mode,
     questionIds: questions.map((q) => q.id),
     startedAt: now,
-    endsAt: now + opts.durationMinutes * 60_000,
+    endsAt: opts.durationMinutes > 0 ? now + opts.durationMinutes * 60_000 : UNTIMED,
     answers: {},
     flagged: [],
     timeSpent: {},
@@ -41,6 +56,11 @@ export async function finishAttempt(id: string): Promise<Attempt | undefined> {
   const questions = await attemptQuestions(a);
   const result = computeResult(questions, a.answers, a.passing);
   const finishedAt = Math.min(Date.now(), a.endsAt);
-  await db.attempts.update(id, { result, finishedAt });
+  // One transaction, so an attempt is never marked finished without its mistakes in the notebook.
+  // Runs once per attempt: the early return above skips attempts that already have a result.
+  await db.transaction('rw', [db.attempts, db.reviews], async () => {
+    await db.attempts.update(id, { result, finishedAt });
+    await recordMistakes(a, questions);
+  });
   return { ...a, result, finishedAt };
 }
