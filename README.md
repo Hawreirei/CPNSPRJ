@@ -59,6 +59,16 @@ npm run preview
 
 Hasil build adalah situs statis (router berbasis hash, `base: './'`), sehingga bisa di-host di Netlify, Cloudflare Pages, GitHub Pages, dan sejenisnya tanpa konfigurasi rewrite.
 
+### Deploy ke GitHub Pages
+
+Workflow `.github/workflows/deploy-pages.yml` menjalankan test, membangun aplikasi, lalu men-deploy folder `dist/` setiap ada push ke `main`.
+
+1. Buka **Settings → Pages** di repo.
+2. Pada **Build and deployment → Source**, pilih **GitHub Actions** (bukan "Deploy from a branch").
+3. Push ke `main`, atau jalankan workflow secara manual di tab **Actions**.
+
+Situs akan tersedia di `https://<username>.github.io/<nama-repo>/`. Mode "Deploy from a branch" tidak bisa dipakai, karena mode itu menyajikan kode sumber yang belum di-build sehingga halaman tampil kosong.
+
 ### Stack
 
 React 19, TypeScript, Vite, Tailwind CSS v4, Dexie (IndexedDB), Zod, mathjs, KaTeX, docx, vite-plugin-pwa, @anthropic-ai/sdk.
