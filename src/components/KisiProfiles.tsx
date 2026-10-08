@@ -6,6 +6,7 @@ import type { KisiProfile, Settings, Subtest } from '../domain/types';
 import { activateProfile, deleteProfile, importProfile, saveProfile } from '../engine/kisi';
 import { uid } from '../lib/id';
 import { downloadBlob, Modal } from './ui';
+import { errorText } from '../engine/storage';
 
 /** Pick, share and edit the syllabus profile that decides the topics offered for new questions. */
 export function KisiProfiles({ settings }: { settings: Settings }) {
@@ -19,7 +20,7 @@ export function KisiProfiles({ settings }: { settings: Settings }) {
     try {
       setMsg({ text: await fn() });
     } catch (e) {
-      setMsg({ text: e instanceof Error ? e.message : String(e), error: true });
+      setMsg({ text: errorText(e), error: true });
     }
   }
 
@@ -176,7 +177,7 @@ function ProfileEditor({ initial, settings, onClose, onSaved }: { initial: KisiP
       onSaved(p);
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorText(e));
     }
   }
 

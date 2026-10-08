@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { decodeLinkData, parseShared, type SharedSet } from '../domain/share';
 import { SUBTESTS } from '../domain/types';
 import { importShared, previewImport } from '../engine/share';
+import { errorText } from '../engine/storage';
 
 type Preview = Awaited<ReturnType<typeof previewImport>>;
 type Loaded = { shared: SharedSet; preview: Preview } | { error: string };
@@ -49,7 +50,7 @@ export default function ImportSet() {
       const set = await importShared(shared);
       nav(`/sets/${set.id}`, { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorText(e));
       setBusy(false);
     }
   }

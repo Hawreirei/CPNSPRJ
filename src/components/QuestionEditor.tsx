@@ -5,6 +5,7 @@ import { hashText } from '../lib/id';
 import { loadMath, validateQuestion } from '../domain/validators';
 import type { Difficulty, OptionLabel, Question } from '../domain/types';
 import { Modal } from './ui';
+import { errorText } from '../engine/storage';
 
 export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => void }) {
   const settings = useSettings();
@@ -36,7 +37,7 @@ export function QuestionEditor({ q, onClose }: { q: Question; onClose: () => voi
       });
       onClose();
     } catch (e) {
-      setError(`Gagal menyimpan: ${e instanceof Error ? e.message : String(e)}`);
+      setError(`Gagal menyimpan: ${errorText(e)}`);
     }
   }
 

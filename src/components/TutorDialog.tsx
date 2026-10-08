@@ -10,6 +10,7 @@ import { addNote } from '../engine/notes';
 import { askTutor, tutorEstimate } from '../engine/tutor';
 import { RichText } from './RichText';
 import { fmtUsd, Modal } from './ui';
+import { errorText } from '../engine/storage';
 
 interface Turn extends TutorTurn {
   keyLooksWrong?: boolean;
@@ -84,7 +85,7 @@ export default function TutorDialog({
       const n = await moreLikeThis(q.originSetId!, q, 2, undefined, { easier: true });
       setSimilar(`${n} soal serupa yang lebih mudah ditambahkan ke set, tepat setelah soal ini.`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorText(e));
     } finally {
       setBusy(false);
     }

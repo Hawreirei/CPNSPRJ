@@ -6,11 +6,13 @@ import { fmtAgo } from '../domain/backupReminder';
 import { KisiProfiles } from '../components/KisiProfiles';
 import { CrossCheckEditor } from '../components/CrossCheckEditor';
 import { StudyPlanEditor } from '../components/StudyPlanEditor';
+import { StorageCard } from '../components/StorageCard';
 import { autoBackupNow, chooseBackupFile, downloadBackup, isAutoBackupSupported, stopAutoBackup } from '../lib/autoBackup';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
 import { DEFAULT_PRICES } from '../providers/types';
 import { getTextSize, getTheme, setTextSize, setTheme, type TextSize, type Theme } from '../lib/theme';
+import { errorText } from '../engine/storage';
 
 export default function SettingsPage() {
   const s = useSettings();
@@ -153,7 +155,7 @@ export default function SettingsPage() {
                 const r = await importBackup(f);
                 setMsg(`Dipulihkan: ${r.sets} set, ${r.questions} soal, ${r.attempts} simulasi, ${r.reviews} catatan Buku Kesalahan.`);
               } catch (err) {
-                setMsg(`Gagal: ${(err as Error).message}`);
+                setMsg(`Gagal: ${errorText(err)}`);
               }
             }}
           />
@@ -161,6 +163,11 @@ export default function SettingsPage() {
         {msg && <p className="text-sm">{msg}</p>}
         <AutoBackupPanel />
         <p className="muted text-xs">Berkas cadangan tidak dienkripsi dan berisi riwayat belajar Anda. Simpan di tempat yang aman.</p>
+      </section>
+
+      <section className="card space-y-3">
+        <h2>Penyimpanan</h2>
+        <StorageCard />
       </section>
 
       <details className="card">
@@ -364,7 +371,7 @@ function AutoBackupPanel() {
     try {
       await fn();
     } catch (e) {
-      setMsg(`Gagal: ${(e as Error).message}`);
+      setMsg(`Gagal: ${errorText(e)}`);
     } finally {
       setBusy(false);
     }

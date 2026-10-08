@@ -6,6 +6,7 @@ import { getReviewDays } from '../engine/review';
 import { weakFocus } from '../engine/today';
 import { dueQueue, isDue } from '../engine/srs';
 import { BackupReminderCard } from '../components/BackupReminder';
+import { StorageWarningCard } from '../components/StorageCard';
 import { StreakCard } from '../components/StreakCard';
 import { StudyPlanCard } from '../components/StudyPlanCard';
 import { Badge, Stat, fmtDate } from '../components/ui';
@@ -73,6 +74,8 @@ export default function Dashboard() {
       <StreakCard settings={settings} attempts={finished} reviews={data.reviews} reviewDays={data.reviewDays} now={data.now} />
 
       <BackupReminderCard />
+
+      <StorageWarningCard />
 
       {/* With a plan, today's reviews are one of its targets; no separate card. */}
       {data.reviews.length > 0 && !settings.studyPlan && (

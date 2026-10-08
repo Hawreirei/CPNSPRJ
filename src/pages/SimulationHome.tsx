@@ -7,6 +7,7 @@ import { SUBTESTS } from '../domain/types';
 import type { AttemptMode } from '../domain/types';
 import { startAttempt } from '../engine/attempts';
 import { Badge, Empty, fmtDate, SubtestBadge } from '../components/ui';
+import { errorText } from '../engine/storage';
 
 export default function SimulationHome() {
   const nav = useNavigate();
@@ -76,7 +77,7 @@ export default function SimulationHome() {
       nav(attemptPath(a));
     } catch (e) {
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorText(e));
     }
   }
 

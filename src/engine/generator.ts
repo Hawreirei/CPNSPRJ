@@ -12,6 +12,7 @@ import { batchLabel, isPassageBatch, isProcedural, passageSizes } from './plan';
 import { isLimited, keyUsage, limitsOf, QuotaExhaustedError } from './quota';
 import { CROSS_CHECK_KINDS, isCrossCheckable, openCheckerSession, runCrossCheck } from './crosscheck';
 import { callAndParse, callAndParsePassages, openSession, type ModelSession } from './session';
+import { errorText, isQuotaError } from './storage';
 
 export interface GenProgress {
   setId: string;
@@ -250,11 +251,11 @@ export async function startGeneration(setId: string): Promise<void> {
           break;
         }
         failures++;
-        const msg = (e as Error).message ?? String(e);
-        await setBatch(setId, batch.id, { status: 'failed', error: msg });
+        const msg = errorText(e);
+        await setBatch(setId, batch.id, { status: 'failed', error: msg }).catch(() => {});
         log(setId, 'error', `${label(batch)}: ${msg}`);
-        // Stop early on auth errors: every other batch would fail the same way.
-        if (e instanceof ProviderError && (e.status === 401 || e.status === 403)) ctrl.abort();
+        // Stop early on auth errors and a full disk: every other batch would fail the same way.
+        if ((e instanceof ProviderError && (e.status === 401 || e.status === 403)) || isQuotaError(e)) ctrl.abort();
       } finally {
         update(setId, { current: (progress.get(setId)?.current ?? []).filter((c) => c !== label(batch)) });
       }
