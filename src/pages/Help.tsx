@@ -22,8 +22,9 @@ export default function Help() {
             <b>Simulasi CAT</b>: timer, grid nomor, ragu-ragu, kirim otomatis. Laporan menampilkan skor per sub-tes terhadap ambang batas dan topik lemah.
           </li>
           <li>
-            <b>Paket ujian lain</b>: di Pengaturan → Paket ujian, impor berkas paket untuk ujian selain SKD (misalnya PPPK). Setelah itu ujiannya bisa dipilih di Buat
-            Soal; bila ada sub-tes kompetensi teknis, isi nama jabatan Anda. Angka di berkas paket harus dari dokumen resmi; paket tanpa rujukan dokumen resmi ditandai
+            <b>PPPK 2024 dan paket ujian lain</b>: di Buat Soal, pilih ujian "PPPK 2024" (bawaan, dari Keputusan MenPAN-RB Nomor 347 Tahun 2024: teknis,
+            manajerial, sosial kultural, dan wawancara, tanpa ambang batas) lalu isi nama jabatan Anda untuk soal kompetensi teknis. Ujian lain bisa ditambahkan di
+            Pengaturan → Paket ujian dengan mengimpor berkas paket. Angka di berkas paket harus dari dokumen resmi; paket tanpa rujukan dokumen resmi ditandai
             "bukan data resmi".
           </li>
           <li>

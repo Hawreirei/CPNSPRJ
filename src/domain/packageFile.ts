@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SKD_CPNS, type ExamPackage } from './examPackage';
+import { isBuiltIn, type ExamPackage } from './examPackage';
 import { SKD_SUBTESTS } from './types';
 
 /**
@@ -33,13 +33,14 @@ const subtestSchema = z.object({
   passing: z.number({ error: 'ambang batas harus berupa angka' }).min(0, 'ambang batas tidak boleh negatif').optional(),
   topics: z.array(z.string().trim().min(1).max(60)).max(40, 'paling banyak 40 topik').optional(),
   fromJobTitle: z.boolean().optional(),
+  guide: z.string().trim().max(600, 'keterangan sub-tes paling panjang 600 karakter').optional(),
 });
 
 const packageSchema = z.object({
   id: z
     .string()
     .regex(/^[a-z0-9-]{2,40}$/, 'id paket hanya huruf kecil, angka, dan tanda minus')
-    .refine((id) => id !== SKD_CPNS.id, 'id itu milik paket bawaan'),
+    .refine((id) => !isBuiltIn({ id }), 'id itu milik paket bawaan'),
   name: z.string().trim().min(1, 'nama paket kosong').max(80),
   source: z.string().trim().min(1, 'sumber kosong').max(200),
   official: z
@@ -50,6 +51,7 @@ const packageSchema = z.object({
     })
     .optional(),
   durationMinutes: int(1, 600, 'durasi'),
+  notes: z.array(z.string().trim().min(1).max(400)).max(10).optional(),
   subtests: z.array(subtestSchema).min(1, 'butuh minimal satu sub-tes').max(10, 'paling banyak 10 sub-tes'),
 });
 

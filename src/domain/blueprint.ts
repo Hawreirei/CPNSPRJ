@@ -1,6 +1,6 @@
 import { SUBTESTS } from './types';
 import type { Blueprint, Difficulty, DifficultyChoice, ExamNumbers, KisiProfile, KisiTopic, Settings, Subtest } from './types';
-import { packageOf, SKD_CPNS, specOf, type ExamPackage } from './examPackage';
+import { isSkd, packageOf, SKD_CPNS, specOf, type ExamPackage } from './examPackage';
 
 export const TOPICS: Record<Subtest, string[]> = {
   TWK: [
@@ -94,13 +94,13 @@ export function activeProfile(settings: Pick<Settings, 'kisi'>): KisiProfile {
 /** Topics offered for new questions in a sub-test. Existing questions may carry others; they stay valid. */
 export function topicsFor(settings: Pick<Settings, 'kisi'>, s: Subtest): string[] {
   // Syllabus profiles are about SKD; other packages carry their topics in the package file.
-  if (packageOf(s).id !== SKD_CPNS.id) return specOf(s).topics ?? [];
+  if (!isSkd(packageOf(s))) return specOf(s).topics ?? [];
   return activeProfile(settings).topics[s]?.map((t) => t.name) ?? [];
 }
 
 /** Per-topic shares, or undefined when the profile spreads questions evenly. */
 export function weightsFor(settings: Pick<Settings, 'kisi'>, s: Subtest): Record<string, number> | undefined {
-  const topics = packageOf(s).id === SKD_CPNS.id ? activeProfile(settings).topics[s] : undefined;
+  const topics = isSkd(packageOf(s)) ? activeProfile(settings).topics[s] : undefined;
   if (!topics || topics.every((t) => (t.weight ?? 1) === 1)) return undefined;
   return Object.fromEntries(topics.map((t) => [t.name, t.weight ?? 1]));
 }
@@ -167,14 +167,14 @@ export function buildPackagePreset(pkg: ExamPackage, size: 'mini' | 'full', diff
 
 /** A sub-test in its full exam: SKD takes its numbers from Settings, other packages from their file. */
 export function fullExam(subtest: Subtest, settings: Pick<Settings, 'counts' | 'passing'>): { count: number; passing?: number } {
-  if (packageOf(subtest).id === SKD_CPNS.id) return { count: settings.counts[subtest] ?? 0, passing: settings.passing[subtest] };
+  if (isSkd(packageOf(subtest))) return { count: settings.counts[subtest] ?? 0, passing: settings.passing[subtest] };
   const spec = specOf(subtest);
   return { count: spec.count ?? 0, passing: spec.passing };
 }
 
 /** A package's full exam: total questions and minutes. */
 export function fullExamOf(pkg: ExamPackage, settings: Pick<Settings, 'counts' | 'durationMinutes'>): { total: number; durationMinutes: number } {
-  if (pkg.id === SKD_CPNS.id) return { total: SUBTESTS.reduce((n, s) => n + settings.counts[s], 0), durationMinutes: settings.durationMinutes };
+  if (isSkd(pkg)) return { total: SUBTESTS.reduce((n, s) => n + settings.counts[s], 0), durationMinutes: settings.durationMinutes };
   return { total: pkg.subtests.reduce((n, s) => n + (s.count ?? 0), 0), durationMinutes: pkg.durationMinutes ?? 0 };
 }
 

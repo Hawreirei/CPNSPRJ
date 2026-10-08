@@ -5,7 +5,7 @@ import { SUBTEST_NAMES } from '../domain/blueprint';
 import { attemptMode, examAttempts } from '../domain/practice';
 import { SUBTESTS } from '../domain/types';
 import type { Attempt, Question, Subtest } from '../domain/types';
-import { isBuiltIn, packageOf, packages } from '../domain/examPackage';
+import { isSkd, packageOf, packages } from '../domain/examPackage';
 import { examSeries, MIN_EXAMS_FOR_PROJECTION, reasonSummary, topicMovers, trend } from '../engine/analytics';
 import { ScoreTrend } from '../components/ScoreTrend';
 import { Badge, Empty, ProgressBar, SubtestBadge } from '../components/ui';
@@ -153,9 +153,9 @@ export default function Progress() {
         .map(({ pkg, list }) => (
           <HistoryTable
             key={pkg.id}
-            title={isBuiltIn(pkg) ? 'Riwayat skor' : `Riwayat skor ${pkg.name}`}
+            title={isSkd(pkg) ? 'Riwayat skor' : `Riwayat skor ${pkg.name}`}
             attempts={list}
-            subtests={isBuiltIn(pkg) ? SUBTESTS : pkg.subtests.map((x) => x.id)}
+            subtests={isSkd(pkg) ? SUBTESTS : pkg.subtests.map((x) => x.id)}
           />
         ))}
     </div>

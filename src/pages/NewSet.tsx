@@ -5,7 +5,7 @@ import { db, useSettings } from '../db';
 import { activeProfile, buildPackagePreset, buildPreset, PRESETS, PROCEDURAL_TOPICS, topicsFor, weightsFor } from '../domain/blueprint';
 import type { PresetId } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
-import { examRank, isBuiltIn, packages, SKD_CPNS, specOf, type ExamPackage } from '../domain/examPackage';
+import { examRank, isSkd, packages, SKD_CPNS, specOf, type ExamPackage } from '../domain/examPackage';
 import type { Blueprint, DifficultyChoice, SectionSpec, Subtest } from '../domain/types';
 import { startGeneration } from '../engine/generator';
 import { estimateCrossCheck } from '../engine/crosscheck';
@@ -47,7 +47,7 @@ export default function NewSet() {
   // Packages are registered when Settings are read, so this list follows them.
   const pkgList = useMemo(() => [...packages()], [settings]); // eslint-disable-line react-hooks/exhaustive-deps
   const pkg: ExamPackage = pkgList.find((p) => p.id === pkgId) ?? SKD_CPNS;
-  const skd = isBuiltIn(pkg);
+  const skd = isSkd(pkg);
   const presetFor = (id: PresetId, d: DifficultyChoice = difficulty, job = jobTitle) =>
     skd ? buildPreset(id, settings, d) : buildPackagePreset(pkg, id === 'full' ? 'full' : 'mini', d, job);
 
@@ -83,7 +83,7 @@ export default function NewSet() {
     const next = pkgList.find((p) => p.id === id) ?? SKD_CPNS;
     setPkgId(next.id);
     setPreset('mini');
-    setBp(isBuiltIn(next) ? buildPreset('mini', settings, difficulty) : buildPackagePreset(next, 'mini', difficulty, jobTitle));
+    setBp(isSkd(next) ? buildPreset('mini', settings, difficulty) : buildPackagePreset(next, 'mini', difficulty, jobTitle));
   }
 
   /** The job title is the topic of every sub-test about the learner's job. */
@@ -213,14 +213,21 @@ export default function NewSet() {
                     className={`rounded-lg border px-3 py-2 text-left text-sm ${p.id === pkg.id ? 'border-brand-500 bg-brand-50 font-medium dark:bg-slate-800' : 'border-slate-300 dark:border-slate-700'}`}
                   >
                     {p.name}
-                    {!isBuiltIn(p) && !p.official && <span className="muted block text-xs font-normal">bukan data resmi</span>}
+                    {!isSkd(p) && !p.official && <span className="muted block text-xs font-normal">bukan data resmi</span>}
                   </button>
                 ))}
               </div>
               {!skd && (
-                <p className="muted text-xs">
-                  Sumber angka: {pkg.official ? `${pkg.official.title} (${pkg.official.date})` : `${pkg.source}. Bukan data resmi; cek ketentuan di dokumen resmi.`}
-                </p>
+                <div className="muted space-y-1 text-xs">
+                  <p>Sumber angka: {pkg.official ? `${pkg.official.title} (${pkg.official.date})` : `${pkg.source}. Bukan data resmi; cek ketentuan di dokumen resmi.`}</p>
+                  {!!pkg.notes?.length && (
+                    <ul className="list-disc space-y-0.5 pl-4">
+                      {pkg.notes.map((n) => (
+                        <li key={n}>{n}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               )}
             </section>
           )}

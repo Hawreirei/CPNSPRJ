@@ -62,7 +62,7 @@ describe('imported packages', () => {
     expect(packageOf('UJI-SIKAP').id).toBe('skd-cpns');
     await getSettings();
     expect(packageOf('UJI-SIKAP').id).toBe('uji-kerja');
-    expect(packages().map((p) => p.id)).toEqual(['skd-cpns', 'uji-kerja']);
+    expect(packages().map((p) => p.id)).toEqual(['skd-cpns', 'pppk-2024', 'uji-kerja']);
   });
 
   it('replace the package with the same id, and refuse sub-test ids of another package', async () => {
