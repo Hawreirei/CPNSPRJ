@@ -4,6 +4,7 @@ import type { ExamPackage } from '../domain/examPackage';
 import { buildImportPrompt, IMPORT_SYSTEM, imageTokens, pageCost, parseImportedPage, type ImportTarget, type PageResult } from '../domain/photoImport';
 import type { Question, Subtest } from '../domain/types';
 import { loadMath, validateQuestion } from '../domain/validators';
+import { isImageSrc } from '../domain/questionImage';
 import type { LlmImage } from '../providers';
 import { PROVIDERS } from '../providers';
 import { resolveKey } from './keys';
@@ -60,7 +61,9 @@ export async function extractPage(target: ImportTarget, image: PageImage, signal
 export async function saveImported(questions: Question[]): Promise<number> {
   await loadMath();
   const now = Date.now();
-  const checked = questions.map((q) => validateQuestion({ ...q, source: 'import', confidence: 'low', createdAt: now, updatedAt: now }));
+  const checked = questions.map((q) =>
+    validateQuestion({ ...q, image: q.image && isImageSrc(q.image.src) ? q.image : undefined, source: 'import', confidence: 'low', createdAt: now, updatedAt: now }),
+  );
   await db.questions.bulkPut(checked);
   return checked.length;
 }

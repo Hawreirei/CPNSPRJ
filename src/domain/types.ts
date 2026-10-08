@@ -111,6 +111,15 @@ export interface Flag {
   severity: 'info' | 'warn';
 }
 
+export interface QuestionImage {
+  /** data:image/jpeg;base64,… — never a URL to load from elsewhere (domain/questionImage.ts checks it). */
+  src: string;
+  /** Text alternative, written by the learner. */
+  alt: string;
+  width: number;
+  height: number;
+}
+
 export interface Question {
   id: string;
   subtest: Subtest;
@@ -145,6 +154,8 @@ export interface Question {
   rating?: number;
   /** Notes the learner kept, e.g. a tutor's explanation. */
   notes?: QuestionNote[];
+  /** A picture cut from the learner's own page when importing (#49). */
+  image?: QuestionImage;
   /** Came in a shared set from someone else: which set, and when it was imported. */
   importedFrom?: { name: string; at: number };
   /** `import`: copied from the learner's photo or PDF page by a model (#38). */

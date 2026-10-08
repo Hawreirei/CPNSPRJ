@@ -38,6 +38,8 @@ export function tutorContext(q: Question, userAnswer?: OptionLabel): string {
   if (q.passage) lines.push(`Wacana:\n${q.passage.text}`);
   if (q.data) lines.push(`Data: ${describeData(q.data)}`);
   if (q.figure?.cells.length) lines.push(`Gambar soal: ${describeFigure(q.figure)}`);
+  // A picture cut from a page is not sent: say so, so the tutor does not guess what it shows.
+  if (q.image) lines.push(`Soal ini memuat gambar yang tidak bisa Anda lihat (keterangan dari pengguna: "${q.image.alt}"). Jangan menebak isinya.`);
   lines.push(`Soal: ${q.stem}`);
   lines.push(
     'Opsi:\n' +

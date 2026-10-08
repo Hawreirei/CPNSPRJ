@@ -5,6 +5,7 @@ import { toPlain } from '../components/RichText';
 import { dataChartSvg } from './dataSvg';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
+import { isImageSrc, printSize } from '../domain/questionImage';
 import { isGraded, scoringRulesText, specOf, subtestsIn } from '../domain/examPackage';
 
 export type PackKind = 'soal' | 'soal-kunci' | 'lengkap' | 'kunci' | 'pembahasan';
@@ -99,6 +100,19 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
     out.push(new Paragraph({ spacing: { before: 200 }, keepNext: true, children: [new TextRun({ text: `${n}. `, bold: true }), ...text(q.stem)] }));
     if (hasStemFigure(q.figure)) out.push(new Paragraph({ keepNext: true, children: [await image(figureSvg(q.figure, 72, '#111'))] }));
     if (q.data) out.push(...(await dataBlock(q.data)));
+    if (q.image && isImageSrc(q.image.src)) {
+      const [head, b64] = q.image.src.split(',');
+      const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const size = printSize(q.image);
+      // docx sizes images in pixels at 96 dpi; the PDF sizes are points (72 dpi).
+      const picture = new ImageRun({
+        type: head.includes('png') ? 'png' : 'jpg',
+        data,
+        transformation: { width: (size.width * 4) / 3, height: (size.height * 4) / 3 },
+        altText: { name: 'Gambar soal', description: q.image.alt, title: q.image.alt },
+      });
+      out.push(new Paragraph({ keepNext: true, children: [picture] }));
+    }
     for (const o of q.options) {
       const runs = o.figure ? [await image(cellSvg(o.figure, 56, '#111'))] : text(o.text);
       const suffix = withKey && isGraded(q.subtest) ? [new TextRun({ text: `  (skor ${o.score})`, italics: true, color: '555555' })] : [];

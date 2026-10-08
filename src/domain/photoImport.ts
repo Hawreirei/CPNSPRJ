@@ -5,6 +5,7 @@ import { extractJson } from './schemas';
 import { OPTION_LABELS } from './types';
 import type { Difficulty, OptionLabel, Question, Subtest } from './types';
 import { validateQuestion } from './validators';
+import { MAX_IMAGE_CHARS, MAX_IMAGE_SIDE as MAX_PICTURE_SIDE } from './questionImage';
 
 /*
  * Questions copied from a photo or a PDF page by a multimodal model (#38). The model reads the page
@@ -76,7 +77,7 @@ export function buildImportPrompt(t: ImportTarget): string {
     '1. "stem" dan "text" setiap opsi disalin persis dari halaman, dalam urutan aslinya. Huruf opsi (A, B, …) tidak ikut disalin ke "text".',
     '2. Bila kunci jawaban tercetak di halaman (misalnya di kunci atau pembahasan), pakai itu dan isi "answerFromPage": true. Bila tidak ada, usulkan kunci Anda sendiri dan isi "answerFromPage": false.',
     '3. Tulis "explanation" singkat (paling banyak 3 kalimat). Bila halaman memuat pembahasan, salin pembahasan itu.',
-    '4. Bila soal memerlukan gambar, diagram, grafik, atau tabel yang tidak bisa ditulis sebagai teks, isi "figure": true dan kosongkan "options".',
+    '4. Bila soal memakai gambar, diagram, grafik, atau tabel yang tidak bisa ditulis sebagai teks, isi "figure": true. Tetap salin teks soal dan opsinya bila opsinya berupa teks; kosongkan "options" bila opsinya berupa gambar.',
     '5. Bila soal terpotong di tepi halaman atau tidak terbaca, isi "incomplete": true.',
     '6. "topic" dipilih dari daftar topik sub-tesnya; "difficulty" salah satu dari mudah, sedang, sulit.',
     '7. Bila halaman tidak berisi soal, balas {"questions": []}.',
@@ -117,6 +118,8 @@ export interface ImportDraft {
   question: Question;
   /** Things to check against the page, in Indonesian. */
   notes: string[];
+  /** The question shows a picture on the page: it cannot be saved until one is cut and attached. */
+  needsImage?: boolean;
 }
 
 export interface PageResult {
@@ -144,12 +147,14 @@ export function parseImportedPage(text: string, t: ImportTarget, knownHashes?: S
     if (!r.success) return skipped.push({ no, reason: 'isinya tidak terbaca' });
     const q = r.data;
     const options = q.options.map((o) => ({ ...o, text: o.text.trim() })).filter((o) => o.text);
-    if (q.figure) return skipped.push({ no, reason: 'memakai gambar atau diagram; soal bergambar belum bisa diimpor, tambahkan sendiri bila perlu' });
     if (q.incomplete) return skipped.push({ no, reason: 'terpotong atau tidak terbaca di halaman ini' });
     if (q.stem.trim().length < 5) return skipped.push({ no, reason: 'teks soalnya tidak terbaca' });
+    if (q.figure && options.length < 4) return skipped.push({ no, reason: 'pilihan jawabannya berupa gambar; soal seperti ini belum bisa diimpor' });
     if (options.length < 4) return skipped.push({ no, reason: `opsinya hanya ${options.length}; perlu paling sedikit 4` });
 
     const notes: string[] = [];
+    // The question's own picture is cut from the page by the learner (#49) before it can be saved.
+    if (q.figure) notes.push(NEEDS_IMAGE_NOTE);
     const named = q.subtest?.trim().toUpperCase() ?? '';
     let subtest: Subtest;
     if (t.subtest) subtest = t.subtest;
@@ -195,10 +200,34 @@ export function parseImportedPage(text: string, t: ImportTarget, knownHashes?: S
       },
       knownHashes,
     );
-    drafts.push({ question, notes });
+    drafts.push({ question, notes, ...(q.figure ? { needsImage: true } : {}) });
   });
   return { drafts, skipped };
 }
+
+/**
+ * Where to cut a picture from a page, in the page image's own pixels, from a rectangle given in
+ * fractions of its displayed size (what a drag on screen yields), and the size to store it at.
+ */
+export function cropBox(rect: { x: number; y: number; w: number; h: number }, natural: { width: number; height: number }) {
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  const x0 = clamp(Math.min(rect.x, rect.x + rect.w));
+  const y0 = clamp(Math.min(rect.y, rect.y + rect.h));
+  const x1 = clamp(Math.max(rect.x, rect.x + rect.w));
+  const y1 = clamp(Math.max(rect.y, rect.y + rect.h));
+  const sx = Math.round(x0 * natural.width);
+  const sy = Math.round(y0 * natural.height);
+  const sw = Math.max(1, Math.round((x1 - x0) * natural.width));
+  const sh = Math.max(1, Math.round((y1 - y0) * natural.height));
+  const scale = Math.min(1, MAX_PICTURE_SIDE / Math.max(sw, sh));
+  return { sx, sy, sw, sh, width: Math.max(1, Math.round(sw * scale)), height: Math.max(1, Math.round(sh * scale)) };
+}
+
+export const NEEDS_IMAGE_NOTE = 'Soal ini memakai gambar di halaman. Potong gambarnya dari halaman asli dan tempelkan ke soal ini sebelum menyimpan.';
+
+/** JPEG qualities tried in turn until a picture fits the size cap. */
+export const CROP_QUALITIES = [0.85, 0.7, 0.55, 0.4];
+export { MAX_IMAGE_CHARS };
 
 const specName = (t: ImportTarget, s: Subtest) => t.pkg.subtests.find((x) => x.id === s)?.name ?? s;
 

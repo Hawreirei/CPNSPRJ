@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { isBuiltIn, packageOf, packages, type ExamPackage } from './examPackage';
 import { packageFile, parsePackageFile } from './packageFile';
+import { isImageSrc } from './questionImage';
 import { SKD_SUBTESTS } from './types';
 import type { Blueprint, FlagKind, Question, Subtest } from './types';
 
@@ -77,6 +78,10 @@ const questionSchema = z.object({
     })
     .optional(),
   passage: z.object({ id: text(80), title: text(200).optional(), text: text(8000).min(1), questionIds: z.array(text(80)).max(10).optional() }).optional(),
+  // A picture cut from a page (#49): only a JPEG/PNG data URL, never anything that loads from elsewhere.
+  image: z
+    .object({ src: z.string().refine(isImageSrc, 'gambar soal tidak valid'), alt: text(300), width: z.number().int().min(1).max(4000), height: z.number().int().min(1).max(4000) })
+    .optional(),
   notes: z.array(z.object({ text: text(4000), at: finite })).max(20).optional(),
   flags: z.array(z.object({ kind: z.string(), message: text(500), severity: z.enum(['info', 'warn']) })).max(20).default([]),
   hash: text(80).optional(),
@@ -143,6 +148,7 @@ export function toShared(name: string, blueprint: Blueprint, questions: Question
       ...(q.figure ? { figure: q.figure } : {}),
       ...(q.data ? { data: q.data } : {}),
       ...(q.passage ? { passage: q.passage } : {}),
+      ...(q.image ? { image: q.image } : {}),
       ...(opts.includeNotes && q.notes?.length ? { notes: q.notes } : {}),
       flags: q.flags.filter((f) => SHARED_FLAG_KINDS.has(f.kind)),
       hash: q.hash,

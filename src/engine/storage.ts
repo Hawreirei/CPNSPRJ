@@ -1,4 +1,5 @@
 import { db } from '../db';
+import { imageUsage } from '../domain/questionImage';
 
 /**
  * Browser storage: how full it is, what can be safely cleared, and a readable message when a
@@ -29,13 +30,15 @@ export function storageStatus(est: { usage?: number; quota?: number } | undefine
   return { usage: est.usage, quota: est.quota, ratio, warn: ratio >= STORAGE_WARN_RATIO };
 }
 
-export async function getStorageInfo(): Promise<{ status: StorageStatus | null; persisted: boolean | null }> {
+export async function getStorageInfo(): Promise<{ status: StorageStatus | null; persisted: boolean | null; images: { count: number; bytes: number } }> {
   const s = typeof navigator === 'undefined' ? undefined : navigator.storage;
+  // Pictures cut from imported pages (#49) are the one thing that can grow fast.
+  const images = imageUsage(await db.questions.filter((q) => !!q.image).toArray());
   try {
     const [est, persisted] = await Promise.all([s?.estimate?.(), s?.persisted?.()]);
-    return { status: storageStatus(est), persisted: persisted ?? null };
+    return { status: storageStatus(est), persisted: persisted ?? null, images };
   } catch {
-    return { status: null, persisted: null };
+    return { status: null, persisted: null, images };
   }
 }
 

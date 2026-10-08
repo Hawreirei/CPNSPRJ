@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useSettings } from '../db';
 import { topicsFor } from '../domain/blueprint';
 import { packages } from '../domain/examPackage';
-import { COPYRIGHT_NOTICE, MAX_IMAGE_SIDE, moveToSubtest, type ImportDraft, type PageResult } from '../domain/photoImport';
+import { COPYRIGHT_NOTICE, MAX_IMAGE_SIDE, moveToSubtest, NEEDS_IMAGE_NOTE, type ImportDraft, type PageResult } from '../domain/photoImport';
 import type { Question, Subtest } from '../domain/types';
 import { extractPage, importTarget, pageEstimate, saveImported, type PageEstimate } from '../engine/photoImport';
 import { errorText } from '../engine/storage';
@@ -11,6 +11,7 @@ import { fromCanvas, fromImageFile, type PreparedPage } from '../lib/pageImage';
 import type { PdfPages } from '../lib/pdfPages';
 import { QuestionCard } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
+import { PictureCutter } from '../components/PictureCutter';
 import { fmtUsd } from '../components/ui';
 
 interface Source {
@@ -143,6 +144,8 @@ export default function ImportPhoto() {
   }
 
   const drafts = groups.flatMap((g) => g.drafts);
+  // A question that shows a picture on the page is not saved without one (#49).
+  const missingImages = drafts.filter((d) => d.needsImage && !d.question.image).length;
 
   function updateDraft(group: number, index: number, fn: (d: ImportDraft) => ImportDraft | null) {
     setGroups((gs) =>
@@ -323,7 +326,18 @@ export default function ImportPhoto() {
             <div key={g.id} className="grid gap-3 lg:grid-cols-2">
               <details open className="card self-start lg:sticky lg:top-4">
                 <summary className="cursor-pointer text-sm font-medium">Halaman asli: {g.label}</summary>
-                <img src={g.url} alt={`Halaman asli: ${g.label}`} className="mt-2 w-full rounded border border-slate-200 dark:border-slate-700" />
+                <PictureCutter
+                  src={g.url}
+                  label={g.label}
+                  targets={g.drafts.map((d, i) => ({ no: i + 1, id: d.question.id, needsImage: d.needsImage && !d.question.image }))}
+                  onAttach={(id, image) =>
+                    updateDraft(
+                      g.id,
+                      g.drafts.findIndex((d) => d.question.id === id),
+                      (x) => ({ ...x, question: { ...x.question, image }, notes: x.notes.filter((n) => n !== NEEDS_IMAGE_NOTE) }),
+                    )
+                  }
+                />
               </details>
               <div className="space-y-3">
                 {g.skipped.length > 0 && (
@@ -367,6 +381,11 @@ export default function ImportPhoto() {
                           <button className="btn btn-sm" onClick={() => setEditing({ group: g.id, index: i })}>
                             Edit
                           </button>
+                          {d.question.image && (
+                            <button className="btn btn-sm btn-ghost" onClick={() => updateDraft(g.id, i, (x) => ({ ...x, question: { ...x.question, image: undefined } }))}>
+                              Hapus gambar
+                            </button>
+                          )}
                           <button className="btn btn-sm btn-ghost" onClick={() => updateDraft(g.id, i, () => null)}>
                             Hapus
                           </button>
@@ -385,8 +404,13 @@ export default function ImportPhoto() {
               </div>
             </div>
           ))}
+          {missingImages > 0 && (
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              {missingImages} soal masih perlu gambar: potong gambarnya dari halaman asli dan tempelkan, atau hapus soalnya.
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
-            <button className="btn btn-primary" disabled={!drafts.length} onClick={() => void save()}>
+            <button className="btn btn-primary" disabled={!drafts.length || missingImages > 0} onClick={() => void save()}>
               Simpan {drafts.length} soal ke Bank Soal
             </button>
             <button className="btn" onClick={discard}>

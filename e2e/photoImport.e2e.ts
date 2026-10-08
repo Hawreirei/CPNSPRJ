@@ -59,7 +59,7 @@ async function sendPhoto(page: Page) {
   await page.getByLabel('Atau pilih gambar/PDF').setInputFiles({ name: 'halaman.png', mimeType: 'image/png', buffer: png(1200, 1700) });
   await expect(page.getByTestId('import-estimate')).toContainText('Dikirim ke Google Gemini');
   await page.getByRole('button', { name: 'Kirim halaman ini' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'halaman.png: 2 soal disalin, 1 dilewati.' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'halaman.png: 3 soal disalin, 1 dilewati.' })).toBeVisible();
 }
 
 test('a photographed page is copied by the model, reviewed, corrected and saved to the bank as "perlu dicek"; cancelling saves nothing', async ({ page, gemini }) => {
@@ -78,20 +78,26 @@ test('a photographed page is copied by the model, reviewed, corrected and saved 
   expect(await seriousViolations(page)).toEqual([]);
   await page.getByLabel('Materi yang saya impor milik saya sendiri').check();
   await page.getByRole('button', { name: 'Kirim halaman ini' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'halaman.png: 2 soal disalin, 1 dilewati.' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'halaman.png: 3 soal disalin, 1 dilewati.' })).toBeVisible();
   // Scaled down to at most 1568 px and sent as JPEG, once.
   expect(gemini.pageImages).toHaveLength(1);
   expect(gemini.pageImages[0].mimeType).toBe('image/jpeg');
 
   // Review: the page next to its questions, what was skipped, and what to check.
-  await expect(page.getByRole('heading', { name: 'Tinjau sebelum disimpan (2 soal)' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tinjau sebelum disimpan (3 soal)' })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Halaman asli: halaman.png' })).toBeVisible();
-  await expect(page.getByText('Soal nomor 3: memakai gambar atau diagram')).toBeVisible();
+  await expect(page.getByText('Soal nomor 3: pilihan jawabannya berupa gambar')).toBeVisible();
   await expect(page.getByText('Kunci jawaban diusulkan AI, bukan dari halaman. Periksa.')).toBeVisible();
   const cards = page.locator('article');
-  await expect(cards).toHaveCount(2);
+  await expect(cards).toHaveCount(3);
   await expect(cards.nth(0)).toContainText('perlu dicek');
   expect(await seriousViolations(page)).toEqual([]);
+
+  // The question that shows a picture blocks saving until it has one, or is removed (see questionImage.e2e.ts).
+  await expect(page.getByText('1 soal masih perlu gambar')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Simpan 3 soal ke Bank Soal' })).toBeDisabled();
+  await cards.nth(2).getByRole('button', { name: 'Hapus', exact: true }).click();
+  await expect(cards).toHaveCount(2);
 
   // Correct the second question's stem, as if the model had misread it.
   await cards.nth(1).getByRole('button', { name: 'Edit' }).click();
@@ -149,7 +155,7 @@ test('a PDF is drawn one page at a time in the browser and only the chosen page 
   await expect(page.getByText('Halaman 2 dari 2')).toBeVisible();
   await expect(page.getByRole('img', { name: 'Halaman yang akan dikirim: latihan.pdf' })).toBeVisible();
   await page.getByRole('button', { name: 'Kirim halaman ini' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'latihan.pdf, halaman 2: 2 soal disalin, 1 dilewati.' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'latihan.pdf, halaman 2: 3 soal disalin, 1 dilewati.' })).toBeVisible();
   expect(gemini.pageImages).toHaveLength(1);
   expect(gemini.pageImages[0].mimeType).toBe('image/jpeg');
   await expect(page.getByRole('img', { name: 'Halaman asli: latihan.pdf, halaman 2' })).toBeVisible();

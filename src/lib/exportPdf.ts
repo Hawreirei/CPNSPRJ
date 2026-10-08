@@ -4,6 +4,7 @@ import { fmtNum } from '../domain/describe';
 import type { DataFigure, Question } from '../domain/types';
 import { toPlain } from '../components/RichText';
 import { dataChartSvg } from './dataSvg';
+import { isImageSrc, printSize } from '../domain/questionImage';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
 import { hasStudentHeader, keyText, PACK_TITLES, type ExportMeta, type PackKind } from './exportDocx';
@@ -57,6 +58,7 @@ export async function exportPdf(meta: ExportMeta, questions: Question[], pack: P
     parts.push({ text: [{ text: `${n}. `, bold: true }, toPlain(q.stem)], margin: [0, 8, 0, 4] });
     if (hasStemFigure(q.figure)) parts.push(await image(figureSvg(q.figure, 72, '#111')));
     if (q.data) parts.push(await dataBlock(q.data));
+    if (q.image && isImageSrc(q.image.src)) parts.push({ image: q.image.src, ...printSize(q.image), margin: [0, 2, 0, 4] });
     for (const o of q.options) {
       const isKey = withKey && (isGraded(q.subtest) ? isTopOption(q, o) : o.label === q.answer);
       const option: Content = o.figure ? await image(cellSvg(o.figure, 56, '#111')) : { text: toPlain(o.text), bold: isKey };
