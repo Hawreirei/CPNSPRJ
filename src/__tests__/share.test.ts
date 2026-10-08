@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { RichText } from '../components/RichText';
 import { db } from '../db';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
-import { decodeLinkData, encodeLinkData, parseShared, SHARE_VERSION, toShared } from '../domain/share';
+import { decodeLinkData, encodeLinkData, parseShared, SHARE_VERSION, SHARE_VERSION_PACKAGES, toShared } from '../domain/share';
 import type { Blueprint, OptionLabel, Question } from '../domain/types';
 import { loadMath } from '../domain/validators';
 import { importShared, previewImport } from '../engine/share';
@@ -80,7 +80,7 @@ describe('a received set is checked before anything is stored', () => {
   it('rejects other files with a clear message', () => {
     expect(() => parseShared(null)).toThrow('bukan set bersama');
     expect(() => parseShared({ app: 'cpns-skd-builder', version: 1, sets: [], questions: [] })).toThrow('berkas cadangan');
-    expect(() => parseShared({ ...valid(), version: SHARE_VERSION + 1 })).toThrow('versi aplikasi yang lebih baru');
+    expect(() => parseShared({ ...valid(), version: SHARE_VERSION_PACKAGES + 1 })).toThrow('versi aplikasi yang lebih baru');
     expect(() => parseShared({ ...valid(), questions: [] })).toThrow('set kosong');
   });
 
@@ -114,7 +114,7 @@ describe('importing', () => {
     // A forged warning from the sender is not taken over; the app's own checks run again.
     shared.questions[2].flags.push({ kind: 'math-mismatch', severity: 'warn', message: 'palsu' });
     shared.questions[2].options[0].score = 5;
-    expect(await previewImport(shared)).toEqual({ name: 'Set teman', perSubtest: { TWK: 0, TIU: 3, TKP: 0 }, total: 3, known: 0 });
+    expect(await previewImport(shared)).toEqual({ name: 'Set teman', perSubtest: { TWK: 0, TIU: 3, TKP: 0 }, total: 3, known: 0, newPackages: [] });
 
     const set = await importShared(shared);
     expect(set.name).toBe('Set teman');

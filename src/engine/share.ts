@@ -1,10 +1,12 @@
 import { db, getSetQuestions } from '../db';
 import { units } from '../domain/groups';
 import { SHARED_FLAG_KINDS, toShared, type SharedQuestion, type SharedSet } from '../domain/share';
+import { inExamOrder, isSkd, packageOf } from '../domain/examPackage';
 import { SUBTESTS } from '../domain/types';
 import type { QSet, Question, Subtest } from '../domain/types';
 import { loadMath, validateQuestion } from '../domain/validators';
 import { hashText, uid } from '../lib/id';
+import { addCarriedPackages, carriedPackages } from './examPackages';
 import { createBankSet } from './sets';
 
 /** The set as shared, and how many of its questions came from the learner's photos or PDFs. */
@@ -30,10 +32,26 @@ async function knownUnits(shared: SharedSet): Promise<{ known: Map<string, strin
   return { known, groups };
 }
 
-export async function previewImport(shared: SharedSet): Promise<{ name: string; perSubtest: Record<Subtest, number>; total: number; known: number }> {
+export interface ImportPreview {
+  name: string;
+  /** Questions per sub-test, in exam order (SKD sets list all three). */
+  perSubtest: Record<Subtest, number>;
+  total: number;
+  known: number;
+  /** Exam packages the set carries that will be added with it. */
+  newPackages: { name: string; official: boolean }[];
+}
+
+/** What importing would add. Throws when a package the set carries conflicts with the learner's own. */
+export async function previewImport(shared: SharedSet): Promise<ImportPreview> {
+  const fresh = carriedPackages(shared.packages);
   const { known } = await knownUnits(shared);
-  const perSubtest = Object.fromEntries(SUBTESTS.map((s) => [s, shared.questions.filter((q) => q.subtest === s).length])) as Record<Subtest, number>;
-  return { name: shared.set.name, perSubtest, total: shared.questions.length, known: known.size };
+  const present = shared.questions.map((q) => q.subtest);
+  const skd = present.every((s) => isSkd(packageOf(s)));
+  // Sub-tests of a package the receiver does not have yet sort after the rest, in the set's order.
+  const order = inExamOrder(skd ? [...SUBTESTS, ...present] : present);
+  const perSubtest = Object.fromEntries(order.map((s) => [s, present.filter((x) => x === s).length])) as Record<Subtest, number>;
+  return { name: shared.set.name, perSubtest, total: shared.questions.length, known: known.size, newPackages: fresh.map((p) => ({ name: p.name, official: !!p.official })) };
 }
 
 /**
@@ -43,6 +61,8 @@ export async function previewImport(shared: SharedSet): Promise<{ name: string; 
  */
 export async function importShared(shared: SharedSet): Promise<QSet> {
   await loadMath();
+  // Packages first: the questions are checked and later scored by their package's rules.
+  await addCarriedPackages(shared.packages);
   const { known, groups } = await knownUnits(shared);
   const now = Date.now();
   const from = { name: shared.set.name, at: now };

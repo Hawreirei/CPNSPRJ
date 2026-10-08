@@ -67,6 +67,15 @@ Kode menanyakan `isGraded`, `maxPerQuestion`, `isTopOption`, dan `topOptions`, b
 
 **Tahap 3: paket PPPK 2024 (selesai).** Paket bawaan `PPPK_2024` di `src/domain/examPackage.ts`, dari **Keputusan MenPAN-RB Nomor 347 Tahun 2024** tentang Mekanisme Seleksi PPPK Tahun Anggaran 2024, ditetapkan 19 Agustus 2024 (salinan dari jdih.menpan.go.id). Bawaan berarti langsung bisa dipilih tanpa impor, dan tidak bisa dihapus atau ditimpa berkas impor.
 
+### Berbagi set dari paket lain (#45)
+
+- **Set SKD** tetap dibagikan dengan versi berkas 1 dan bentuk yang sama seperti sebelum #37, jadi versi aplikasi lama tetap bisa membacanya.
+- **Set dengan sub-tes paket lain** memakai versi 2. Versi aplikasi lama lalu meminta pengguna memperbarui aplikasi, bukan menolak sub-tes yang tidak dikenalnya.
+- **Paket bawaan** (PPPK 2024) tidak ikut di berkas, karena sudah ada di setiap aplikasi.
+- **Paket impor** ikut di berkas (`packages`) dan diperiksa dengan aturan berkas paket.
+  - Penerima yang belum punya paket itu mendapatkannya saat mengimpor set. Halaman impor menyebutkannya, termasuk label "bukan data resmi".
+  - Paket milik penerima **tidak pernah diganti dari set**, karena soal-soalnya dinilai dengan paket itu. Bila penerima punya paket dengan id sama tetapi isi berbeda, atau id sub-tesnya dipakai paket lain, impor ditolak dengan penjelasan.
+
 ## Paket PPPK 2024 dan rujukannya
 
 | Isi paket | Nilai | Diktum |

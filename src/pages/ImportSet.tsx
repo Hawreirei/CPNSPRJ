@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { decodeLinkData, parseShared, type SharedSet } from '../domain/share';
-import { SUBTESTS } from '../domain/types';
 import { importShared, previewImport } from '../engine/share';
 import { errorText } from '../engine/storage';
 import { logError } from '../lib/errorLog';
@@ -94,9 +93,18 @@ export default function ImportSet() {
         <section className="card space-y-3">
           <h2>{preview.name}</h2>
           <p className="text-sm">
-            {preview.total} soal: {SUBTESTS.filter((s) => preview.perSubtest[s]).map((s) => `${s} ${preview.perSubtest[s]}`).join(', ')}.
-            {preview.known > 0 && ` ${preview.known} soal sudah ada di Bank Soal Anda dan dipakai ulang, bukan disalin.`}
+            {preview.total} soal:{' '}
+            {Object.entries(preview.perSubtest)
+              .filter(([, n]) => n)
+              .map(([s, n]) => `${s} ${n}`)
+              .join(', ')}
+            .{preview.known > 0 && ` ${preview.known} soal sudah ada di Bank Soal Anda dan dipakai ulang, bukan disalin.`}
           </p>
+          {preview.newPackages.map((p) => (
+            <p key={p.name} className="text-sm">
+              Paket ujian <b>{p.name}</b> ikut ditambahkan ke Pengaturan → Paket ujian{p.official ? '' : ' (bukan data resmi)'}, agar soalnya dinilai dengan aturannya.
+            </p>
+          ))}
           <p className="muted text-sm">
             Soal dari orang lain belum tentu benar. Setelah diimpor, setiap soal diperiksa ulang oleh aplikasi dan ditandai "dari berkas bersama"; periksa dulu yang
             bertanda "perlu dicek".
