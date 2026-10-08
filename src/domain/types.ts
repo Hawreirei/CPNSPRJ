@@ -293,8 +293,11 @@ export interface ApiKeyRecord {
   label: string;
   model: string;
   baseUrl?: string;
-  cipher: ArrayBuffer;
-  iv: Uint8Array<ArrayBuffer>;
+  /** Encrypted key; absent for a session-only key, whose secret lives in sessionStorage only. */
+  cipher?: ArrayBuffer;
+  iv?: Uint8Array<ArrayBuffer>;
+  /** "Jangan simpan": the key itself is never written to IndexedDB and is gone when the tab closes. */
+  sessionOnly?: boolean;
   isDefault: boolean;
   createdAt: number;
   /** Self-imposed rate limits matching the key's plan (0 = no limit). */

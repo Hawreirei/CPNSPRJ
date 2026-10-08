@@ -58,6 +58,10 @@ Gemini, OpenAI, Anthropic Claude, dan endpoint OpenAI-compatible (misal OpenRout
 
 API key dienkripsi AES-GCM dengan kunci perangkat non-extractable (WebCrypto) di IndexedDB. Enkripsi ini melindungi data tersimpan, tetapi tidak melindungi dari kode berbahaya yang berjalan di halaman (misal ekstensi browser). Build produksi memasang Content-Security-Policy yang ketat.
 
+Kunci enkripsi itu juga ada di perangkat yang sama, jadi siapa pun yang bisa membuka profil browser bisa memakai key yang disimpan. Untuk komputer bersama, pilih **"Jangan simpan, hanya untuk sesi ini"** saat menambah key: key hanya ada di `sessionStorage` tab itu, tidak pernah ditulis ke IndexedDB atau cadangan, dan hilang saat tab ditutup (pembuatan soal lalu meminta key dimasukkan lagi).
+
+Galat dicatat di perangkat (paling banyak 200 terakhir, sudah disaring dari API key, isi soal, dan prompt) dan bisa diunduh dari Pengaturan → Log galat untuk dilampirkan saat melaporkan masalah. Tidak ada yang dikirim ke luar.
+
 ## Struktur SKD (dapat diubah)
 
 | Sub-tes | Soal | Skor maks. | Ambang batas default |

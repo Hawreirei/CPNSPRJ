@@ -113,6 +113,10 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
     if (req.method() === 'POST' && url.pathname.endsWith(':generateContent')) {
       const body = req.postDataJSON() as { systemInstruction: { parts: { text: string }[] }; contents: { parts: { text: string }[] }[] };
       const prompt = body.contents[0].parts[0].text;
+      // "Uji koneksi" on the API Key page.
+      if (prompt.startsWith('Balas tepat: {"ok": true}')) {
+        return route.fulfill({ json: { candidates: [{ content: { parts: [{ text: '{"ok": true}' }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 } } });
+      }
       if (body.systemInstruction.parts[0].text.startsWith('Anda tutor')) {
         // The tutor doubts the key only when the learner asks whether it is wrong.
         stats.tutorPrompts.push(prompt);

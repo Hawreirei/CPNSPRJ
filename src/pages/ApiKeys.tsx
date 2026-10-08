@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { db } from '../db';
 import type { ApiKeyRecord, KeyLimits, ProviderId } from '../domain/types';
-import { addKey, chooseKeyModel, deleteKey, loadKeyModels, providerConfig, refreshKeyModel, refreshStaleKeyModels, setDefaultKey, switchToAutoModel } from '../engine/keys';
+import { addKey, chooseKeyModel, deleteKey, hasSecret, loadKeyModels, providerConfig, refreshKeyModel, refreshStaleKeyModels, setDefaultKey, setSessionSecret, switchToAutoModel } from '../engine/keys';
 import { ModelSelect } from '../components/ModelSelect';
 import { clearQuotaBlock, defaultLimits, keyUsage, LIMIT_PRESETS, limitsOf, releaseRequest, reserveRequest } from '../engine/quota';
 import { complete, isModelUnavailable, listModelInfo, pickRecommendedModel, ProviderError, PROVIDERS, suggestedReplacement } from '../providers';
@@ -35,7 +35,7 @@ export default function ApiKeys() {
     <div className="max-w-3xl space-y-6">
       <div>
         <h1>API Keys</h1>
-        <p className="muted mt-1">Pakai API key AI milik Anda sendiri. Key hanya disimpan di browser ini, terenkripsi.</p>
+        <p className="muted mt-1">Pakai API key AI milik Anda sendiri. Key hanya disimpan di browser ini, terenkripsi, atau tidak disimpan sama sekali bila Anda memilih "hanya untuk sesi ini".</p>
       </div>
 
       {keys.map((k) => (
@@ -54,6 +54,11 @@ export default function ApiKeys() {
         <summary className="muted cursor-pointer">Tentang keamanan key</summary>
         <ul className="muted mt-2 list-disc space-y-1 pl-5">
           <li>Key dienkripsi dengan kunci perangkat dan hanya tersimpan di browser ini; tidak ikut file cadangan.</li>
+          <li>
+            Kunci enkripsinya juga ada di perangkat ini, jadi siapa pun yang bisa membuka profil browser ini bisa memakai key yang disimpan. Di komputer
+            bersama, pilih "Jangan simpan, hanya untuk sesi ini": key tidak ditulis ke penyimpanan browser dan hilang saat tab ditutup.
+          </li>
+          <li>Ekstensi browser yang boleh membaca halaman bisa melihat key, baik yang disimpan maupun yang hanya untuk sesi. Pakai profil browser tanpa ekstensi yang tidak Anda percayai.</li>
           <li>Permintaan dikirim langsung dari browser Anda ke penyedia AI, tanpa server perantara.</li>
           <li>Gunakan browser tepercaya, dan pasang batas pengeluaran di dasbor penyedia.</li>
         </ul>
@@ -69,6 +74,7 @@ function AddKeyForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () =>
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
   const [label, setLabel] = useState('');
+  const [sessionOnly, setSessionOnly] = useState(false);
   const [limits, setLimits] = useState<KeyLimits>(defaultLimits('gemini'));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +102,7 @@ function AddKeyForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () =>
       }
       const model = (models && pickRecommendedModel(models.map((m) => m.id))) || info.defaultModel;
       if (!model) throw new Error('Tidak ada model yang bisa dipakai. Pilih model secara manual setelah menyimpan.');
-      const rec = await addKey({ provider, label: label.trim() || info.name, apiKey, model, baseUrl, autoModel: true, modelCheckedAt: models ? Date.now() : undefined, limits });
+      const rec = await addKey({ provider, label: label.trim() || info.name, apiKey, model, baseUrl, autoModel: true, modelCheckedAt: models ? Date.now() : undefined, limits, sessionOnly });
       if (models) await db.keys.update(rec.id, { models, modelsFetchedAt: Date.now() });
       setApiKey('');
       onDone();
@@ -155,6 +161,17 @@ function AddKeyForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () =>
         </div>
       )}
 
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-1" checked={sessionOnly} onChange={(e) => setSessionOnly(e.target.checked)} aria-describedby="session-only-help" />
+        <span>
+          Jangan simpan, hanya untuk sesi ini
+          <span id="session-only-help" className="muted block text-xs">
+            Key tidak ditulis ke penyimpanan browser dan hilang saat tab ditutup; setelah itu masukkan lagi. Cocok untuk komputer bersama. Ekstensi browser
+            yang bisa membaca halaman tetap bisa melihatnya.
+          </span>
+        </span>
+      </label>
+
       <details>
         <summary className="muted cursor-pointer text-sm">Pengaturan lanjutan (opsional)</summary>
         <div className="mt-3 space-y-3">
@@ -195,6 +212,7 @@ function KeyCard({ k, single }: { k: ApiKeyRecord; single: boolean }) {
   const auto = k.autoModel !== false;
   const usage = useLiveQuery(() => keyUsage(k), [k]);
   const limits = limitsOf(k);
+  const [present, setPresent] = useState(() => hasSecret(k));
 
   async function act(fn: () => Promise<string>) {
     setBusy(true);
@@ -241,11 +259,14 @@ function KeyCard({ k, single }: { k: ApiKeyRecord; single: boolean }) {
         <h2 className="mr-auto flex items-center gap-2">
           {k.label}
           {k.isDefault && !single && <Badge tone="blue">utama</Badge>}
+          {k.sessionOnly && <Badge tone="amber">hanya sesi</Badge>}
         </h2>
         <button className="btn btn-sm" disabled={busy} onClick={test} title="Memakai 1 request dari kuota">
           {busy ? 'Memproses…' : 'Uji koneksi'}
         </button>
       </div>
+
+      {!present && <ReenterKey k={k} onDone={() => setPresent(true)} />}
 
       <div>
         <label className="label" htmlFor={`model-${k.id}`}>
@@ -358,6 +379,36 @@ function LimitsEditor({ value, onChange }: { value: KeyLimits; onChange: (l: Key
         </div>
       )}
       <p className="muted text-xs">Sesuaikan dengan batas di dasbor penyedia. Aplikasi tidak akan mengirim melebihi batas ini (0 = tanpa batas).</p>
+    </div>
+  );
+}
+
+/** A session-only key whose tab was closed: type it again to use it in this tab. */
+function ReenterKey({ k, onDone }: { k: ApiKeyRecord; onDone: () => void }) {
+  const [value, setValue] = useState('');
+  const save = () => {
+    if (!value.trim()) return;
+    setSessionSecret(k.id, value);
+    setValue('');
+    onDone();
+  };
+  return (
+    <div className="space-y-2 rounded-lg border border-amber-500 p-3 text-sm">
+      <p>Key ini hanya untuk sesi dan sudah hilang karena tab atau browser ditutup. Masukkan lagi untuk memakainya di tab ini.</p>
+      <div className="flex gap-2">
+        <input
+          className="input font-mono"
+          type="password"
+          autoComplete="off"
+          aria-label={`Masukkan lagi key ${k.label}`}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && save()}
+        />
+        <button className="btn btn-primary shrink-0" disabled={!value.trim()} onClick={save}>
+          Pakai key
+        </button>
+      </div>
     </div>
   );
 }
