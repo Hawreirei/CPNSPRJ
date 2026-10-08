@@ -1,5 +1,13 @@
-export type Subtest = 'TWK' | 'TIU' | 'TKP';
-export const SUBTESTS: Subtest[] = ['TWK', 'TIU', 'TKP'];
+/** SKD CPNS sub-tests: the built-in exam, and everything the app had before exam packages (#37). */
+export type SkdSubtest = 'TWK' | 'TIU' | 'TKP';
+/**
+ * A sub-test id from an exam package (domain/examPackage.ts). Ids are unique across packages, so a
+ * question's sub-test alone says how it is scored. SKD CPNS uses 'TWK', 'TIU' and 'TKP'.
+ */
+export type Subtest = string;
+/** The SKD CPNS sub-tests, in exam order. Analytics, plans and streaks are about these. */
+export const SKD_SUBTESTS: SkdSubtest[] = ['TWK', 'TIU', 'TKP'];
+export const SUBTESTS: Subtest[] = SKD_SUBTESTS;
 
 export type Difficulty = 'mudah' | 'sedang' | 'sulit';
 export type DifficultyChoice = Difficulty | 'campuran';
@@ -194,8 +202,9 @@ export interface SubtestResult {
   subtest: Subtest;
   score: number;
   max: number;
-  passing: number;
-  passed: boolean;
+  /** Absent for a sub-test without a pass mark (an exam decided by ranking). */
+  passing?: number;
+  passed?: boolean;
   correct: number;
   answered: number;
   total: number;
@@ -214,7 +223,8 @@ export interface AttemptResult {
   topics: TopicResult[];
   total: number;
   maxTotal: number;
-  passedAll: boolean;
+  /** Whether every sub-test met its pass mark; absent when a sub-test has none. */
+  passedAll?: boolean;
 }
 
 /** `exam`: CAT simulation, answers hidden until submit. `practice`: key and explanation shown after each answer. */

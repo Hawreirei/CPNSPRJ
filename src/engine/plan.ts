@@ -1,4 +1,5 @@
 import { PASSAGE_TOPIC, PROCEDURAL_TOPICS } from '../domain/blueprint';
+import { isGraded } from '../domain/examPackage';
 import { DEFAULT_PRICES, FALLBACK_PRICE } from '../providers/types';
 import { familyPrice } from '../providers/models';
 import { uid } from '../lib/id';
@@ -98,7 +99,9 @@ export function batchLabel(b: PlanBatch): string {
   return `${b.subtest} · ${topics.length > 2 ? `${topics.slice(0, 2).join(', ')} +${topics.length - 2}` : topics.join(', ')} (${b.count})`;
 }
 
-export const OUT_PER_Q = { TWK: 420, TIU: 420, TKP: 650 } as const;
+export const OUT_PER_Q: Record<string, number> = { TWK: 420, TIU: 420, TKP: 650 };
+/** Graded sub-tests write a rationale per option, so their replies run longer. */
+const outPerQuestion = (s: Subtest) => OUT_PER_Q[s] ?? (isGraded(s) ? OUT_PER_Q.TKP : OUT_PER_Q.TWK);
 
 /** USD per million input and output tokens for a model: the learner's own price first, then the known ones. */
 export const priceFor = (model: string, settings: Pick<Settings, 'priceOverrides'>) =>
@@ -125,7 +128,7 @@ export function estimatePlan(
   const ai = pending.filter((b) => !isProcedural(b));
   const aiQuestions = ai.reduce((n, b) => n + b.count, 0);
   const inputTokens = ai.length * IN_PER_REQ;
-  const outputTokens = ai.reduce((n, b) => n + b.count * OUT_PER_Q[b.subtest], 0);
+  const outputTokens = ai.reduce((n, b) => n + b.count * outPerQuestion(b.subtest), 0);
   const price = priceFor(model, settings);
   const cost = (inputTokens * price.input + outputTokens * price.output) / 1e6;
   // Rate-limited keys run one request at a time and may wait for the per-minute window.

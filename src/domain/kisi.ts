@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { PROCEDURAL_TOPICS } from './blueprint';
-import { SUBTESTS } from './types';
+import { SKD_SUBTESTS } from './types';
 import type { KisiProfile, KisiTopic, Subtest } from './types';
 
 export const PROFILE_VERSION = 1;
@@ -56,7 +56,7 @@ export function parseProfile(raw: unknown, id: string): KisiProfile {
   }
   const p = r.data;
   const topics = {} as Record<Subtest, KisiTopic[]>;
-  for (const s of SUBTESTS) {
+  for (const s of SKD_SUBTESTS) {
     const seen = new Set<string>();
     topics[s] = p.topics[s].filter((t) => {
       const key = t.name.toLocaleLowerCase('id-ID');
@@ -69,7 +69,7 @@ export function parseProfile(raw: unknown, id: string): KisiProfile {
     if (misplaced) throw new Error(`Profil tidak valid: topik "${misplaced.name}" hanya bisa dipakai di TIU.`);
   }
   if (p.exam) {
-    const over = SUBTESTS.find((s) => p.exam!.passing[s] > p.exam!.counts[s] * 5);
+    const over = SKD_SUBTESTS.find((s) => p.exam!.passing[s] > p.exam!.counts[s] * 5);
     if (over) throw new Error(`Profil tidak valid: ambang batas ${over} melebihi skor maksimal (${p.exam.counts[over] * 5}).`);
   }
   return { version: 1, id, name: p.name, ...(p.source ? { source: p.source } : {}), ...(p.date ? { date: p.date } : {}), topics, ...(p.exam ? { exam: p.exam } : {}) };

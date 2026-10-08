@@ -101,7 +101,7 @@ export default function Dashboard() {
         <Stat
           label="Skor ujian terakhir"
           value={last?.result ? `${last.result.total}/${last.result.maxTotal}` : '—'}
-          hint={last?.result ? (last.result.passedAll ? 'Lulus ambang batas' : 'Belum lulus ambang batas') : undefined}
+          hint={last?.result?.passedAll === undefined ? undefined : last.result.passedAll ? 'Lulus ambang batas' : 'Belum lulus ambang batas'}
         />
       </div>
 

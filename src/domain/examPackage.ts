@@ -42,10 +42,37 @@ export const SKD_CPNS: ExamPackage = {
   ],
 };
 
-const RULES = new Map(SKD_CPNS.subtests.map((s) => [s.id, s.scoring]));
+/** Every package the app knows, in display order; SKD CPNS first. */
+const PACKAGES: ExamPackage[] = [];
+const SPECS = new Map<Subtest, { spec: SubtestSpec; pkg: ExamPackage; order: number }>();
+
+/** Add a package. Sub-test ids must be new: a question's sub-test alone decides how it is scored. */
+export function registerPackage(pkg: ExamPackage) {
+  const taken = pkg.subtests.find((s) => SPECS.has(s.id));
+  if (taken) throw new Error(`Sub-tes "${taken.id}" sudah dipakai paket lain.`);
+  PACKAGES.push(pkg);
+  for (const spec of pkg.subtests) SPECS.set(spec.id, { spec, pkg, order: SPECS.size });
+}
+registerPackage(SKD_CPNS);
+
+export const packages = (): readonly ExamPackage[] => PACKAGES;
+
+/** A sub-test's spec. Unknown ids (data from a newer version) are scored like a keyed sub-test, not dropped. */
+export function specOf(subtest: Subtest): SubtestSpec {
+  return SPECS.get(subtest)?.spec ?? { id: subtest, name: subtest, scoring: { kind: 'keyed', correct: 5 } };
+}
+
+/** The package a sub-test belongs to; SKD CPNS for unknown ids. */
+export const packageOf = (subtest: Subtest): ExamPackage => SPECS.get(subtest)?.pkg ?? SKD_CPNS;
+
+/** Sub-tests in package order (SKD: TWK, TIU, TKP), unknown ones last, each once. */
+export function inExamOrder(subtests: Iterable<Subtest>): Subtest[] {
+  const rank = (s: Subtest) => SPECS.get(s)?.order ?? Number.MAX_SAFE_INTEGER;
+  return [...new Set(subtests)].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+}
 
 export function scoringOf(subtest: Subtest): ScoringRule {
-  return RULES.get(subtest)!;
+  return specOf(subtest).scoring;
 }
 
 /** Every option scores (TKP): there is a best option, but no wrong one. */

@@ -22,12 +22,19 @@ Sub-tes `TWK | TIU | TKP` tertanam di 44 berkas di luar test. Pemakaiannya terba
 
 Kode menanyakan `isGraded`, `maxPerQuestion`, `isTopOption`, dan `topOptions`, bukan lagi `subtest === 'TKP'`. `Subtest` masih union tetap, jadi perilakunya sama persis; seluruh unit test dan e2e lama lulus tanpa diubah.
 
-**Tahap 2: sub-tes dari paket aktif.** Dikerjakan setelah angka paket kedua terverifikasi, karena bentuk paket kedua menentukan desainnya.
-- `Subtest` menjadi id string dari paket aktif. `Record<Subtest, …>` menjadi peta dari daftar sub-tes paket.
+**Tahap 2a: registri paket dan ambang batas opsional (selesai).**
+- `Subtest` sekarang id string. Id sub-tes **unik di semua paket** (SKD: `TWK`, `TIU`, `TKP`; paket lain memakai awalan, misalnya `PPPK-…`), jadi sub-tes sebuah soal saja sudah menentukan paket dan aturan skornya. Karena itu `packageId` di data tersimpan tidak diperlukan.
+- `registerPackage`, `packageOf`, `specOf`, dan `inExamOrder` di `examPackage.ts`. Id yang tidak dikenal (data dari versi lebih baru) dinilai sebagai sub-tes berkunci, tidak dibuang.
+- `computeResult` menilai sub-tes yang ada di soal, dalam urutan paket. Ambang batas opsional per sub-tes; tanpa ambang batas tidak ada lulus/belum, dan Laporan Skor menjelaskan bahwa kelulusan ditentukan peringkat.
+- Progres, kesiapan, dan streak tetap khusus SKD; sub-tes paket lain tidak masuk skala SKD.
+- `SKD_SUBTESTS` dan tipe `SkdSubtest` untuk bagian yang memang khusus SKD (profil kisi-kisi, berkas berbagi).
+- Diuji dengan paket fiktif khusus tes (sub-tes bernilai 1–4, tanpa ambang batas), bukan angka PPPK.
+
+**Tahap 2b: tampilan dan konten mengikuti paket.**
 - Kemampuan konten per sub-tes (`features`): wajib rujukan, cek hitungan, jenis prosedural, wacana, rasional per opsi, analisis jawaban "kurang tepat".
-- **Ambang batas menjadi opsional per paket.** Menurut berita (belum terverifikasi, lihat di bawah), PPPK 2024 tidak memakai ambang batas, sedangkan kelulusan ditentukan dari peringkat. Laporan Skor, Progres, kesiapan, dan Mode CAT perlu bisa tampil tanpa "lulus/belum lulus".
-- `packageId` opsional di set, soal, percobaan, berkas berbagi, dan profil kisi-kisi. Data lama tanpa field itu adalah SKD CPNS.
-- Pilihan paket aktif di Pengaturan. Progres dan kesiapan tidak mencampur skor antar paket.
+- Pilihan paket saat membuat set (Buat Soal); preset, jumlah soal, dan durasi dari paket.
+- Teks aturan skor (cetak, Word, Bantuan) dibuat dari paket.
+- Progres dan kesiapan per paket, tidak dicampur.
 
 **Tahap 3: paket PPPK.** Data paket (sub-tes, aturan skor, jumlah soal, durasi, ambang batas atau tidak ada) dari dokumen resmi, prompt per sub-tes, e2e satu ujian PPPK lengkap.
 
@@ -47,7 +54,7 @@ Klaim dari pemberitaan, **belum terverifikasi dan tidak dipakai di kode**:
 - Teknis: benar 5, salah atau kosong 0. Manajerial, sosial kultural, wawancara: 1–4 per opsi, kosong 0.
 - Tidak ada nilai ambang batas pada 2024; kelulusan berdasarkan peringkat.
 
-## Pertanyaan desain untuk PPPK
+## Keputusan untuk PPPK
 
-- **Kompetensi teknis berbeda per jabatan.** Ada ratusan jabatan; topiknya tidak bisa dibawa sebagai daftar tetap. Kemungkinan: pengguna menulis nama jabatannya dan topik teknis dibuat dari situ (dengan label "bukan kisi-kisi resmi"), atau profil kisi-kisi per jabatan yang diimpor pengguna.
+- **Kompetensi teknis dari nama jabatan** (diputuskan pemilik produk, 8 Oktober 2026). Pengguna menulis nama jabatannya; soal teknis dibuat AI dari nama itu dan ditandai "bukan kisi-kisi resmi".
 - **Wawancara** di PPPK adalah tes tertulis berbasis komputer menurut pemberitaan; formatnya perlu dipastikan dari dokumen sebelum dibuatkan soal.

@@ -174,13 +174,13 @@ export default function Progress() {
                 {SUBTESTS.map((s) => {
                   const r = a.result!.perSubtest.find((p) => p.subtest === s);
                   return (
-                    <td key={s} className={`pr-3 text-right tabular-nums ${r && !r.passed ? 'text-red-600 dark:text-red-400' : ''}`}>
+                    <td key={s} className={`pr-3 text-right tabular-nums ${r?.passed === false ? 'text-red-600 dark:text-red-400' : ''}`}>
                       {r ? `${r.score}/${r.max}` : '—'}
                     </td>
                   );
                 })}
                 <td className="pr-3 text-right font-medium tabular-nums">{a.result!.total}</td>
-                <td>{attemptMode(a) === 'exam' && <Badge tone={a.result!.passedAll ? 'green' : 'red'}>{a.result!.passedAll ? 'lulus' : 'belum'}</Badge>}</td>
+                <td>{attemptMode(a) === 'exam' && a.result!.passedAll !== undefined && <Badge tone={a.result!.passedAll ? 'green' : 'red'}>{a.result!.passedAll ? 'lulus' : 'belum'}</Badge>}</td>
               </tr>
             ))}
           </tbody>

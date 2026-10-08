@@ -248,7 +248,7 @@ export default function SimulationHome() {
                     <span className="font-semibold">
                       {a.result.total}/{a.result.maxTotal}
                     </span>
-                    {attemptMode(a) === 'exam' && <Badge tone={a.result.passedAll ? 'green' : 'red'}>{a.result.passedAll ? 'lulus' : 'belum lulus'}</Badge>}
+                    {attemptMode(a) === 'exam' && a.result.passedAll !== undefined && <Badge tone={a.result.passedAll ? 'green' : 'red'}>{a.result.passedAll ? 'lulus' : 'belum lulus'}</Badge>}
                   </div>
                 ) : (
                   <Badge tone="amber">lanjutkan</Badge>

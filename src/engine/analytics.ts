@@ -230,7 +230,8 @@ export function examSeries(attempts: Attempt[], counts: Record<Subtest, number>)
   const exams = attempts.filter((a) => a.result && attemptMode(a) === 'exam').sort((x, y) => x.startedAt - y.startedAt);
   const out = { TWK: [], TIU: [], TKP: [] } as Record<Subtest, SeriesPoint[]>;
   for (const a of exams) {
-    for (const r of a.result!.perSubtest) {
+    // SKD scores only: sub-tests of other exam packages have no place on these scales.
+    for (const r of a.result!.perSubtest.filter((p) => p.subtest in out)) {
       const max = counts[r.subtest] * MAX_PER_QUESTION;
       out[r.subtest].push({ attemptId: a.id, at: a.startedAt, setName: a.setName, value: scaledScore(r, max), max });
     }

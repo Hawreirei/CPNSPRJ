@@ -8,7 +8,7 @@ const SUBTEST_STYLE: Record<Subtest, string> = {
 };
 
 export function SubtestBadge({ subtest }: { subtest: Subtest }) {
-  return <span className={`badge ${SUBTEST_STYLE[subtest]}`}>{subtest}</span>;
+  return <span className={`badge ${SUBTEST_STYLE[subtest] ?? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'}`}>{subtest}</span>;
 }
 
 export function Badge({ children, tone = 'slate' }: { children: ReactNode; tone?: 'slate' | 'amber' | 'green' | 'red' | 'blue' }) {
