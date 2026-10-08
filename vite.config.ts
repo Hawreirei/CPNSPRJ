@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
@@ -18,7 +19,28 @@ const csp = [
 ].join('; ');
 
 /** Package → chunk name for libraries kept out of the startup bundle (numeric.ts, RichText.tsx, providers/index.ts). */
-const LAZY_LIBS: Record<string, string> = { mathjs: 'mathjs', katex: 'katex', '@anthropic-ai/sdk': 'anthropic' };
+const LAZY_LIBS: Record<string, string> = { mathjs: 'mathjs', katex: 'katex', '@anthropic-ai/sdk': 'anthropic', 'pdfjs-dist': 'pdfjs' };
+
+/**
+ * pdf.js decodes scanned pages (JBIG2, JPEG 2000) and colour profiles with WebAssembly it fetches
+ * from `wasmUrl` (src/lib/pdfPages.ts). Served at pdfjs/ in dev and copied there in the build; not
+ * precached, since importing a PDF needs the network for the AI anyway.
+ */
+const PDFJS_WASM = ['jbig2.wasm', 'openjpeg.wasm', 'qcms_bg.wasm'];
+const pdfjsWasm: Plugin = {
+  name: 'pdfjs-wasm',
+  configureServer(server) {
+    server.middlewares.use('/pdfjs/', (req, res, next) => {
+      const file = req.url?.slice(1).split('?')[0] ?? '';
+      if (!PDFJS_WASM.includes(file)) return next();
+      res.setHeader('content-type', 'application/wasm');
+      res.end(readFileSync(`node_modules/pdfjs-dist/wasm/${file}`));
+    });
+  },
+  generateBundle() {
+    for (const f of PDFJS_WASM) this.emitFile({ type: 'asset', fileName: `pdfjs/${f}`, source: readFileSync(`node_modules/pdfjs-dist/wasm/${f}`) });
+  },
+};
 
 const cspPlugin: Plugin = {
   name: 'inject-csp',
@@ -37,6 +59,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     cspPlugin,
+    pdfjsWasm,
     VitePWA({
       registerType: 'autoUpdate',
       // Registered from src/lib/pwa.ts so updates apply without a manual hard refresh.

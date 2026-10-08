@@ -9,6 +9,10 @@ import type { Blueprint, FlagKind, Question, SkdSubtest } from './types';
  */
 
 export const SHARE_VERSION = 1;
+
+/** Shown when a set holding questions copied from photos or PDFs (#38) is shared. */
+export const COPYRIGHT_SHARE =
+  'Bagikan hanya bila soal itu milik Anda sendiri atau lisensinya membolehkan dibagikan. Soal dari buku, bimbel, atau tryout berbayar tidak boleh dibagikan tanpa izin pemegang hak ciptanya.';
 const MAX_QUESTIONS = 300;
 const text = (max: number) => z.string().max(max);
 
@@ -64,7 +68,7 @@ const questionSchema = z.object({
   notes: z.array(z.object({ text: text(4000), at: finite })).max(20).optional(),
   flags: z.array(z.object({ kind: z.string(), message: text(500), severity: z.enum(['info', 'warn']) })).max(20).default([]),
   hash: text(80).optional(),
-  source: z.enum(['ai', 'procedural', 'manual']),
+  source: z.enum(['ai', 'procedural', 'manual', 'import']),
 });
 
 const blueprintSchema = z.object({
@@ -92,35 +96,40 @@ export interface SharedSet {
   questions: SharedQuestion[];
 }
 
-/** What a set looks like when shared: questions stripped of everything personal. */
-export function toShared(name: string, blueprint: Blueprint, questions: Question[], opts: { includeNotes?: boolean } = {}): SharedSet {
+/**
+ * What a set looks like when shared: questions stripped of everything personal. Questions copied
+ * from the learner's own photos or PDFs stay out unless they choose to share them (#38).
+ */
+export function toShared(name: string, blueprint: Blueprint, questions: Question[], opts: { includeNotes?: boolean; includeImported?: boolean } = {}): SharedSet {
   return {
     app: 'cpns-skd-builder',
     kind: 'set',
     version: SHARE_VERSION,
     exportedAt: new Date().toISOString(),
     set: { name, blueprint },
-    questions: questions.map((q) => ({
-      id: q.id,
-      // Shared files carry SKD sets only for now; other exam packages get their own format with #37.
-      subtest: q.subtest as SkdSubtest,
-      topic: q.topic,
-      difficulty: q.difficulty,
-      stem: q.stem,
-      options: q.options.map(({ label, text, score, figure, rationale }) => ({ label, text, score, ...(figure ? { figure } : {}), ...(rationale ? { rationale } : {}) })),
-      ...(q.answer ? { answer: q.answer } : {}),
-      explanation: q.explanation,
-      ...(q.reference ? { reference: q.reference } : {}),
-      ...(q.confidence ? { confidence: q.confidence } : {}),
-      ...(q.mathExpression ? { mathExpression: q.mathExpression } : {}),
-      ...(q.figure ? { figure: q.figure } : {}),
-      ...(q.data ? { data: q.data } : {}),
-      ...(q.passage ? { passage: q.passage } : {}),
-      ...(opts.includeNotes && q.notes?.length ? { notes: q.notes } : {}),
-      flags: q.flags.filter((f) => SHARED_FLAG_KINDS.has(f.kind)),
-      hash: q.hash,
-      source: q.source,
-    })),
+    questions: questions
+      .filter((q) => opts.includeImported || q.source !== 'import')
+      .map((q) => ({
+        id: q.id,
+        // Shared files carry SKD sets only for now; other exam packages get their own format with #37.
+        subtest: q.subtest as SkdSubtest,
+        topic: q.topic,
+        difficulty: q.difficulty,
+        stem: q.stem,
+        options: q.options.map(({ label, text, score, figure, rationale }) => ({ label, text, score, ...(figure ? { figure } : {}), ...(rationale ? { rationale } : {}) })),
+        ...(q.answer ? { answer: q.answer } : {}),
+        explanation: q.explanation,
+        ...(q.reference ? { reference: q.reference } : {}),
+        ...(q.confidence ? { confidence: q.confidence } : {}),
+        ...(q.mathExpression ? { mathExpression: q.mathExpression } : {}),
+        ...(q.figure ? { figure: q.figure } : {}),
+        ...(q.data ? { data: q.data } : {}),
+        ...(q.passage ? { passage: q.passage } : {}),
+        ...(opts.includeNotes && q.notes?.length ? { notes: q.notes } : {}),
+        flags: q.flags.filter((f) => SHARED_FLAG_KINDS.has(f.kind)),
+        hash: q.hash,
+        source: q.source,
+      })),
   };
 }
 

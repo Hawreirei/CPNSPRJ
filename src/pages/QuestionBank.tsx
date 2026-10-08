@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { db, useSettings } from '../db';
 import { fullExam, fullExamOf, topicsFor } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
@@ -19,6 +19,8 @@ const PAGE = 30;
 
 export default function QuestionBank() {
   const nav = useNavigate();
+  // Set by the photo import after saving.
+  const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const settings = useSettings();
   const all = useLiveQuery(() => db.questions.orderBy('createdAt').reverse().toArray(), []);
   const [q, setQ] = useState('');
@@ -113,10 +115,20 @@ export default function QuestionBank() {
           <h1>Bank Soal</h1>
           <p className="muted mt-1">Semua soal yang pernah Anda buat ({all.length} soal). Centang soal untuk diunduh atau dijadikan set baru.</p>
         </div>
-        <button className="btn btn-primary" disabled={!toDownload.length} onClick={() => setDownloading(true)}>
-          ⬇ Unduh {selectedQs.length ? `${selectedQs.length} soal terpilih` : `${filtered.length} soal`}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link className="btn" to="/bank/import">
+            📷 Impor dari foto/PDF
+          </Link>
+          <button className="btn btn-primary" disabled={!toDownload.length} onClick={() => setDownloading(true)}>
+            ⬇ Unduh {selectedQs.length ? `${selectedQs.length} soal terpilih` : `${filtered.length} soal`}
+          </button>
+        </div>
       </div>
+      {notice && (
+        <p role="status" className="card text-sm">
+          {notice}
+        </p>
+      )}
 
       <div className="card space-y-3">
         <input className="input" placeholder="Cari soal…" value={q} onChange={(e) => setQ(e.target.value)} />

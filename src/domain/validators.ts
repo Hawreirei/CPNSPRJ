@@ -49,7 +49,11 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
     }
   }
   if (next.confidence === 'low') {
-    flags.push({ kind: 'low-confidence', severity: 'warn', message: 'AI kurang yakin dengan soal ini. Sebaiknya diperiksa ulang.' });
+    flags.push(
+      next.source === 'import'
+        ? { kind: 'import-unchecked', severity: 'warn', message: 'Disalin AI dari foto atau PDF. Cocokkan soal, opsi, kunci, dan pembahasan dengan sumber aslinya.' }
+        : { kind: 'low-confidence', severity: 'warn', message: 'AI kurang yakin dengan soal ini. Sebaiknya diperiksa ulang.' },
+    );
   }
   if (knownHashes?.has(next.hash)) {
     flags.push({ kind: 'duplicate', severity: 'info', message: 'Soal yang mirip sudah ada di Bank Soal.' });

@@ -63,6 +63,7 @@ export function QuestionCard({
             <Badge tone="blue">dari berkas bersama</Badge>
           </span>
         )}
+        {q.source === 'import' && <Badge tone="blue">dari foto/PDF</Badge>}
         {q.locked && <Badge tone="blue">🔒 terkunci</Badge>}
         {warn && showFlags && <Badge tone="amber">perlu dicek</Badge>}
         {showFlags && q.flags.some((f) => f.kind === 'cross-checked') && (

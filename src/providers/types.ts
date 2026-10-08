@@ -7,9 +7,17 @@ export interface ProviderConfig {
   baseUrl?: string;
 }
 
+/** A picture sent with the prompt (a photographed or rendered page), base64 without the data: prefix. */
+export interface LlmImage {
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+  data: string;
+}
+
 export interface LlmRequest {
   system: string;
   prompt: string;
+  /** Sent before the prompt. Only for models that read images; a model that cannot gets a clear error (#38). */
+  images?: LlmImage[];
   signal?: AbortSignal;
   maxTokens?: number;
 }

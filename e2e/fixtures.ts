@@ -25,6 +25,8 @@ export interface GeminiMock {
   checkCalls: number;
   /** Prompts received by the tutor ("Tanya AI"). */
   tutorPrompts: string[];
+  /** Page images received by the photo import: their type and size in base64 characters. */
+  pageImages: { mimeType: string; length: number }[];
   /**
    * The checker's answer to question `no` (1-based) of a check request for `subtest`.
    * Defaults to the key (A; option A also scores 5 in TKP), i.e. agreement.
@@ -108,7 +110,7 @@ export function fakePassages(prompt: string) {
 }
 
 export async function mockGemini(page: Page): Promise<GeminiMock> {
-  const stats: GeminiMock = { generateCalls: 0, served: { TWK: 0, TIU: 0, TKP: 0 }, checkCalls: 0, tutorPrompts: [], checkAnswer: () => 'A' };
+  const stats: GeminiMock = { generateCalls: 0, served: { TWK: 0, TIU: 0, TKP: 0 }, checkCalls: 0, tutorPrompts: [], pageImages: [], checkAnswer: () => 'A' };
   await page.route(`https://${GEMINI_HOST}/**`, async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -123,8 +125,22 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
       });
     }
     if (req.method() === 'POST' && url.pathname.endsWith(':generateContent')) {
-      const body = req.postDataJSON() as { systemInstruction: { parts: { text: string }[] }; contents: { parts: { text: string }[] }[] };
-      const prompt = body.contents[0].parts[0].text;
+      const body = req.postDataJSON() as { systemInstruction: { parts: { text: string }[] }; contents: { parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] }[] };
+      const image = body.contents[0].parts.find((p) => p.inlineData)?.inlineData;
+      if (image) {
+        // Photo import: the same page every time, with a key printed, a key to propose, and a figure to skip.
+        stats.pageImages.push({ mimeType: image.mimeType, length: image.data.length });
+        const n = stats.pageImages.length;
+        const questions = [
+          { no: 1, subtest: 'TWK', topic: 'Pancasila', difficulty: 'mudah', stem: `Sila keempat Pancasila berbunyi … (halaman ${n})`, options: LABELS.map((label) => ({ label, text: `Bunyi sila ${label}` })), answer: 'D', answerFromPage: true, explanation: 'Sila keempat tentang kerakyatan.' },
+          { no: 2, subtest: 'TIU', topic: 'Aritmetika', difficulty: 'sedang', stem: `Hasil dari 12 × 3 adalah … (halaman ${n})`, options: ['30', '33', '36', '39', '42'].map((text, i) => ({ label: LABELS[i], text })), answer: 'C', answerFromPage: false, explanation: '12 × 3 = 36.' },
+          { no: 3, subtest: 'TIU', stem: 'Gambar manakah yang melanjutkan pola?', options: [], figure: true },
+        ];
+        return route.fulfill({
+          json: { candidates: [{ content: { parts: [{ text: JSON.stringify({ questions }) }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 1800, candidatesTokenCount: 700 } },
+        });
+      }
+      const prompt = body.contents[0].parts[0].text!;
       // "Uji koneksi" on the API Key page.
       if (prompt.startsWith('Balas tepat: {"ok": true}')) {
         return route.fulfill({ json: { candidates: [{ content: { parts: [{ text: '{"ok": true}' }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 } } });

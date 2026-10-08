@@ -2,7 +2,7 @@ import { SYSTEM_PROMPT } from '../domain/prompts';
 import { parseAiPassages, parseAiQuestions } from '../domain/schemas';
 import type { ApiKeyRecord, Question } from '../domain/types';
 import { complete, isModelUnavailable, ProviderError, suggestedReplacement } from '../providers';
-import type { ProviderConfig } from '../providers';
+import type { LlmImage, ProviderConfig } from '../providers';
 import { freshProviderConfig, providerConfig, refreshKeyModel, resolveKey } from './keys';
 import { limitsOf, markDayExhausted, QuotaExhaustedError, releaseRequest, reserveRequest } from './quota';
 
@@ -31,6 +31,8 @@ export async function openSession(keyId?: string, modelOverride?: string): Promi
 /** Rough input-token count used for the per-minute token limit. */
 const estimateTokens = (text: string) => Math.ceil(text.length / 3.5);
 const MAX_RATE_WAITS = 6;
+/** Upper bound on what one page image costs in input tokens at any provider (see domain/photoImport.ts). */
+const IMAGE_TOKENS = 1600;
 
 /** Switch to the newest stable model once per session when the provider says the current one is gone. */
 async function swapModel(s: ModelSession, errorMessage = ''): Promise<boolean> {
@@ -60,7 +62,7 @@ async function swapModel(s: ModelSession, errorMessage = ''): Promise<boolean> {
  */
 export async function callModel<T>(
   session: ModelSession,
-  req: { system: string; prompt: string },
+  req: { system: string; prompt: string; images?: LlmImage[] },
   parse: (text: string) => T,
   signal: AbortSignal,
   onUsage: (i: number, o: number) => Promise<void>,
@@ -70,14 +72,14 @@ export async function callModel<T>(
   let rateWaits = 0;
   // A limited daily quota makes every retry expensive: allow one retry instead of two.
   const maxAttempts = limitsOf(session.key).rpd ? 2 : 3;
-  const est = estimateTokens(req.system + req.prompt);
+  const est = estimateTokens(req.system + req.prompt) + (req.images?.length ?? 0) * IMAGE_TOKENS;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
     const model = session.cfg.model;
     // Throws QuotaExhaustedError when today's quota is used up; waits for the minute window otherwise.
     const slot = await reserveRequest(session.key, est, { signal, onWait: session.onWait });
     try {
-      const res = await complete(session.cfg, { system: req.system, prompt: req.prompt, signal });
+      const res = await complete(session.cfg, { system: req.system, prompt: req.prompt, images: req.images, signal });
       await onUsage(res.inputTokens, res.outputTokens);
       return parse(res.text);
     } catch (e) {

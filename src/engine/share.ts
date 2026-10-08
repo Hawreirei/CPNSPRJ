@@ -7,10 +7,12 @@ import { loadMath, validateQuestion } from '../domain/validators';
 import { hashText, uid } from '../lib/id';
 import { createBankSet } from './sets';
 
-export async function sharedSetOf(setId: string, opts: { includeNotes?: boolean } = {}): Promise<SharedSet> {
+/** The set as shared, and how many of its questions came from the learner's photos or PDFs. */
+export async function sharedSetOf(setId: string, opts: Parameters<typeof toShared>[3] = {}): Promise<{ shared: SharedSet; imported: number }> {
   const set = await db.sets.get(setId);
   if (!set) throw new Error('Set tidak ditemukan.');
-  return toShared(set.name, set.blueprint, await getSetQuestions(set), opts);
+  const questions = await getSetQuestions(set);
+  return { shared: toShared(set.name, set.blueprint, questions, opts), imported: questions.filter((q) => q.source === 'import').length };
 }
 
 const identity = (q: Pick<SharedQuestion, 'stem' | 'passage'>) => hashText((q.passage?.text ?? '') + q.stem);
