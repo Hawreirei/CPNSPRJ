@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { db, getSetQuestions } from '../db';
 import { SUBTESTS } from '../domain/types';
@@ -225,6 +225,7 @@ function GenerationPanel({ set }: { set: QSet }) {
       </div>
       <ProgressBar value={done} max={total} />
       {running && prog?.current.length ? <div className="muted text-xs">Sedang dibuat: {prog.current.join(' | ')}</div> : null}
+      {running && prog?.waitUntil && <WaitCountdown until={prog.waitUntil} reason={prog.waitReason} />}
       {prog?.log.length ? (
         <ul className="max-h-32 space-y-0.5 overflow-y-auto text-xs">
           {prog.log.map((l, i) => (
@@ -286,5 +287,20 @@ function ExportMenu({ set, questions }: { set: QSet; questions: Question[] }) {
         ))}
       </div>
     </details>
+  );
+}
+
+function WaitCountdown({ until, reason }: { until: number; reason?: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const left = Math.max(0, Math.ceil((until - now) / 1000));
+  if (!left) return null;
+  return (
+    <div className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+      Menunggu {left} detik ({reason ?? 'batas kuota'}) supaya tidak melewati batas API key. Proses berlanjut otomatis.
+    </div>
   );
 }

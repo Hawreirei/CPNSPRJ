@@ -1,16 +1,88 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { db } from '../db';
-import type { ProviderId } from '../domain/types';
-import { addKey, deleteKey, providerConfig, setDefaultKey } from '../engine/keys';
-import { complete, listModels, pickEfficientModel, PROVIDERS } from '../providers';
+import type { ApiKeyRecord, KeyLimits, ProviderId } from '../domain/types';
+import { addKey, deleteKey, providerConfig, refreshKeyModel, setDefaultKey } from '../engine/keys';
+import { clearQuotaBlock, defaultLimits, keyUsage, LIMIT_PRESETS, limitsOf, releaseRequest, reserveRequest } from '../engine/quota';
+import { complete, groupModels, listModels, pickRecommendedModel, PROVIDERS } from '../providers';
 import type { ProviderConfig } from '../providers';
 import { Badge, fmtDate } from '../components/ui';
 
 async function testConnection(cfg: ProviderConfig): Promise<string> {
   const t = Date.now();
-  const res = await complete(cfg, { system: 'Balas hanya dengan JSON.', prompt: 'Balas tepat: {"ok": true}', maxTokens: 2000 });
-  return `Berhasil (${((Date.now() - t) / 1000).toFixed(1)} dtk, ${res.inputTokens + res.outputTokens} token).`;
+  const res = await complete(cfg, { system: 'Balas hanya dengan JSON.', prompt: 'Balas tepat: {"ok": true}', maxTokens: 4000 });
+  return `Berhasil dengan ${cfg.model} (${((Date.now() - t) / 1000).toFixed(1)} dtk, ${res.inputTokens + res.outputTokens} token).`;
+}
+
+function ModelPicker({ value, onChange, models, suggestions, disabled }: { value: string; onChange: (m: string) => void; models: string[]; suggestions: string[]; disabled?: boolean }) {
+  const groups = groupModels(models);
+  if (groups.length) {
+    return (
+      <select className="input font-mono" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+        {!models.includes(value) && value && <option value={value}>{value} (tidak ada di daftar akun)</option>}
+        {groups.map((g) => (
+          <optgroup key={g.label} label={g.label}>
+            {g.ids.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+    );
+  }
+  return (
+    <>
+      <input className="input font-mono" list="model-suggestions" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} />
+      <datalist id="model-suggestions">
+        {suggestions.map((m) => (
+          <option key={m} value={m} />
+        ))}
+      </datalist>
+    </>
+  );
+}
+
+function LimitsEditor({ value, onChange }: { value: KeyLimits; onChange: (l: KeyLimits) => void }) {
+  const preset = LIMIT_PRESETS.find((p) => p.limits.rpm === value.rpm && p.limits.tpm === value.tpm && p.limits.rpd === value.rpd)?.id ?? 'custom';
+  const field = (k: keyof KeyLimits, labelText: string) => (
+    <label className="text-xs">
+      <span className="label">{labelText}</span>
+      <input
+        type="number"
+        min={0}
+        className="input w-28"
+        value={value[k]}
+        onChange={(e) => onChange({ ...value, [k]: Math.max(0, Number(e.target.value) || 0) })}
+      />
+    </label>
+  );
+  return (
+    <div className="space-y-2">
+      <select
+        className="input"
+        value={preset}
+        onChange={(e) => {
+          const p = LIMIT_PRESETS.find((x) => x.id === e.target.value);
+          if (p) onChange({ ...p.limits });
+        }}
+      >
+        {LIMIT_PRESETS.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
+        ))}
+        <option value="custom">Kustom</option>
+      </select>
+      <div className="flex flex-wrap gap-2">
+        {field('rpm', 'Request / menit')}
+        {field('tpm', 'Token input / menit')}
+        {field('rpd', 'Request / hari')}
+      </div>
+      <p className="muted text-xs">Isi sesuai halaman batas kuota di dasbor penyedia (0 = tanpa batas). Aplikasi tidak akan mengirim lebih dari batas ini.</p>
+    </div>
+  );
 }
 
 export default function ApiKeys() {
@@ -20,18 +92,37 @@ export default function ApiKeys() {
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
   const [model, setModel] = useState(PROVIDERS.gemini.defaultModel);
+  const [autoModel, setAutoModel] = useState(true);
+  const [limits, setLimits] = useState<KeyLimits>(defaultLimits('gemini'));
   const [models, setModels] = useState<string[]>([]);
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [rowStatus, setRowStatus] = useState<Record<string, string>>({});
   const info = PROVIDERS[provider];
-  const cfg: ProviderConfig = { provider, apiKey: apiKey.trim(), model, baseUrl: baseUrl.trim() || undefined };
+  const cfgFor = (m: string): ProviderConfig => ({ provider, apiKey: apiKey.trim(), model: m, baseUrl: baseUrl.trim() || undefined });
+  const ready = !!apiKey.trim() && (!info.needsBaseUrl || !!baseUrl.trim());
 
   function changeProvider(p: ProviderId) {
     setProvider(p);
     setModel(PROVIDERS[p].defaultModel);
+    setLimits(defaultLimits(p));
     setModels([]);
     setStatus(null);
+  }
+
+  /** Read the account's models and select the newest stable recommended one. */
+  async function discover(): Promise<{ model: string; checked: boolean; note: string }> {
+    try {
+      const list = await listModels(cfgFor(model));
+      setModels(list);
+      const pick = pickRecommendedModel(list);
+      if (pick) {
+        setModel(pick);
+        return { model: pick, checked: true, note: `${list.length} model ditemukan; dipilih model stabil terbaru: ${pick}.` };
+      }
+      return { model, checked: true, note: `${list.length} model ditemukan, tetapi tidak ada yang dikenali sebagai model teks stabil. Pilih manual.` };
+    } catch (e) {
+      return { model, checked: false, note: `Daftar model tidak bisa dibaca (${(e as Error).message}). Memakai ${model}.` };
+    }
   }
 
   async function run(fn: () => Promise<void>) {
@@ -88,48 +179,68 @@ export default function ApiKeys() {
               <input className="input font-mono" placeholder="https://openrouter.ai/api/v1" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
             </div>
           )}
-          <div className="sm:col-span-2">
-            <label className="label">Model</label>
-            <div className="flex gap-2">
-              <input className="input font-mono" list="model-list" value={model} onChange={(e) => setModel(e.target.value)} />
-              <datalist id="model-list">
-                {[...new Set([...info.suggestedModels, ...models])].map((m) => (
-                  <option key={m} value={m} />
-                ))}
-              </datalist>
-              <button
-                className="btn shrink-0"
-                disabled={busy || !apiKey || (info.needsBaseUrl && !baseUrl)}
-                onClick={() =>
-                  run(async () => {
-                    const list = await listModels(cfg);
-                    setModels(list);
-                    const pick = pickEfficientModel(info, list);
-                    if (pick) setModel(pick);
-                    setStatus({ ok: true, msg: `${list.length} model ditemukan.${pick ? ` Dipilih model hemat: ${pick}.` : ''}` });
-                  })
-                }
-              >
-                Muat model
-              </button>
+          <div className="sm:col-span-2 space-y-2">
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-1" checked={autoModel} onChange={(e) => setAutoModel(e.target.checked)} />
+              <span>
+                <b>Pilih model terbaru yang stabil secara otomatis</b> (disarankan). Aplikasi membaca daftar model akun Anda, memilih versi stabil terbaru, mengecek
+                ulang tiap minggu, dan otomatis berpindah bila model dihentikan penyedia.
+              </span>
+            </label>
+            <div>
+              <label className="label">Model</label>
+              <div className="flex gap-2">
+                <ModelPicker value={model} onChange={setModel} models={models} suggestions={info.suggestedModels} />
+                <button
+                  className="btn shrink-0"
+                  disabled={busy || !ready}
+                  onClick={() =>
+                    run(async () => {
+                      const r = await discover();
+                      setStatus({ ok: r.checked, msg: r.note });
+                    })
+                  }
+                >
+                  Muat model
+                </button>
+              </div>
+              <p className="muted mt-1 text-xs">
+                {autoModel
+                  ? 'Model di atas akan diganti otomatis dengan model stabil terbaru saat key disimpan. Anda tetap bisa memilih manual dengan mematikan opsi otomatis.'
+                  : 'Mode manual: model tetap seperti pilihan Anda. Model "preview" bisa berubah atau dihentikan tanpa pemberitahuan.'}
+              </p>
             </div>
-            <p className="muted mt-1 text-xs">Default memakai model yang hemat biaya. Klik "Muat model" untuk memilih otomatis dari daftar model akun Anda.</p>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="label">Batas kuota key ini</label>
+            <LimitsEditor value={limits} onChange={setLimits} />
           </div>
         </div>
         {status && <p className={`text-sm ${status.ok ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{status.msg}</p>}
         <div className="flex gap-2">
-          <button className="btn" disabled={busy || !apiKey || !model} onClick={() => run(async () => setStatus({ ok: true, msg: await testConnection(cfg) }))}>
-            Uji koneksi
+          <button
+            className="btn"
+            disabled={busy || !ready || !model}
+            onClick={() =>
+              run(async () => {
+                const r = autoModel ? await discover() : { model, note: '' };
+                setStatus({ ok: true, msg: `${r.note ? r.note + ' ' : ''}${await testConnection(cfgFor(r.model))}` });
+              })
+            }
+          >
+            Uji koneksi (1 request)
           </button>
           <button
             className="btn btn-primary"
-            disabled={busy || !apiKey || !model || (info.needsBaseUrl && !baseUrl)}
+            disabled={busy || !ready || (!model && !autoModel)}
             onClick={() =>
               run(async () => {
-                await addKey({ provider, label: label || info.name, apiKey, model, baseUrl });
+                const r = autoModel ? await discover() : { model, checked: false, note: '' };
+                if (!r.model) throw new Error('Pilih model terlebih dahulu.');
+                await addKey({ provider, label: label || info.name, apiKey, model: r.model, baseUrl, autoModel, modelCheckedAt: r.checked ? Date.now() : undefined, limits });
                 setApiKey('');
                 setLabel('');
-                setStatus({ ok: true, msg: 'Key disimpan (terenkripsi).' });
+                setStatus({ ok: true, msg: `Key disimpan (terenkripsi) dengan model ${r.model}.${r.note ? ' ' + r.note : ''}` });
               })
             }
           >
@@ -141,56 +252,7 @@ export default function ApiKeys() {
       <section className="space-y-2">
         <h2>Key tersimpan</h2>
         {!keys?.length && <p className="muted">Belum ada key.</p>}
-        {keys?.map((k) => (
-          <div key={k.id} className="card flex flex-wrap items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 font-medium">
-                {k.label} {k.isDefault && <Badge tone="blue">default</Badge>}
-              </div>
-              <div className="muted text-xs">
-                {PROVIDERS[k.provider].name} · ditambahkan {fmtDate(k.createdAt)}
-                {k.baseUrl && ` · ${k.baseUrl}`}
-              </div>
-              {rowStatus[k.id] && <div className="mt-1 text-xs">{rowStatus[k.id]}</div>}
-            </div>
-            <input
-              className="input w-52 font-mono text-xs"
-              list={`models-${k.id}`}
-              defaultValue={k.model}
-              onBlur={(e) => e.target.value.trim() && db.keys.update(k.id, { model: e.target.value.trim() })}
-              aria-label="Model"
-            />
-            <datalist id={`models-${k.id}`}>
-              {PROVIDERS[k.provider].suggestedModels.map((m) => (
-                <option key={m} value={m} />
-              ))}
-            </datalist>
-            <div className="flex gap-1">
-              {!k.isDefault && (
-                <button className="btn btn-sm" onClick={() => setDefaultKey(k.id)}>
-                  Jadikan default
-                </button>
-              )}
-              <button
-                className="btn btn-sm"
-                onClick={async () => {
-                  setRowStatus((s) => ({ ...s, [k.id]: 'Menguji…' }));
-                  try {
-                    const msg = await testConnection(await providerConfig(k.id));
-                    setRowStatus((s) => ({ ...s, [k.id]: msg }));
-                  } catch (e) {
-                    setRowStatus((s) => ({ ...s, [k.id]: `Gagal: ${(e as Error).message}` }));
-                  }
-                }}
-              >
-                Uji
-              </button>
-              <button className="btn btn-sm btn-danger" onClick={() => confirm(`Hapus key "${k.label}"?`) && deleteKey(k.id)}>
-                Hapus
-              </button>
-            </div>
-          </div>
-        ))}
+        {keys?.map((k) => <KeyRow key={k.id} k={k} />)}
       </section>
 
       <section className="card text-sm">
@@ -202,6 +264,128 @@ export default function ApiKeys() {
           <li>Sebaiknya buat key khusus untuk aplikasi ini dan pasang batas pengeluaran di dasbor penyedia.</li>
         </ul>
       </section>
+    </div>
+  );
+}
+
+function KeyRow({ k }: { k: ApiKeyRecord }) {
+  const [msg, setMsg] = useState<string | null>(null);
+  const [models, setModels] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [editLimits, setEditLimits] = useState(false);
+  const auto = k.autoModel !== false;
+  const usage = useLiveQuery(() => keyUsage(k), [k]);
+  const limits = limitsOf(k);
+
+  async function act(fn: () => Promise<string>) {
+    setBusy(true);
+    try {
+      setMsg(await fn());
+    } catch (e) {
+      setMsg(`Gagal: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card space-y-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 font-medium">
+            {k.label} {k.isDefault && <Badge tone="blue">default</Badge>}
+          </div>
+          <div className="muted text-xs">
+            {PROVIDERS[k.provider].name} · ditambahkan {fmtDate(k.createdAt)}
+            {k.baseUrl && ` · ${k.baseUrl}`}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {!k.isDefault && (
+            <button className="btn btn-sm" onClick={() => setDefaultKey(k.id)}>
+              Jadikan default
+            </button>
+          )}
+          <button
+            className="btn btn-sm"
+            disabled={busy}
+            title="Memakai 1 request dari kuota"
+            onClick={() =>
+              act(async () => {
+                const slot = await reserveRequest(k, 200);
+                try {
+                  return await testConnection(await providerConfig(k.id));
+                } catch (e) {
+                  await releaseRequest(slot);
+                  throw e;
+                }
+              })
+            }
+          >
+            Uji
+          </button>
+          <button className="btn btn-sm btn-danger" onClick={() => confirm(`Hapus key "${k.label}"?`) && deleteKey(k.id)}>
+            Hapus
+          </button>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="muted text-xs">Model:</span>
+        {auto ? (
+          <span className="font-mono text-xs">{k.model}</span>
+        ) : (
+          <div className="w-72">
+            <ModelPicker value={k.model} models={models} suggestions={PROVIDERS[k.provider].suggestedModels} onChange={(m) => m.trim() && db.keys.update(k.id, { model: m.trim() })} />
+          </div>
+        )}
+        {auto && <Badge tone="green">otomatis</Badge>}
+        {k.modelCheckedAt && <span className="muted text-xs">dicek {fmtDate(k.modelCheckedAt)}</span>}
+        <button
+          className="btn btn-sm"
+          disabled={busy}
+          onClick={() =>
+            act(async () => {
+              if (!auto) {
+                const list = await listModels(await providerConfig(k.id));
+                setModels(list);
+                return `${list.length} model dimuat. Pilih dari daftar.`;
+              }
+              const r = await refreshKeyModel(k.id);
+              return r.changed ? `Model diperbarui ke ${r.model}.` : `Sudah memakai model stabil terbaru (${r.model}).`;
+            })
+          }
+        >
+          {auto ? 'Perbarui model' : 'Muat daftar model'}
+        </button>
+        <label className="ml-auto flex items-center gap-1 text-xs">
+          <input type="checkbox" checked={auto} onChange={(e) => db.keys.update(k.id, { autoModel: e.target.checked })} />
+          otomatis
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="muted">Kuota:</span>
+        {usage && limits.rpd ? (
+          <Badge tone={usage.remainingToday === 0 || usage.blockedUntil ? 'red' : usage.remainingToday! <= 5 ? 'amber' : 'green'}>
+            hari ini {usage.today}/{limits.rpd} request
+          </Badge>
+        ) : (
+          <Badge>tanpa batas harian</Badge>
+        )}
+        {limits.rpm > 0 && <span className="muted">maks {limits.rpm}/menit</span>}
+        {usage && limits.rpd > 0 && (
+          <span className="muted">reset {new Date(usage.blockedUntil ?? usage.resetAt).toLocaleString('id-ID', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+        )}
+        {usage?.blockedUntil && (
+          <button className="btn btn-sm" onClick={() => clearQuotaBlock(k.id)} title="Gunakan bila kuota sudah ditambah atau dicatat keliru">
+            Buka blokir
+          </button>
+        )}
+        <button className="btn btn-ghost btn-sm" onClick={() => setEditLimits((v) => !v)}>
+          {editLimits ? 'Tutup' : 'Ubah batas'}
+        </button>
+      </div>
+      {editLimits && <LimitsEditor value={limits} onChange={(l) => db.keys.update(k.id, { limits: l })} />}
+      {msg && <div className="text-xs">{msg}</div>}
     </div>
   );
 }

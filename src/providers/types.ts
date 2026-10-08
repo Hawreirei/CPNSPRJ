@@ -20,23 +20,33 @@ export interface LlmResponse {
   outputTokens: number;
 }
 
+/** Which rate-limit window a 429 refers to: wait it out (minute) or stop for the day. */
+export type QuotaScope = 'minute' | 'day';
+
 export class ProviderError extends Error {
   status?: number;
   retryable: boolean;
-  constructor(message: string, opts: { status?: number; retryable?: boolean } = {}) {
+  /** Server-suggested wait before retrying (Retry-After header or Gemini RetryInfo). */
+  retryAfterMs?: number;
+  quotaScope?: QuotaScope;
+  constructor(message: string, opts: { status?: number; retryable?: boolean; retryAfterMs?: number; quotaScope?: QuotaScope } = {}) {
     super(message);
     this.name = 'ProviderError';
     this.status = opts.status;
     this.retryable = opts.retryable ?? false;
+    this.retryAfterMs = opts.retryAfterMs;
+    this.quotaScope = opts.quotaScope;
   }
 }
 
 export interface ProviderInfo {
   name: string;
+  /**
+   * Used only until the account's model list is read. Prefer moving aliases or
+   * current-generation IDs; the app re-picks from the live list on save.
+   */
   defaultModel: string;
   suggestedModels: string[];
-  /** Regexes tried in order to auto-pick an efficient model from the provider's model list. */
-  preferred: RegExp[];
   keyUrl: string;
   keyHint: string;
   needsBaseUrl?: boolean;
@@ -45,25 +55,23 @@ export interface ProviderInfo {
 export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   gemini: {
     name: 'Google Gemini',
-    defaultModel: 'gemini-2.5-flash',
-    suggestedModels: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'],
-    preferred: [/^gemini-[\d.]+-flash$/, /flash(?!.*(lite|image|tts|live|audio))/, /flash/],
+    // Google's alias that always points to the current Flash model.
+    defaultModel: 'gemini-flash-latest',
+    suggestedModels: ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest'],
     keyUrl: 'https://aistudio.google.com/app/apikey',
     keyHint: 'AIza…',
   },
   openai: {
     name: 'OpenAI',
-    defaultModel: 'gpt-5-mini',
-    suggestedModels: ['gpt-5-mini', 'gpt-5-nano', 'gpt-4.1-mini'],
-    preferred: [/^gpt-[\d.]+-mini$/, /^gpt-.*mini$/, /^gpt-4o-mini$/],
+    defaultModel: 'gpt-5.4-mini',
+    suggestedModels: ['gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-5.5'],
     keyUrl: 'https://platform.openai.com/api-keys',
     keyHint: 'sk-…',
   },
   anthropic: {
     name: 'Anthropic Claude',
-    defaultModel: 'claude-haiku-4-5',
-    suggestedModels: ['claude-haiku-4-5', 'claude-sonnet-5-5', 'claude-opus-5-5'],
-    preferred: [/^claude-haiku/, /^claude-sonnet/],
+    defaultModel: 'claude-sonnet-5-5',
+    suggestedModels: ['claude-sonnet-5-5', 'claude-haiku-4-5', 'claude-opus-5-5'],
     keyUrl: 'https://console.anthropic.com/settings/keys',
     keyHint: 'sk-ant-…',
   },
@@ -71,7 +79,6 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     name: 'OpenAI-compatible',
     defaultModel: '',
     suggestedModels: [],
-    preferred: [/flash/, /mini/, /haiku/, /small/],
     keyUrl: 'https://openrouter.ai/keys',
     keyHint: 'kunci dari penyedia Anda',
     needsBaseUrl: true,
@@ -80,22 +87,11 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
 
 /** Estimated USD per 1M tokens. Editable in Settings because prices change. */
 export const DEFAULT_PRICES: Record<string, { input: number; output: number }> = {
-  'gemini-2.5-flash': { input: 0.3, output: 2.5 },
-  'gemini-2.5-flash-lite': { input: 0.1, output: 0.4 },
-  'gemini-2.5-pro': { input: 1.25, output: 10 },
-  'gpt-5-mini': { input: 0.25, output: 2 },
-  'gpt-5-nano': { input: 0.05, output: 0.4 },
-  'gpt-4.1-mini': { input: 0.4, output: 1.6 },
+  'gpt-5.4-mini': { input: 0.75, output: 4.5 },
+  'gpt-5.4-nano': { input: 0.2, output: 1.25 },
+  'gpt-5.5': { input: 5, output: 30 },
   'claude-haiku-4-5': { input: 1, output: 5 },
   'claude-sonnet-5-5': { input: 2, output: 10 },
   'claude-opus-5-5': { input: 4, output: 20 },
 };
 export const FALLBACK_PRICE = { input: 1, output: 4 };
-
-export function pickEfficientModel(provider: ProviderInfo, models: string[]): string | undefined {
-  for (const re of provider.preferred) {
-    const hit = models.filter((m) => re.test(m)).sort().reverse()[0];
-    if (hit) return hit;
-  }
-  return undefined;
-}

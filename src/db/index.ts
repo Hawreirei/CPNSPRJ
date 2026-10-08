@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
-import type { ApiKeyRecord, Attempt, QSet, Question, Settings } from '../domain/types';
+import type { ApiKeyRecord, Attempt, QSet, Question, RequestLog, Settings } from '../domain/types';
 
 interface MetaRow {
   key: string;
@@ -14,6 +14,7 @@ export class AppDB extends Dexie {
   attempts!: EntityTable<Attempt, 'id'>;
   keys!: EntityTable<ApiKeyRecord, 'id'>;
   meta!: EntityTable<MetaRow, 'key'>;
+  requests!: EntityTable<RequestLog, 'id'>;
 
   constructor() {
     super('cpns-skd-builder');
@@ -24,6 +25,8 @@ export class AppDB extends Dexie {
       keys: 'id, provider',
       meta: 'key',
     });
+    // v2: per-key request log for client-side rate limiting.
+    this.version(2).stores({ requests: '++id, keyId, at, [keyId+at]' });
   }
 }
 

@@ -14,7 +14,7 @@ async function completeGemini(cfg: ProviderConfig, req: LlmRequest): Promise<Llm
     {
       systemInstruction: { parts: [{ text: req.system }] },
       contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
-      generationConfig: { responseMimeType: 'application/json', temperature: 0.9, maxOutputTokens: req.maxTokens ?? 16000 },
+      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: req.maxTokens ?? 32768 },
     },
     { 'x-goog-api-key': cfg.apiKey },
     req.signal,
@@ -45,16 +45,21 @@ async function completeOpenAiLike(base: string, cfg: ProviderConfig, req: LlmReq
     ],
     response_format: { type: 'json_object' },
   };
-  if (isOpenAi) body.max_completion_tokens = req.maxTokens ?? 16000;
-  else body.max_tokens = req.maxTokens ?? 8000;
+  if (isOpenAi) {
+    body.max_completion_tokens = req.maxTokens ?? 32000;
+    // Reasoning models: keep hidden reasoning short so batches stay fast and cheap.
+    if (/^(gpt-5|o\d)/.test(cfg.model)) body.reasoning_effort = 'low';
+  } else body.max_tokens = req.maxTokens ?? 8000;
   const headers = { authorization: `Bearer ${cfg.apiKey}` };
   let data;
   try {
     data = await postJson(`${base}/chat/completions`, body, headers, req.signal);
   } catch (e) {
     // Some compatible servers reject response_format; retry once without it.
-    if (e instanceof ProviderError && e.status === 400 && !isOpenAi) {
-      delete body.response_format;
+    if (e instanceof ProviderError && e.status === 400 && (!isOpenAi || body.reasoning_effort)) {
+      // Retry once without optional parameters some models/servers reject.
+      delete body.reasoning_effort;
+      if (!isOpenAi) delete body.response_format;
       data = await postJson(`${base}/chat/completions`, body, headers, req.signal);
     } else throw e;
   }
@@ -105,5 +110,6 @@ export async function listModels(cfg: ProviderConfig): Promise<string[]> {
   }
 }
 
-export { PROVIDERS, DEFAULT_PRICES, FALLBACK_PRICE, pickEfficientModel, ProviderError } from './types';
+export { PROVIDERS, DEFAULT_PRICES, FALLBACK_PRICE, ProviderError } from './types';
+export { pickRecommendedModel, groupModels, isModelUnavailable } from './models';
 export type { ProviderConfig, LlmResponse } from './types';
