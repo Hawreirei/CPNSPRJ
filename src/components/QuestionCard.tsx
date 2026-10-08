@@ -57,6 +57,11 @@ export function QuestionCard({
           </span>
         )}
         {q.rating !== undefined && <Badge>nilai {q.rating}/5</Badge>}
+        {q.importedFrom && (
+          <span title={`Dari set bersama "${q.importedFrom.name}"`}>
+            <Badge tone="blue">dari berkas bersama</Badge>
+          </span>
+        )}
         {q.locked && <Badge tone="blue">🔒 terkunci</Badge>}
         {warn && showFlags && <Badge tone="amber">perlu dicek</Badge>}
         {showFlags && q.flags.some((f) => f.kind === 'cross-checked') && (

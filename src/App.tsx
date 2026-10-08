@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -15,6 +16,9 @@ import Help from './pages/Help';
 import PrintView from './pages/PrintView';
 import Practice from './pages/Practice';
 import Review from './pages/Review';
+
+// Rarely used, so kept out of the startup bundle.
+const ImportSet = lazy(() => import('./pages/ImportSet'));
 
 export default function App() {
   return (
@@ -36,6 +40,14 @@ export default function App() {
           <Route path="keys" element={<ApiKeys />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="help" element={<Help />} />
+          <Route
+            path="import"
+            element={
+              <Suspense fallback={null}>
+                <ImportSet />
+              </Suspense>
+            }
+          />
         </Route>
       </Routes>
     </HashRouter>

@@ -133,6 +133,8 @@ export interface Question {
   rating?: number;
   /** Notes the learner kept, e.g. a tutor's explanation. */
   notes?: QuestionNote[];
+  /** Came in a shared set from someone else: which set, and when it was imported. */
+  importedFrom?: { name: string; at: number };
   source: 'ai' | 'procedural' | 'manual';
   createdAt: number;
   updatedAt: number;

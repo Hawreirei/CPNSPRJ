@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { db, getSetQuestions, useSettings } from '../db';
 import { SUBTESTS } from '../domain/types';
@@ -10,6 +10,9 @@ import { moveInSet, removeFromSet } from '../engine/sets';
 import { QuestionCard, type CardMode } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
 import { FeedbackDialog } from '../components/FeedbackDialog';
+
+// Sharing (and its QR code library) loads only when someone shares.
+const ShareDialog = lazy(() => import('../components/ShareDialog'));
 import { answerStats } from '../domain/quality';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { DownloadDialog } from '../components/DownloadDialog';
@@ -30,6 +33,7 @@ export default function SetDetail() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const settings = useSettings();
   const [checking, setChecking] = useState(false);
   const [checkMsg, setCheckMsg] = useState<string | null>(null);
@@ -98,6 +102,9 @@ export default function SetDetail() {
         <div className="flex flex-wrap gap-2">
           <button className="btn btn-primary" disabled={!questions.length} onClick={() => setDownloading(true)}>
             ⬇ Unduh PDF / Word
+          </button>
+          <button className="btn" disabled={!questions.length || set.status === 'generating'} onClick={() => setSharing(true)}>
+            Bagikan
           </button>
           <Link className={`btn ${questions.length ? '' : 'pointer-events-none opacity-50'}`} to={`/simulation?set=${set.id}`}>
             Mulai latihan ujian
@@ -229,6 +236,11 @@ export default function SetDetail() {
       )}
       {editing && <QuestionEditor q={editing} onClose={() => setEditing(null)} />}
       {feedbackFor && <FeedbackDialog q={feedbackFor} onClose={() => setFeedbackFor(null)} />}
+      {sharing && (
+        <Suspense fallback={null}>
+          <ShareDialog setId={set.id} name={set.name} onClose={() => setSharing(false)} />
+        </Suspense>
+      )}
       {downloading && (
         <DownloadDialog open onClose={() => setDownloading(false)} meta={{ name: set.name, durationMinutes: set.blueprint.durationMinutes }} questions={questions} />
       )}
