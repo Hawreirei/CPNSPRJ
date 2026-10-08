@@ -27,6 +27,9 @@ export const TOPICS: Record<Subtest, string[]> = {
     'Penalaran Analitis',
     'Deret Figural',
     'Analogi Figural',
+    'Matriks Figural',
+    'Transformasi Figural',
+    'Figural Berbeda',
   ],
   TKP: [
     'Pelayanan Publik',
@@ -43,7 +46,7 @@ export const TOPICS: Record<Subtest, string[]> = {
 };
 
 /** Topics generated in-app (no AI cost, always verifiable). */
-export const PROCEDURAL_TOPICS = new Set(['Deret Figural', 'Analogi Figural']);
+export const PROCEDURAL_TOPICS = new Set(['Deret Figural', 'Analogi Figural', 'Matriks Figural', 'Transformasi Figural', 'Figural Berbeda']);
 /** Topics whose answers are checked with mathjs. */
 export const NUMERIC_TOPICS = new Set(['Aritmetika', 'Deret Angka', 'Soal Cerita', 'Perbandingan Kuantitatif']);
 

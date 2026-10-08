@@ -17,7 +17,11 @@ export interface FigureCell {
   count: number; // 1-4 copies of the shape
 }
 export interface Figure {
-  layout: 'series' | 'analogy';
+  /**
+   * series: a row of steps; analogy: a : b :: c : ?; matrix: 3×3, row by row; transform: a figure
+   * and its rotated or mirrored result; odd-one-out: no stem figure, the five options are the puzzle.
+   */
+  layout: 'series' | 'analogy' | 'matrix' | 'transform' | 'odd-one-out';
   /** `null` marks the "?" cell. */
   cells: (FigureCell | null)[];
 }

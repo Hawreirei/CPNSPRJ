@@ -4,7 +4,7 @@ import { SUBTEST_NAMES } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
 import type { Question } from '../domain/types';
 import { toPlain } from '../components/RichText';
-import { cellSvg, figureSvg, svgToPng } from './figureSvg';
+import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
 import { hasStudentHeader, keyText, PACK_TITLES, type ExportMeta, type PackKind } from './exportDocx';
 
 function toBase64(bytes: Uint8Array): string {
@@ -38,7 +38,7 @@ export async function exportPdf(meta: ExportMeta, questions: Question[], pack: P
 
   async function questionBlock(q: Question, n: number, withKey: boolean): Promise<Content> {
     const parts: Content[] = [{ text: [{ text: `${n}. `, bold: true }, toPlain(q.stem)], margin: [0, 8, 0, 4] }];
-    if (q.figure) parts.push(await image(figureSvg(q.figure, 72, '#111')));
+    if (hasStemFigure(q.figure)) parts.push(await image(figureSvg(q.figure, 72, '#111')));
     for (const o of q.options) {
       const isKey = withKey && (q.subtest === 'TKP' ? o.score === 5 : o.label === q.answer);
       const body: Content = o.figure ? await image(cellSvg(o.figure, 56, '#111')) : { text: toPlain(o.text), bold: isKey };

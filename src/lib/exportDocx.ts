@@ -3,7 +3,7 @@ import { SUBTEST_NAMES } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
 import type { Question } from '../domain/types';
 import { toPlain } from '../components/RichText';
-import { cellSvg, figureSvg, svgToPng } from './figureSvg';
+import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
 
 export type PackKind = 'soal' | 'soal-kunci' | 'lengkap' | 'kunci' | 'pembahasan';
 
@@ -77,7 +77,7 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
   async function questionBlock(q: Question, n: number, withKey: boolean): Promise<Child[]> {
     const out: Child[] = [];
     out.push(new Paragraph({ spacing: { before: 200 }, keepNext: true, children: [new TextRun({ text: `${n}. `, bold: true }), ...text(q.stem)] }));
-    if (q.figure) out.push(new Paragraph({ keepNext: true, children: [await image(figureSvg(q.figure, 72, '#111'))] }));
+    if (hasStemFigure(q.figure)) out.push(new Paragraph({ keepNext: true, children: [await image(figureSvg(q.figure, 72, '#111'))] }));
     for (const o of q.options) {
       const runs = o.figure ? [await image(cellSvg(o.figure, 56, '#111'))] : text(o.text);
       const suffix = withKey && q.subtest === 'TKP' ? [new TextRun({ text: `  (skor ${o.score})`, italics: true, color: '555555' })] : [];

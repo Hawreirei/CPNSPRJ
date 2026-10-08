@@ -56,23 +56,41 @@ export function cellSvg(cell: FigureCell | null, size = 96, color = 'currentColo
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${pattern}${frame}${shapes}</svg>`;
 }
 
-/** Whole stem figure as one SVG (cells side by side, "::" separator for analogies). */
+const inner = (svg: string) => svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
+
+/** Whole stem figure as one SVG: cells in a row ("::" between analogy pairs, "→" for a transform), or a 3×3 grid. */
 export function figureSvg(fig: Figure, cellSize = 96, color = 'currentColor'): string {
   const gap = 16;
   const parts: string[] = [];
+  if (fig.layout === 'matrix') {
+    const g = 8;
+    fig.cells.forEach((c, i) => {
+      const x = (i % 3) * (cellSize + g);
+      const y = Math.floor(i / 3) * (cellSize + g);
+      parts.push(`<g transform="translate(${x} ${y})">${inner(cellSvg(c, cellSize, color))}</g>`);
+    });
+    const side = 3 * cellSize + 2 * g;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 ${side} ${side}">${parts.join('')}</svg>`;
+  }
   let x = 0;
   fig.cells.forEach((c, i) => {
     if (fig.layout === 'analogy' && i === 2) {
       parts.push(`<text x="${x + 6}" y="${cellSize / 2 + 8}" font-size="24" font-family="sans-serif" fill="${color}">::</text>`);
       x += 28;
     }
-    const inner = cellSvg(c, cellSize, color).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
-    parts.push(`<g transform="translate(${x} 0)">${inner}</g>`);
+    if (fig.layout === 'transform' && i === 1) {
+      parts.push(`<text x="${x + 4}" y="${cellSize / 2 + 9}" font-size="28" font-family="sans-serif" fill="${color}">→</text>`);
+      x += 36;
+    }
+    parts.push(`<g transform="translate(${x} 0)">${inner(cellSvg(c, cellSize, color))}</g>`);
     x += cellSize + gap;
   });
   const width = x - gap;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${cellSize}" viewBox="0 0 ${width} ${cellSize}">${parts.join('')}</svg>`;
 }
+
+/** Whether a question has a figure in its stem (odd-one-out puzzles show theirs in the options only). */
+export const hasStemFigure = (fig: Figure | undefined): fig is Figure => !!fig && fig.cells.length > 0;
 
 /** Rasterise an SVG string to PNG bytes (browser only). */
 export async function svgToPng(svg: string, scale = 2): Promise<{ data: Uint8Array; width: number; height: number }> {
