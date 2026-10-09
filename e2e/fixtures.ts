@@ -135,6 +135,18 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
           { no: 1, subtest: 'TWK', topic: 'Pancasila', difficulty: 'mudah', stem: `Sila keempat Pancasila berbunyi … (halaman ${n})`, options: LABELS.map((label) => ({ label, text: `Bunyi sila ${label}` })), answer: 'D', answerFromPage: true, explanation: 'Sila keempat tentang kerakyatan.' },
           { no: 2, subtest: 'TIU', topic: 'Aritmetika', difficulty: 'sedang', stem: `Hasil dari 12 × 3 adalah … (halaman ${n})`, options: ['30', '33', '36', '39', '42'].map((text, i) => ({ label: LABELS[i], text })), answer: 'C', answerFromPage: false, explanation: '12 × 3 = 36.' },
           { no: 3, subtest: 'TIU', stem: 'Gambar manakah yang melanjutkan pola?', options: [], figure: true },
+          {
+            no: 4,
+            subtest: 'TIU',
+            topic: 'Aritmetika',
+            difficulty: 'sedang',
+            stem: `Berdasarkan grafik di atas, penjualan tertinggi terjadi pada tahun … (halaman ${n})`,
+            options: ['2020', '2021', '2022', '2023', '2024'].map((text, i) => ({ label: LABELS[i], text })),
+            answer: 'C',
+            answerFromPage: true,
+            explanation: 'Batang tertinggi ada pada tahun 2022.',
+            figure: true,
+          },
         ];
         return route.fulfill({
           json: { candidates: [{ content: { parts: [{ text: JSON.stringify({ questions }) }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 1800, candidatesTokenCount: 700 } },

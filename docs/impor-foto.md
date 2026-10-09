@@ -33,7 +33,23 @@ Keluaran diperkirakan paling banyak 5000 token per halaman.
 
 **Penyedia yang tidak bisa membaca gambar** tidak ditebak dari nama model. Bila request bergambar ditolak (400, 415, atau 422), pesannya menjadi "Model … tampaknya tidak bisa membaca gambar", disertai pesan asli penyedia.
 
-**Gambar tidak disimpan.** Gambar hanya hidup selama halaman impor terbuka (object URL dilepas saat halaman ditutup). Yang disimpan hanya teks soal. Menyimpan gambar sebagai gambar soal belum ditawarkan.
+**Gambar halaman tidak disimpan.** Gambar halaman hanya ada selama halaman impor terbuka; object URL-nya dilepas saat halaman ditutup. Yang disimpan hanyalah teks soal, ditambah gambar soal yang dipotong pengguna sendiri (lihat bagian di bawah).
+
+## Gambar soal (#49)
+
+Soal yang memakai grafik, diagram, atau tabel bergambar tidak lagi dilewati, **bila opsinya berupa teks**. Soal seperti itu menjadi draf bertanda "Soal ini memakai gambar di halaman", dan tidak bisa disimpan sebelum diberi gambar atau dihapus. Soal yang opsinya berupa gambar tetap dilewati.
+
+- **Memotong:** pengguna menyeret kotak di atas gambar halaman asli, atau memilih "Seluruh halaman" bila tidak memakai mouse atau layar sentuh. Lalu pengguna memilih soal tujuan dan mengisi keterangan gambar (teks alternatif). Model tidak pernah memotong gambar.
+- **Bentuk simpanan:** potongan disimpan sebagai data URL JPEG di soal (`Question.image`):
+  - sisi terpanjang paling banyak 1000 px;
+  - mutu diturunkan bertahap sampai ukurannya paling besar ±300 KB;
+  - hanya `data:image/jpeg` atau `data:image/png` yang diterima (`isImageSrc`), juga saat mengimpor set bersama, jadi tidak ada gambar yang dimuat dari tempat lain.
+
+  Dengan menyimpannya di soal, tidak perlu tabel terpisah, dan gambar otomatis ikut cadangan.
+- **Tampil di:** ujian, latihan, Bank Soal, Buku Kesalahan, cetak, PDF, dan Word (dengan teks alternatifnya).
+- **Tanya AI:** gambar tidak dikirim ke tutor. Tutor hanya diberi tahu bahwa ada gambar dan apa keterangannya, supaya tidak menebak isinya.
+- **Penyimpanan:** Pengaturan → Penyimpanan menunjukkan berapa soal bergambar dan berapa ruang yang dipakainya.
+- **Berbagi:** gambar mengikuti aturan berbagi soal hasil impor, yaitu hanya ikut bila pengguna memilih menyertakan soal hasil impor.
 
 ## Penanganan hasil
 

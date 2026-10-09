@@ -1,15 +1,25 @@
 import { useMemo } from 'react';
 import { fmtNum } from '../domain/describe';
+import { isImageSrc } from '../domain/questionImage';
 import type { DataFigure, Question } from '../domain/types';
 import { dataChartSvg } from '../lib/dataSvg';
 import { FigureView } from './FigureView';
 
 /** Whatever a question shows above its options: a figural figure, a table, or a chart. */
-export function StemMedia({ q }: { q: Pick<Question, 'figure' | 'data'> }) {
+export function StemMedia({ q }: { q: Pick<Question, 'figure' | 'data' | 'image'> }) {
   return (
     <>
       {q.figure && <FigureView figure={q.figure} />}
       {q.data && <DataView data={q.data} />}
+      {q.image && isImageSrc(q.image.src) && (
+        <img
+          src={q.image.src}
+          alt={q.image.alt}
+          width={q.image.width}
+          height={q.image.height}
+          className="my-3 h-auto max-h-96 w-auto max-w-full rounded border border-slate-200 bg-white dark:border-slate-700"
+        />
+      )}
     </>
   );
 }

@@ -65,7 +65,7 @@ describe('reading a page of questions', () => {
     expect(r.drafts).toHaveLength(1);
     expect(r.skipped).toEqual([
       { no: 3, reason: 'opsinya hanya 3; perlu paling sedikit 4' },
-      { no: 4, reason: 'memakai gambar atau diagram; soal bergambar belum bisa diimpor, tambahkan sendiri bila perlu' },
+      { no: 4, reason: 'pilihan jawabannya berupa gambar; soal seperti ini belum bisa diimpor' },
       { no: 5, reason: 'terpotong atau tidak terbaca di halaman ini' },
       { no: 6, reason: 'teks soalnya tidak terbaca' },
     ]);

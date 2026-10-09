@@ -38,12 +38,12 @@ describe('storage status', () => {
 
     it('reads a fake estimate and the persisted flag', async () => {
       vi.stubGlobal('navigator', { storage: { estimate: async () => ({ usage: 900, quota: 1000 }), persisted: async () => true } });
-      expect(await getStorageInfo()).toEqual({ status: { usage: 900, quota: 1000, ratio: 0.9, warn: true }, persisted: true });
+      expect(await getStorageInfo()).toEqual({ status: { usage: 900, quota: 1000, ratio: 0.9, warn: true }, persisted: true, images: { count: 0, bytes: 0 } });
     });
 
     it('copes with no Storage API at all', async () => {
       vi.stubGlobal('navigator', {});
-      expect(await getStorageInfo()).toEqual({ status: null, persisted: null });
+      expect(await getStorageInfo()).toEqual({ status: null, persisted: null, images: { count: 0, bytes: 0 } });
     });
   });
 

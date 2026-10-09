@@ -35,6 +35,11 @@ export function StorageCard() {
       ) : (
         <p className="muted text-sm">Browser ini tidak memberi tahu sisa ruang penyimpanan.</p>
       )}
+      {info && info.images.count > 0 && (
+        <p className="text-sm">
+          Gambar soal hasil impor: {info.images.count} soal, ± {fmtBytes(info.images.bytes)}. Gambar ikut cadangan, jadi berkas cadangan ikut membesar.
+        </p>
+      )}
       {info && info.persisted !== null && (
         <p className="muted text-sm">
           {info.persisted
