@@ -1,5 +1,4 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, keyAndSet, test } from './fixtures';
+import { expect, keyAndSet, seriousViolations, test } from './fixtures';
 
 test('the tutor explains a question, its answer can be kept as a note, and a doubtful key leads to a report', async ({ page, gemini }) => {
   const setUrl = await keyAndSet(page);
@@ -16,8 +15,7 @@ test('the tutor explains a question, its answer can be kept as a note, and a dou
   await page.getByRole('button', { name: 'Tanya AI' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText(/^1 permintaan AI dengan .*, sekitar/)).toBeVisible();
-  const r = await new AxeBuilder({ page }).include('dialog').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  expect(r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)).toEqual([]);
+  expect(await seriousViolations(page, 'dialog')).toEqual([]);
 
   // The wrong answer unlocks "why was mine wrong?"; the tutor sees the question and that answer, nothing else.
   await dialog.getByRole('button', { name: 'Mengapa jawaban saya (B) salah?' }).click();

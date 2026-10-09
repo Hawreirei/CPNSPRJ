@@ -1,11 +1,4 @@
-import AxeBuilder from '@axe-core/playwright';
-import type { Page } from '@playwright/test';
-import { expect, keyAndSet, test } from './fixtures';
-
-async function seriousViolations(page: Page) {
-  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  return r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id);
-}
+import { expect, keyAndSet, seriousViolations, test } from './fixtures';
 
 test('Kartu Hafalan TWK: learn Pancasila from the official text with the keyboard, on the notebook schedule', async ({ page }) => {
   await page.goto('#/');

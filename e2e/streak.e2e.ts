@@ -1,15 +1,8 @@
-import AxeBuilder from '@axe-core/playwright';
-import type { Page } from '@playwright/test';
-import { expect, keyAndSet, KEY, test } from './fixtures';
+import { expect, KEY, keyAndSet, seriousViolations, test } from './fixtures';
 
 // Friday 9 and Saturday 10 October 2026 in Jakarta (the suite's time zone). Timers keep running.
 const FRIDAY = new Date('2026-10-09T21:00:00+07:00');
 const SATURDAY = new Date('2026-10-10T08:00:00+07:00');
-
-async function seriousViolations(page: Page) {
-  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  return r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id);
-}
 
 test('studying two days in a row makes a streak of 2; badges are announced once; the feature can be switched off', async ({ page }) => {
   await page.clock.setFixedTime(FRIDAY);

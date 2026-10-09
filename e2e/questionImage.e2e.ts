@@ -1,8 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { crc32, deflateSync } from 'node:zlib';
-import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { addGeminiKey, expect, test } from './fixtures';
+import { addGeminiKey, expect, seriousViolations, test } from './fixtures';
 
 /** A page with a dark block where its "chart" is, so a cut picture has something in it. */
 function png(width: number, height: number): Buffer {
@@ -25,11 +24,6 @@ function png(width: number, height: number): Buffer {
     ]),
   );
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(Buffer.concat(rows))), chunk('IEND', Buffer.alloc(0))]);
-}
-
-async function seriousViolations(page: Page) {
-  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  return r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id);
 }
 
 /** Import a 600 × 850 page whose third question shows the chart; the review screen is left open. */

@@ -1,11 +1,5 @@
-import AxeBuilder from '@axe-core/playwright';
-import type { Browser, Page } from '@playwright/test';
-import { addGeminiKey, expect, test } from './fixtures';
-
-async function seriousViolations(page: Page) {
-  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  return r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id);
-}
+import type { Browser } from '@playwright/test';
+import { addGeminiKey, expect, seriousViolations, test } from './fixtures';
 
 /** A brand-new browser profile: nothing stored, nothing shared but what we hand over. */
 async function freshPage(browser: Browser) {

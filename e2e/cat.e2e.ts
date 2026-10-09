@@ -1,12 +1,5 @@
-import AxeBuilder from '@axe-core/playwright';
 import type { Locator, Page } from '@playwright/test';
-import { expect, keyAndSet, KEY, test } from './fixtures';
-
-async function seriousViolations(page: Page) {
-  await page.waitForFunction(() => document.getAnimations().every((a) => !(a instanceof CSSTransition) || a.playState !== 'running'));
-  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  return r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id);
-}
+import { expect, KEY, keyAndSet, seriousViolations, test } from './fixtures';
 
 async function tabTo(page: Page, target: Locator, max = 80) {
   for (let i = 0; i < max; i++) {

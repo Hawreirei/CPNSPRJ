@@ -1,5 +1,4 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, keyAndSet, test } from './fixtures';
+import { expect, keyAndSet, seriousViolations, test } from './fixtures';
 
 test('Kamus Rumus TIU: searchable, formulas typeset, and linked from TIU explanations', async ({ page }) => {
   await page.goto('#/');
@@ -21,8 +20,7 @@ test('Kamus Rumus TIU: searchable, formulas typeset, and linked from TIU explana
 
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
-    const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-    expect(r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)).toEqual([]);
+    expect(await seriousViolations(page), scheme).toEqual([]);
   }
   await page.emulateMedia({ colorScheme: 'light' });
 

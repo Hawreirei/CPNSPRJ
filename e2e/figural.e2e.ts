@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, seriousViolations, test } from './fixtures';
 
 const NEW_TOPICS = ['Matriks Figural', 'Transformasi Figural', 'Figural Berbeda'];
 
@@ -39,11 +38,7 @@ test('matrix, transform and odd-one-out figures are drawn by the app and work ev
   await expect(odd.locator('[role="img"][aria-label]')).toHaveCount(5);
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
-    const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-    expect(
-      r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id),
-      scheme,
-    ).toEqual([]);
+    expect(await seriousViolations(page), scheme).toEqual([]);
   }
 
   // Exports include the figures.

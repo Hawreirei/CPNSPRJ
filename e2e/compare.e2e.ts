@@ -1,6 +1,5 @@
-import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { expect, keyAndSet, KEY, test } from './fixtures';
+import { expect, KEY, keyAndSet, seriousViolations, test } from './fixtures';
 
 /** Questions in the open attempt, read straight from IndexedDB. */
 function attemptQuestionIds(page: Page) {
@@ -58,9 +57,7 @@ test('a second exam on a set shows what improved and what got worse, and practis
   await expect(card).toContainText(`Soal 3: jawaban ${wrong.toUpperCase()} → ${KEY}.`);
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
-    const r = await new AxeBuilder({ page }).include('#compare-title').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-    const all = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-    expect([...r.violations, ...all.violations].filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)).toEqual([]);
+    expect([...(await seriousViolations(page, '#compare-title')), ...(await seriousViolations(page))], scheme).toEqual([]);
   }
   await page.emulateMedia({ colorScheme: 'light' });
 

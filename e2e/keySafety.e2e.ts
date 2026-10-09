@@ -1,5 +1,4 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from './fixtures';
+import { expect, seriousViolations, test } from './fixtures';
 
 test('the API Key page warns that extensions can read keys and says how to limit a key at each provider', async ({ page }) => {
   await page.goto('#/keys');
@@ -22,8 +21,7 @@ test('the API Key page warns that extensions can read keys and says how to limit
   await page.getByRole('button', { name: 'Claude', exact: true }).click();
   await expect(page.getByText('Setelah membuat key, pasang batas pengeluaran bulanan')).toBeVisible();
 
-  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  expect(r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)).toEqual([]);
+  expect(await seriousViolations(page)).toEqual([]);
 
   await page.goto('#/help');
   await expect(page.getByText('Ekstensi browser yang diizinkan membaca halaman bisa melihat API key Anda')).toBeVisible();
