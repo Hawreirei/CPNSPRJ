@@ -45,7 +45,7 @@ describe('Kamus Rumus TIU (#47)', () => {
 describe('Kamus formulas are valid TeX', () => {
   it('every $...$ part renders with KaTeX without an error', async () => {
     const katex = (await import('katex')).default;
-    const { splitMath } = await import('../components/RichText');
+    const { splitMath } = await import('../lib/richText');
     for (const e of KAMUS_TIU) {
       for (const text of [e.formula, e.note ?? '', e.example.question, e.example.solution]) {
         for (const p of splitMath(text).filter((x) => x.math)) expect(() => katex.renderToString(p.text, { throwOnError: true }), `${e.id}: ${p.text}`).not.toThrow();

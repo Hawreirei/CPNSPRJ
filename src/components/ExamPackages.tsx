@@ -4,7 +4,7 @@ import { packageFile } from '../domain/packageFile';
 import type { Settings } from '../domain/types';
 import { deletePackage, importPackage } from '../engine/examPackages';
 import { errorText } from '../engine/storage';
-import { downloadBlob } from './ui';
+import { downloadBlob } from '../lib/download';
 
 const rule = (s: ExamPackage['subtests'][number]) => (s.scoring.kind === 'keyed' ? `benar ${s.scoring.correct}, salah 0` : `tiap opsi ${s.scoring.min}–${s.scoring.max}`);
 

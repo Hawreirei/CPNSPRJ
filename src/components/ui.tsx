@@ -96,15 +96,3 @@ export function ProgressBar({ value, max, tone = 'brand' }: { value: number; max
     </div>
   );
 }
-
-export function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
-
-export const fmtDate = (t: number) => new Date(t).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-export const fmtUsd = (n: number) => (n < 0.01 ? `< $0.01` : `$${n.toFixed(n < 1 ? 3 : 2)}`);

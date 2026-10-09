@@ -4,9 +4,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../db';
 import { createVariantSet, deleteSet } from '../engine/sets';
 import { startGeneration } from '../engine/generator';
-import { Empty, fmtDate } from '../components/ui';
+import { Empty } from '../components/ui';
 import { StatusBadge } from './Dashboard';
 import { subtestsIn } from '../domain/examPackage';
+import { fmtDate } from '../lib/format';
 
 const SOURCE_LABEL = { ai: 'AI', bank: 'dari bank', variant: 'varian', remedial: 'topik lemah' } as const;
 

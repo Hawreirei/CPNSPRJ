@@ -14,7 +14,8 @@ import { createAiSet, createBankSet, pickFromBank } from '../engine/sets';
 import { refreshStaleKeyModels } from '../engine/keys';
 import { keyUsage, limitsOf } from '../engine/quota';
 import { ModelSelect } from '../components/ModelSelect';
-import { fmtUsd, SubtestBadge } from '../components/ui';
+import { SubtestBadge } from '../components/ui';
+import { fmtUsd } from '../lib/format';
 
 const DIFFICULTIES: { id: DifficultyChoice; label: string; hint: string }[] = [
   { id: 'campuran', label: 'Campuran', hint: 'Mudah sampai sulit, seperti ujian asli (disarankan)' },
@@ -24,6 +25,9 @@ const DIFFICULTIES: { id: DifficultyChoice; label: string; hint: string }[] = [
 ];
 
 const fmtReset = (t: number) => new Date(t).toLocaleString('id-ID', { weekday: 'long', hour: '2-digit', minute: '2-digit' });
+
+/** Today's date for a set's default name, read when the set is created. */
+const today = () => new Date().toLocaleDateString('id-ID');
 
 export default function NewSet() {
   const settings = useSettings();
@@ -36,7 +40,7 @@ export default function NewSet() {
   const [difficulty, setDifficulty] = useState<DifficultyChoice>('campuran');
   const [bp, setBp] = useState<Blueprint>(() => buildPreset('mini', settings));
   const [name, setName] = useState('');
-  const [keyId, setKeyId] = useState<string>('');
+  const [pickedKeyId, setKeyId] = useState<string>('');
   /** Model for this set only; empty = follow the key's setting. */
   const [setModel, setSetModel] = useState<string>('');
   const [busy, setBusy] = useState(false);
@@ -51,17 +55,20 @@ export default function NewSet() {
   const presetFor = (id: PresetId, d: DifficultyChoice = difficulty, job = jobTitle) =>
     skd ? buildPreset(id, settings, d) : buildPackagePreset(pkg, id === 'full' ? 'full' : 'mini', d, job);
 
-  // Re-seed once real settings load from IndexedDB.
-  useEffect(() => setBp(presetFor(preset)), [settings]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Re-seed once real settings load from IndexedDB (adjusting state while rendering, not in an effect).
+  const [seededFor, setSeededFor] = useState(settings);
+  if (seededFor !== settings) {
+    setSeededFor(settings);
+    setBp(presetFor(preset));
+  }
 
   // Make sure every key's model list is available for the per-set picker (no quota used).
   useEffect(() => {
     void refreshStaleKeyModels();
   }, []);
 
-  useEffect(() => {
-    if (!keyId && keys?.length) setKeyId((keys.find((k) => k.isDefault) ?? keys[0]).id);
-  }, [keys, keyId]);
+  // Until the learner picks one, the default key.
+  const keyId = pickedKeyId || (keys?.find((k) => k.isDefault) ?? keys?.[0])?.id || '';
 
   const key = keys?.find((k) => k.id === keyId);
   const batches = useMemo(() => planBatches(bp, settings.questionsPerRequest), [bp, settings.questionsPerRequest]);
@@ -115,7 +122,7 @@ export default function NewSet() {
   }
 
   const defaultName = () => {
-    const date = new Date().toLocaleDateString('id-ID');
+    const date = today();
     return skd ? `${PRESETS.find((p) => p.id === preset)?.name ?? 'Set'} · ${date}` : `${pkg.name}${jobTitle.trim() ? ` · ${jobTitle.trim()}` : ''} · ${date}`;
   };
   const needsJob = !skd && pkg.subtests.some((x) => x.fromJobTitle) && bp.sections.some((x) => specOf(x.subtest).fromJobTitle);

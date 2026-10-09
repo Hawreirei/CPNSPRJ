@@ -338,7 +338,7 @@ function GenerationPanel({ set }: { set: QSet }) {
 }
 
 function WaitCountdown({ until }: { until: number }) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);

@@ -1,12 +1,12 @@
 import { getSettings } from '../db';
 import { fmtNum } from '../domain/describe';
 import type { DataFigure, Question } from '../domain/types';
-import { toPlain } from '../components/RichText';
 import { dataChartSvg } from './dataSvg';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
 import { isImageSrc, printSize } from '../domain/questionImage';
 import { isGraded, scoringRulesText, specOf, subtestsIn } from '../domain/examPackage';
+import { toPlain } from './richText';
 
 export type PackKind = 'soal' | 'soal-kunci' | 'lengkap' | 'kunci' | 'pembahasan';
 

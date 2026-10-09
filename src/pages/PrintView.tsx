@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { db, getSetQuestions, useSettings } from '../db';
 import { opensGroup, passageLabel } from '../domain/groups';
@@ -13,6 +13,8 @@ export default function PrintView() {
   const [params] = useSearchParams();
   const pack = (params.get('pack') as PackKind) || 'soal';
   const settings = useSettings();
+  // The date printed on the sheet: when the page was opened.
+  const [printedOn] = useState(() => new Date().toLocaleDateString('id-ID', { dateStyle: 'long' }));
   const data = useLiveQuery(async () => {
     const set = await db.sets.get(setId);
     return set ? { set, questions: await getSetQuestions(set) } : null;
@@ -96,7 +98,7 @@ export default function PrintView() {
           {PACK_TITLES[pack]}: {set.name}
         </h1>
         <div className="text-sm">
-          Tanggal: {new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })} · {questions.length} soal · {set.blueprint.durationMinutes} menit
+          Tanggal: {printedOn} · {questions.length} soal · {set.blueprint.durationMinutes} menit
         </div>
         {(pack === 'soal' || pack === 'lengkap') && <div className="mt-2 text-sm">Nama: ______________________________</div>}
       </header>

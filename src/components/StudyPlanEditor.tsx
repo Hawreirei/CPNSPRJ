@@ -3,10 +3,10 @@ import { SUBTESTS } from '../domain/types';
 import type { Settings, StudyPlan } from '../domain/types';
 import { DEFAULT_MINUTES_PER_DAY, DEFAULT_SIMULATION_DAY, parseLocalDate, targetFor, WEEKDAYS } from '../engine/studyPlan';
 import { buildIcs } from '../lib/ics';
-import { downloadBlob } from './ui';
 import { useState } from 'react';
 import { DEFAULT_REMINDER_TIME, parseTime } from '../domain/reminder';
 import { askPermission, markHandledToday, notificationsSupported } from '../lib/reminder';
+import { downloadBlob } from '../lib/download';
 
 /** Plan settings: every field optional; changes save immediately like the rest of Settings. */
 export function StudyPlanEditor({ settings }: { settings: Settings }) {

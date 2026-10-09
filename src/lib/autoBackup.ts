@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { exportBackup, getBackupState, markBackedUp, updateBackupState, type AutoBackupError } from '../db/backup';
-import { downloadBlob } from '../components/ui';
+import { downloadBlob } from './download';
 
 /**
  * Backups that keep themselves current.

@@ -1,6 +1,7 @@
 name: E2E tests
 
 # Separate from the Pages deploy so a slow or failing browser run never blocks publishing.
+# The fast checks run in their own job, so a type, lint or unit-test failure shows within a minute.
 on:
   pull_request:
   push:
@@ -15,6 +16,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      # oxlint --deny-warnings: a new warning fails the check.
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15

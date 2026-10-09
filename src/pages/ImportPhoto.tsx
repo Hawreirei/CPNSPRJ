@@ -12,7 +12,7 @@ import type { PdfPages } from '../lib/pdfPages';
 import { QuestionCard } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
 import { PictureCutter } from '../components/PictureCutter';
-import { fmtUsd } from '../components/ui';
+import { fmtUsd } from '../lib/format';
 
 interface Source {
   name: string;

@@ -6,7 +6,7 @@ export type ModelChoice = { kind: 'auto' } | { kind: 'inherit' } | { kind: 'mode
 const AUTO = '__auto__';
 const INHERIT = '__inherit__';
 
-export const modelLabel = (m: ModelInfo | undefined, id: string) => (m?.label && m.label !== id ? `${m.label} (${id})` : id);
+const modelLabel = (m: ModelInfo | undefined, id: string) => (m?.label && m.label !== id ? `${m.label} (${id})` : id);
 
 /**
  * Every model the key can call, grouped (recommended → cheap → strong → latest

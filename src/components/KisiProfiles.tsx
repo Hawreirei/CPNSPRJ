@@ -5,8 +5,9 @@ import { SUBTESTS } from '../domain/types';
 import type { KisiProfile, Settings, Subtest } from '../domain/types';
 import { activateProfile, deleteProfile, importProfile, saveProfile } from '../engine/kisi';
 import { uid } from '../lib/id';
-import { downloadBlob, Modal } from './ui';
+import { Modal } from './ui';
 import { errorText } from '../engine/storage';
+import { downloadBlob } from '../lib/download';
 
 /** Pick, share and edit the syllabus profile that decides the topics offered for new questions. */
 export function KisiProfiles({ settings }: { settings: Settings }) {

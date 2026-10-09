@@ -9,9 +9,10 @@ import { moreLikeThis } from '../engine/generator';
 import { addNote } from '../engine/notes';
 import { askTutor, tutorEstimate } from '../engine/tutor';
 import { RichText } from './RichText';
-import { fmtUsd, Modal } from './ui';
+import { Modal } from './ui';
 import { errorText } from '../engine/storage';
 import { logError } from '../lib/errorLog';
+import { fmtUsd } from '../lib/format';
 
 interface Turn extends TutorTurn {
   keyLooksWrong?: boolean;

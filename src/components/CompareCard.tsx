@@ -7,7 +7,8 @@ import type { Attempt, Question } from '../domain/types';
 import { fmtSec } from '../engine/analytics';
 import { startAttempt } from '../engine/attempts';
 import { errorText } from '../engine/storage';
-import { fmtDate, SubtestBadge } from './ui';
+import { SubtestBadge } from './ui';
+import { fmtDate } from '../lib/format';
 
 const GROUPS: { change: Change; title: string; tone: string }[] = [
   { change: 'worsened', title: 'Memburuk', tone: 'text-red-700 dark:text-red-300' },
