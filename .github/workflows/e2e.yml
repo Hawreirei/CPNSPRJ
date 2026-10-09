@@ -1,7 +1,7 @@
 name: E2E tests
 
 # Separate from the Pages deploy so a slow or failing browser run never blocks publishing.
-# The fast checks run in their own job, so a type, lint or unit-test failure shows within a minute.
+# The fast checks run in their own job, so a type, lint, format or unit-test failure shows within a minute.
 on:
   pull_request:
   push:
@@ -31,6 +31,9 @@ jobs:
       # oxlint --deny-warnings: a new warning fails the check.
       - name: Lint
         run: npm run lint
+      # Prettier with .prettierrc.json: an unformatted file fails the check.
+      - name: Format
+        run: npm run format:check
       - name: Unit tests
         run: npm test
 
