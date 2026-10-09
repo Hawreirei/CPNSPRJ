@@ -2,6 +2,10 @@
 
 Perubahan yang terasa bagi pengguna, per versi. Berkas ini dibuat dari `src/data/changelog.ts` dengan `npm run changelog`; jangan diedit langsung.
 
+## 1.1.0 (2026-10-09)
+
+- Kartu Hafalan TWK: dek baru Lembaga negara untuk MPR, DPR, DPD, BPK, Mahkamah Agung, Komisi Yudisial, dan Mahkamah Konstitusi. Jawabannya kutipan ayat UUD 1945 tentang kedudukan, tugas, dan wewenangnya, dan setiap kartu menyebut pasal serta ayatnya.
+
 ## 1.0.0 (2026-10-09)
 
 - Aplikasi kini punya nomor versi. Setelah pembaruan, Beranda menampilkan kartu "Apa yang baru" satu kali; riwayat lengkapnya ada di Bantuan.
