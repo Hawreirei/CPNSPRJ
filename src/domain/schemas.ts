@@ -6,7 +6,13 @@ import { isGraded, keyedScore } from './examPackage';
 
 const label = z
   .string()
-  .transform((s) => s.trim().toUpperCase().replace(/[^A-E]/g, '').slice(0, 1))
+  .transform((s) =>
+    s
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-E]/g, '')
+      .slice(0, 1),
+  )
   .pipe(z.enum(['A', 'B', 'C', 'D', 'E']));
 
 const aiOption = z.object({
@@ -27,7 +33,6 @@ const aiQuestion = z.object({
   confidence: z.string().optional().nullable(),
   mathExpression: z.string().optional().nullable(),
 });
-
 
 /** Pull the first JSON object out of a model reply (handles ```json fences and chatter). */
 export function extractJson(text: string): unknown {

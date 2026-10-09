@@ -70,18 +70,14 @@ export default function ScoreReport() {
     nav(`/sets/${set.id}`);
   }
 
-  const reviewList = questions
-    .map((q, i) => ({ q, i }))
-    .filter(({ q }) => review === 'all' || (review === 'wrong' && !isCorrect(q, a.answers[q.id])));
+  const reviewList = questions.map((q, i) => ({ q, i })).filter(({ q }) => review === 'all' || (review === 'wrong' && !isCorrect(q, a.answers[q.id])));
   const shownQuestions = reviewList.map((x) => x.q);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1>
-            Laporan Skor {practice && <Badge tone="blue">Latihan</Badge>}
-          </h1>
+          <h1>Laporan Skor {practice && <Badge tone="blue">Latihan</Badge>}</h1>
           <p className="muted mt-1">
             {a.setName} · {fmtDate(a.startedAt)} · durasi {fmtSec(durationMs)}
           </p>
@@ -102,7 +98,9 @@ export default function ScoreReport() {
         <div className="flex flex-wrap items-center gap-4">
           <div className="text-4xl font-bold">{r.total}</div>
           <div className="muted">dari {r.maxTotal}</div>
-          {!practice && r.passedAll !== undefined && <Badge tone={r.passedAll ? 'green' : 'red'}>{r.passedAll ? 'Memenuhi semua ambang batas' : 'Belum memenuhi ambang batas'}</Badge>}
+          {!practice && r.passedAll !== undefined && (
+            <Badge tone={r.passedAll ? 'green' : 'red'}>{r.passedAll ? 'Memenuhi semua ambang batas' : 'Belum memenuhi ambang batas'}</Badge>
+          )}
         </div>
         <p className="muted mt-2 text-xs">
           {practice
@@ -168,10 +166,7 @@ export default function ScoreReport() {
                 ))}
               </ul>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Link
-                  className="btn"
-                  to={`/simulation?set=${a.setId}&mode=practice&topics=${encodeURIComponent(weak.map((t) => t.topic).join('|'))}`}
-                >
+                <Link className="btn" to={`/simulation?set=${a.setId}&mode=practice&topics=${encodeURIComponent(weak.map((t) => t.topic).join('|'))}`}>
                   Latih ulang topik ini
                 </Link>
                 <button className="btn btn-primary" disabled={busy} onClick={remedial}>

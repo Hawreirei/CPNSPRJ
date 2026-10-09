@@ -50,7 +50,12 @@ describe('allowedRange', () => {
 describe('tab-away summary', () => {
   it('counts, totals and finds the longest', () => {
     expect(tabAwaySummary()).toEqual({ count: 0, totalMs: 0, longestMs: 0 });
-    expect(tabAwaySummary([{ at: 1, ms: 3000 }, { at: 9, ms: 12000 }])).toEqual({ count: 2, totalMs: 15000, longestMs: 12000 });
+    expect(
+      tabAwaySummary([
+        { at: 1, ms: 3000 },
+        { at: 9, ms: 12000 },
+      ]),
+    ).toEqual({ count: 2, totalMs: 15000, longestMs: 12000 });
   });
 });
 

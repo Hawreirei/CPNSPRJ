@@ -177,7 +177,13 @@ export default function TutorDialog({
           <label className="label" htmlFor="tutor-question">
             Pertanyaan Anda
           </label>
-          <textarea id="tutor-question" className="input min-h-20" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Misalnya: mengapa opsi C bukan jawabannya?" />
+          <textarea
+            id="tutor-question"
+            className="input min-h-20"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Misalnya: mengapa opsi C bukan jawabannya?"
+          />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="muted text-xs">
               {cost ? `1 permintaan AI dengan ${cost.label} (${cost.model}), sekitar ${fmtUsd(cost.usd)}.` : ''} Jawaban AI bisa keliru, terutama untuk TWK.

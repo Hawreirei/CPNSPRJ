@@ -24,7 +24,10 @@ function useRenderMath(needed: boolean): RenderMath | null {
     if (!needed || render) return;
     let live = true;
     // On failure the formula simply stays as its TeX source.
-    loadKatex().then((fn) => live && setRender(() => fn), () => {});
+    loadKatex().then(
+      (fn) => live && setRender(() => fn),
+      () => {},
+    );
     return () => {
       live = false;
     };

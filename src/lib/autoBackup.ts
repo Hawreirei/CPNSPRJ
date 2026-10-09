@@ -16,10 +16,7 @@ interface PermissionedHandle extends FileSystemFileHandle {
   queryPermission?(d: { mode: 'readwrite' }): Promise<PermissionState>;
   requestPermission?(d: { mode: 'readwrite' }): Promise<PermissionState>;
 }
-type SaveFilePicker = (options: {
-  suggestedName?: string;
-  types?: { description: string; accept: Record<string, string[]> }[];
-}) => Promise<FileSystemFileHandle>;
+type SaveFilePicker = (options: { suggestedName?: string; types?: { description: string; accept: Record<string, string[]> }[] }) => Promise<FileSystemFileHandle>;
 
 const HANDLE_KEY = 'backupHandle';
 const CHANGE_KEY = 'skd-last-change-at';

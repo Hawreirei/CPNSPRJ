@@ -12,7 +12,11 @@ import { importShared, previewImport } from '../engine/share';
 import { renderMath } from '../lib/katex';
 import { dataChartSvg } from '../lib/dataSvg';
 
-const bp: Blueprint = { sections: [{ subtest: 'TIU', count: 3, topics: ['Pemahaman Bacaan', 'Aritmetika'], difficulty: 'campuran' }], durationMinutes: 10, passing: DEFAULT_SETTINGS.passing };
+const bp: Blueprint = {
+  sections: [{ subtest: 'TIU', count: 3, topics: ['Pemahaman Bacaan', 'Aritmetika'], difficulty: 'campuran' }],
+  durationMinutes: 10,
+  passing: DEFAULT_SETTINGS.passing,
+};
 let n = 0;
 function mkQ(partial: Partial<Question> = {}): Question {
   const id = partial.id ?? `q${++n}`;

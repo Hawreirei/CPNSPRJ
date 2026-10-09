@@ -6,8 +6,13 @@ import type { DataFigure, Figure, FigureCell, Fill, ShapeKind } from './types';
  */
 
 export const SHAPE_NAMES: Record<ShapeKind, string> = {
-  circle: 'lingkaran', square: 'persegi', triangle: 'segitiga', diamond: 'belah ketupat',
-  star: 'bintang', arrow: 'panah', pentagon: 'segi lima',
+  circle: 'lingkaran',
+  square: 'persegi',
+  triangle: 'segitiga',
+  diamond: 'belah ketupat',
+  star: 'bintang',
+  arrow: 'panah',
+  pentagon: 'segi lima',
 };
 export const FILL_NAMES: Record<Fill, string> = { solid: 'hitam penuh', empty: 'kosong', striped: 'arsir' };
 
@@ -19,7 +24,16 @@ export function describeCell(c: FigureCell): string {
 /** Screen-reader text for a stem figure. */
 export function describeFigure(f: Figure): string {
   const d = (c: FigureCell | null) => (c ? describeCell(c) : 'tanda tanya');
-  if (f.layout === 'matrix') return [0, 1, 2].map((i) => `Baris ${i + 1}: ${f.cells.slice(i * 3, i * 3 + 3).map(d).join('; ')}`).join('. ');
+  if (f.layout === 'matrix')
+    return [0, 1, 2]
+      .map(
+        (i) =>
+          `Baris ${i + 1}: ${f.cells
+            .slice(i * 3, i * 3 + 3)
+            .map(d)
+            .join('; ')}`,
+      )
+      .join('. ');
   if (f.layout === 'analogy') return `${d(f.cells[0])} berbanding ${d(f.cells[1])}, seperti ${d(f.cells[2])} berbanding ${d(f.cells[3])}`;
   if (f.layout === 'transform') return `Gambar awal: ${d(f.cells[0])}. Hasil: tanda tanya`;
   return f.cells.map((c, i) => `${i + 1}: ${d(c)}`).join('; ');

@@ -5,7 +5,7 @@ import { expect, keyAndSet, KEY, test } from './fixtures';
 const FRIDAY = new Date('2026-10-09T09:00:00+07:00');
 const SATURDAY = new Date('2026-10-10T09:00:00+07:00');
 
-test('a study plan shows the countdown, today\'s targets and readiness, and exports a calendar', async ({ page }) => {
+test("a study plan shows the countdown, today's targets and readiness, and exports a calendar", async ({ page }) => {
   await page.clock.setFixedTime(FRIDAY);
   const setUrl = await keyAndSet(page);
 

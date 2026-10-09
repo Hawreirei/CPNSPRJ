@@ -245,7 +245,9 @@ export default function NewSet() {
                 Nama jabatan yang dilamar
               </label>
               <input id="ns-job" className="input" placeholder="misalnya Pranata Komputer Ahli Pertama" value={jobTitle} onChange={(e) => changeJobTitle(e.target.value)} />
-              <p className="muted text-xs">Soal kompetensi teknis dibuat AI dari nama jabatan ini. Topiknya bukan kisi-kisi resmi; cocokkan dengan standar kompetensi jabatan Anda.</p>
+              <p className="muted text-xs">
+                Soal kompetensi teknis dibuat AI dari nama jabatan ini. Topiknya bukan kisi-kisi resmi; cocokkan dengan standar kompetensi jabatan Anda.
+              </p>
             </section>
           )}
 
@@ -275,7 +277,9 @@ export default function NewSet() {
                     onClick={() => applyDifficulty(d.id)}
                     aria-pressed={on}
                     className={`rounded-xl border p-3 text-left transition ${
-                      on ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-100 dark:bg-slate-800 dark:ring-brand-700' : 'border-slate-200 bg-white hover:border-slate-400 dark:border-slate-800 dark:bg-slate-900'
+                      on
+                        ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-100 dark:bg-slate-800 dark:ring-brand-700'
+                        : 'border-slate-200 bg-white hover:border-slate-400 dark:border-slate-800 dark:bg-slate-900'
                     }`}
                   >
                     <span className={`block text-sm font-semibold ${on ? 'text-brand-700 dark:text-brand-100' : ''}`}>{d.label}</span>
@@ -407,7 +411,9 @@ export default function NewSet() {
                       </label>
                     ))}
                   </div>
-                  <p className="muted mt-1 text-xs">Untuk jumlah soal penuh; disesuaikan otomatis bila soalnya lebih sedikit. Kosongkan bila ujiannya tidak memakai ambang batas.</p>
+                  <p className="muted mt-1 text-xs">
+                    Untuk jumlah soal penuh; disesuaikan otomatis bila soalnya lebih sedikit. Kosongkan bila ujiannya tidak memakai ambang batas.
+                  </p>
                 </div>
               )}
 
@@ -451,7 +457,11 @@ export default function NewSet() {
                   )}
                 </div>
               )}
-              {est.requests > 0 && <p className="muted text-xs">Perkiraan biaya jika memakai akun berbayar: {fmtUsd(est.costUsd[0])}–{fmtUsd(est.costUsd[1])}. Akun gratis tidak dikenai biaya.</p>}
+              {est.requests > 0 && (
+                <p className="muted text-xs">
+                  Perkiraan biaya jika memakai akun berbayar: {fmtUsd(est.costUsd[0])}–{fmtUsd(est.costUsd[1])}. Akun gratis tidak dikenai biaya.
+                </p>
+              )}
             </div>
           </details>
         </div>
@@ -548,7 +558,5 @@ export default function NewSet() {
 }
 
 function StepNo({ n }: { n: number }) {
-  return (
-    <span className="mr-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 align-[0.1em] text-xs font-bold text-white">{n}</span>
-  );
+  return <span className="mr-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 align-[0.1em] text-xs font-bold text-white">{n}</span>;
 }

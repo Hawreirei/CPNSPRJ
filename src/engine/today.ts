@@ -13,7 +13,11 @@ export async function weakFocus(attempts: Attempt[]): Promise<WeakFocus | undefi
   const latest = attempts.find((a) => a.result);
   if (!latest || !(await db.sets.get(latest.setId))) return undefined;
   const advice = recommendations(latest, await attemptQuestions(latest)).find((r) => r.kind === 'weak-topic')?.practiceTopics;
-  const topics = advice ?? weakTopics(latest.result!.topics).slice(0, 3).map((t) => t.topic);
+  const topics =
+    advice ??
+    weakTopics(latest.result!.topics)
+      .slice(0, 3)
+      .map((t) => t.topic);
   return topics.length ? { topics, setId: latest.setId } : undefined;
 }
 

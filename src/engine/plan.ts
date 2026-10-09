@@ -118,12 +118,7 @@ export interface PlanEstimate {
   minutes: [number, number];
 }
 
-export function estimatePlan(
-  batches: PlanBatch[],
-  model: string,
-  settings: Pick<Settings, 'concurrency' | 'priceOverrides'>,
-  limits?: KeyLimits,
-): PlanEstimate {
+export function estimatePlan(batches: PlanBatch[], model: string, settings: Pick<Settings, 'concurrency' | 'priceOverrides'>, limits?: KeyLimits): PlanEstimate {
   const pending = batches.filter((b) => b.status !== 'done');
   const ai = pending.filter((b) => !isProcedural(b));
   const aiQuestions = ai.reduce((n, b) => n + b.count, 0);

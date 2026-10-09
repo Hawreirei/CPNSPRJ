@@ -35,13 +35,19 @@ export function KisiProfiles({ settings }: { settings: Settings }) {
   }
 
   const duplicate = () =>
-    setEditing({ ...structuredClone(active), id: uid(), name: `${active.name} (salinan)`, source: active.id === BUILTIN_ID ? undefined : active.source, exam: examNumbersOf(settings) });
+    setEditing({
+      ...structuredClone(active),
+      id: uid(),
+      name: `${active.name} (salinan)`,
+      source: active.id === BUILTIN_ID ? undefined : active.source,
+      exam: examNumbersOf(settings),
+    });
 
   return (
     <div className="space-y-3">
       <p className="muted text-sm">
-        Profil menentukan topik yang ditawarkan saat membuat soal baru, dan bisa membawa jumlah soal, durasi, dan ambang batas. Bila kisi-kisi resmi berubah, buat atau
-        impor profil baru tanpa menunggu aplikasi diperbarui. Soal lama dengan topik di luar profil tetap tersimpan dan bisa dipakai.
+        Profil menentukan topik yang ditawarkan saat membuat soal baru, dan bisa membawa jumlah soal, durasi, dan ambang batas. Bila kisi-kisi resmi berubah, buat atau impor profil
+        baru tanpa menunggu aplikasi diperbarui. Soal lama dengan topik di luar profil tetap tersimpan dan bisa dipakai.
       </p>
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-0 flex-1">

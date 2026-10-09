@@ -94,7 +94,16 @@ export const PPPK_2024: ExamPackage = {
       name: 'Kompetensi Manajerial',
       scoring: { kind: 'graded', min: 1, max: 4 }, // Diktum KEDUA PULUH TIGA huruf b
       count: 25, // Diktum KEDUA PULUH DUA huruf b
-      topics: ['Integritas', 'Kerja Sama', 'Komunikasi', 'Orientasi pada Hasil', 'Pelayanan Publik', 'Pengembangan Diri dan Orang Lain', 'Mengelola Perubahan', 'Pengambilan Keputusan'],
+      topics: [
+        'Integritas',
+        'Kerja Sama',
+        'Komunikasi',
+        'Orientasi pada Hasil',
+        'Pelayanan Publik',
+        'Pengembangan Diri dan Orang Lain',
+        'Mengelola Perubahan',
+        'Pengambilan Keputusan',
+      ],
       guide: 'Menilai komitmen, kemampuan, dan perilaku individu dalam berorganisasi yang dapat diamati dan diukur.',
     },
     {

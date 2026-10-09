@@ -8,12 +8,7 @@ export function FigureView({ figure, size = 80 }: { figure: Figure; size?: numbe
   const html = useMemo(() => (hasStemFigure(figure) ? figureSvg(figure, size) : ''), [figure, size]);
   if (!html) return null;
   return (
-    <div
-      role="img"
-      aria-label={describeFigure(figure)}
-      className="my-2 max-w-full overflow-x-auto text-slate-800 dark:text-slate-100"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div role="img" aria-label={describeFigure(figure)} className="my-2 max-w-full overflow-x-auto text-slate-800 dark:text-slate-100" dangerouslySetInnerHTML={{ __html: html }} />
   );
 }
 

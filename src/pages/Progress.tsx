@@ -12,7 +12,14 @@ import { Badge, Empty, ProgressBar, SubtestBadge } from '../components/ui';
 
 export default function Progress() {
   const settings = useSettings();
-  const attempts = useLiveQuery(() => db.attempts.orderBy('startedAt').filter((a) => !!a.result).toArray(), []);
+  const attempts = useLiveQuery(
+    () =>
+      db.attempts
+        .orderBy('startedAt')
+        .filter((a) => !!a.result)
+        .toArray(),
+    [],
+  );
   const reasons = useLiveQuery(async () => {
     const reviews = (await db.reviews.toArray()).filter((r) => r.reasonTags.length);
     const qs = (await db.questions.bulkGet(reviews.map((r) => r.questionId))).filter((q): q is Question => !!q);
@@ -40,8 +47,14 @@ export default function Progress() {
   const bySubtest = examSeries(attempts, settings.counts);
   const series = (s: Subtest) => bySubtest[s].map((p) => ({ label: `${new Date(p.at).toLocaleDateString('id-ID')} · ${p.setName}`, value: p.value, max: p.max }));
   const moves = topicMovers(attempts);
-  const improved = moves.filter((m) => m.delta >= 0.1).sort((x, y) => y.delta - x.delta).slice(0, 3);
-  const declined = moves.filter((m) => m.delta <= -0.1).sort((x, y) => x.delta - y.delta).slice(0, 3);
+  const improved = moves
+    .filter((m) => m.delta >= 0.1)
+    .sort((x, y) => y.delta - x.delta)
+    .slice(0, 3);
+  const declined = moves
+    .filter((m) => m.delta <= -0.1)
+    .sort((x, y) => x.delta - y.delta)
+    .slice(0, 3);
 
   // Topic mastery: recency-weighted share of max score across all attempts. Practice counts too:
   // each answer is given before its explanation is shown.
@@ -64,8 +77,8 @@ export default function Progress() {
       <div>
         <h1>Progres</h1>
         <p className="muted mt-1">
-          {exams.length} ujian{practiceCount > 0 && ` dan ${practiceCount} latihan`} selesai. Grafik skor hanya memakai ujian; skor set yang tidak penuh diskalakan ke
-          skor maksimum standar agar sebanding.
+          {exams.length} ujian{practiceCount > 0 && ` dan ${practiceCount} latihan`} selesai. Grafik skor hanya memakai ujian; skor set yang tidak penuh diskalakan ke skor maksimum
+          standar agar sebanding.
         </p>
       </div>
 
@@ -199,7 +212,11 @@ function HistoryTable({ title, attempts, subtests }: { title: string; attempts: 
                 );
               })}
               <td className="pr-3 text-right font-medium tabular-nums">{a.result!.total}</td>
-              <td>{attemptMode(a) === 'exam' && a.result!.passedAll !== undefined && <Badge tone={a.result!.passedAll ? 'green' : 'red'}>{a.result!.passedAll ? 'lulus' : 'belum'}</Badge>}</td>
+              <td>
+                {attemptMode(a) === 'exam' && a.result!.passedAll !== undefined && (
+                  <Badge tone={a.result!.passedAll ? 'green' : 'red'}>{a.result!.passedAll ? 'lulus' : 'belum'}</Badge>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

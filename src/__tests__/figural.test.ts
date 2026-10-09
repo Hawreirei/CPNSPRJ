@@ -35,7 +35,10 @@ const norm = (d: number) => ((d % 360) + 360) % 360;
 function expectWellFormed(q: Question, seed: number) {
   const ctx = `${q.topic} ${q.difficulty} seed ${seed}`;
   expect(q.options, ctx).toHaveLength(5);
-  expect(q.options.filter((o) => o.score === 5), ctx).toHaveLength(1);
+  expect(
+    q.options.filter((o) => o.score === 5),
+    ctx,
+  ).toHaveLength(1);
   expect(q.options.find((o) => o.score === 5)?.label, ctx).toBe(q.answer);
   for (const [i, o] of q.options.entries()) {
     expect(o.text).toBe(describeCell(o.figure!));
@@ -114,8 +117,14 @@ describe('odd one out', () => {
         const cells = q.options.map((o) => o.figure!);
         const key = q.options.findIndex((o) => o.label === q.answer);
         const outs = (['shape', 'fill', 'count'] as const).map((a) => singledOut(cells, a));
-        expect(outs.filter((x) => x === key), `seed ${seed} ${d}`).toHaveLength(1);
-        expect(outs.every((x) => x === null || x === key), `seed ${seed} ${d}`).toBe(true);
+        expect(
+          outs.filter((x) => x === key),
+          `seed ${seed} ${d}`,
+        ).toHaveLength(1);
+        expect(
+          outs.every((x) => x === null || x === key),
+          `seed ${seed} ${d}`,
+        ).toBe(true);
       }
     }
   });

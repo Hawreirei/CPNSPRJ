@@ -170,7 +170,10 @@ export function explainedOption(q: Question): OptionLabel | undefined {
   tail = tail.replace(/[$*_]/g, '').trim();
   const label = tail.match(/^(?:opsi|pilihan)?\s*\(?([A-E])\)?(?=$|[\s.,;:)])/);
   if (label) return q.options.some((o) => o.label === label[1]) ? (label[1] as OptionLabel) : undefined;
-  const token = tail.replace(/^rp\.?\s*/i, '').match(/^\S+/)?.[0].replace(/[.,;:)]+$/, '');
+  const token = tail
+    .replace(/^rp\.?\s*/i, '')
+    .match(/^\S+/)?.[0]
+    .replace(/[.,;:)]+$/, '');
   const value = token ? parseNumeric(token) : null;
   if (value === null) return undefined;
   const hits = q.options.filter((o) => {

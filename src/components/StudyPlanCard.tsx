@@ -135,7 +135,10 @@ function PlanRow({ item, simulationDay }: { item: PlanItem; simulationDay: numbe
   })();
   return (
     <li className="flex items-center gap-2 text-sm">
-      <span aria-hidden className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs ${item.done ? 'border-green-600 bg-green-600 text-white' : 'border-slate-400'}`}>
+      <span
+        aria-hidden
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs ${item.done ? 'border-green-600 bg-green-600 text-white' : 'border-slate-400'}`}
+      >
         {item.done ? '✓' : ''}
       </span>
       <span className={`flex-1 ${item.done ? 'muted line-through' : ''}`}>

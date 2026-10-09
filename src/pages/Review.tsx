@@ -37,8 +37,8 @@ export default function Review() {
       <div>
         <h1>Buku Kesalahan</h1>
         <p className="muted mt-1">
-          Soal yang salah, kosong, atau ditandai ragu-ragu masuk ke sini otomatis setelah ujian atau latihan selesai, lalu dijadwalkan ulang: makin sering
-          Anda ingat, makin jarang soal itu muncul.
+          Soal yang salah, kosong, atau ditandai ragu-ragu masuk ke sini otomatis setelah ujian atau latihan selesai, lalu dijadwalkan ulang: makin sering Anda ingat, makin jarang
+          soal itu muncul.
         </p>
       </div>
 

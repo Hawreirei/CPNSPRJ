@@ -18,11 +18,7 @@ export function isCorrect(q: Question, answer: OptionLabel | undefined): boolean
  * Score an attempt per sub-test, in exam order. A sub-test without a pass mark (an exam decided by
  * ranking) gets no pass/fail, and then neither does the attempt as a whole.
  */
-export function computeResult(
-  questions: Question[],
-  answers: Record<string, OptionLabel>,
-  passing: Partial<Record<Subtest, number>>,
-): AttemptResult {
+export function computeResult(questions: Question[], answers: Record<string, OptionLabel>, passing: Partial<Record<Subtest, number>>): AttemptResult {
   const perSubtest: SubtestResult[] = [];
   const topicMap = new Map<string, TopicResult>();
 
@@ -70,7 +66,5 @@ export function computeResult(
 
 /** Topics scoring under `threshold` (fraction of max), weakest first. */
 export function weakTopics(topics: TopicResult[], threshold = 0.6): TopicResult[] {
-  return topics
-    .filter((t) => t.max > 0 && t.score / t.max < threshold)
-    .sort((a, b) => a.score / a.max - b.score / b.max);
+  return topics.filter((t) => t.max > 0 && t.score / t.max < threshold).sort((a, b) => a.score / a.max - b.score / b.max);
 }

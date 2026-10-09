@@ -65,7 +65,13 @@ export function FeedbackDialog({ q, onClose, onSaved }: { q: Question; onClose: 
             <label className="label" htmlFor="fb-note">
               Catatan (opsional)
             </label>
-            <textarea id="fb-note" className="input min-h-20" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Misalnya: menurut UUD 1945 Pasal 7, jawabannya C." />
+            <textarea
+              id="fb-note"
+              className="input min-h-20"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Misalnya: menurut UUD 1945 Pasal 7, jawabannya C."
+            />
             <p className="muted mt-1 text-xs">
               Soal yang dilaporkan ditandai "perlu dicek" dan tidak dipakai saat menyusun set dari Bank Soal. Laporan tetap ada sampai Anda mencabutnya.
             </p>

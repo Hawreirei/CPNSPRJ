@@ -35,10 +35,12 @@ export function QuestionEditor({ q, onClose, onSave }: { q: Question; onClose: (
         await db.questions.put(next);
         // The passage is shared: an edit to it applies to every question of the group.
         if (passage && passage.text !== q.passage?.text) {
-          await db.questions.filter((x) => x.passage?.id === passage.id && x.id !== q.id).modify((x) => {
-            x.passage = passage;
-            x.hash = hashText(passage.text + x.stem);
-          });
+          await db.questions
+            .filter((x) => x.passage?.id === passage.id && x.id !== q.id)
+            .modify((x) => {
+              x.passage = passage;
+              x.hash = hashText(passage.text + x.stem);
+            });
         }
       });
       onClose();
@@ -98,10 +100,21 @@ export function QuestionEditor({ q, onClose, onSave }: { q: Question; onClose: (
                   className="input w-16"
                   aria-label={`Skor opsi ${o.label}`}
                   value={o.score}
-                  onChange={(e) => set('options', draft.options.map((x, j) => (j === i ? { ...x, score: Number(e.target.value) } : x)))}
+                  onChange={(e) =>
+                    set(
+                      'options',
+                      draft.options.map((x, j) => (j === i ? { ...x, score: Number(e.target.value) } : x)),
+                    )
+                  }
                 />
               ) : (
-                <input type="radio" name="answer" aria-label={`Kunci jawaban ${o.label}`} checked={draft.answer === o.label} onChange={() => set('answer', o.label as OptionLabel)} />
+                <input
+                  type="radio"
+                  name="answer"
+                  aria-label={`Kunci jawaban ${o.label}`}
+                  checked={draft.answer === o.label}
+                  onChange={() => set('answer', o.label as OptionLabel)}
+                />
               )}
               <span className="w-4 font-semibold">{o.label}</span>
               <input
@@ -109,7 +122,12 @@ export function QuestionEditor({ q, onClose, onSave }: { q: Question; onClose: (
                 aria-label={`Teks opsi ${o.label}`}
                 value={o.text}
                 disabled={!!o.figure}
-                onChange={(e) => set('options', draft.options.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))}
+                onChange={(e) =>
+                  set(
+                    'options',
+                    draft.options.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)),
+                  )
+                }
               />
             </div>
           ))}

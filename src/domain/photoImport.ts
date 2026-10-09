@@ -18,7 +18,6 @@ import { MAX_IMAGE_CHARS, MAX_IMAGE_SIDE as MAX_PICTURE_SIDE } from './questionI
 export const COPYRIGHT_NOTICE =
   'Impor hanya materi milik Anda sendiri atau yang lisensinya membolehkan disalin, misalnya catatan atau soal buatan sendiri. Jangan mengimpor soal dari buku, bimbel, atau tryout berbayar tanpa izin pemegang hak ciptanya.';
 
-
 export const IMPORT_SYSTEM = `Anda menyalin soal pilihan ganda dari gambar halaman buku atau lembar latihan milik pengguna.
 Salin teks soal dan opsi apa adanya, kata demi kata; jangan memperbaiki, meringkas, atau mengarang isi yang tidak terbaca.
 Gunakan $...$ hanya untuk rumus. Balas HANYA dengan JSON yang diminta.`;

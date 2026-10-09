@@ -44,7 +44,9 @@ export function applyCrossCheck(q: Question, reply: { answer: OptionLabel; reaso
   const agrees = isGraded(q.subtest) ? isTopOption(q, picked) : reply.answer === q.answer;
   if (agrees) return [...flags, { kind: 'cross-checked', severity: 'info', message: `Diperiksa silang oleh ${model}: jawabannya sama.` }];
   const best = topOptions(q)[0];
-  const what = isGraded(q.subtest) ? `opsi ${reply.answer}${picked ? ` (skor ${picked.score})` : ''} sebagai yang paling tepat, bukan ${best ?? '—'}` : `jawaban ${reply.answer}, bukan ${best ?? '—'}`;
+  const what = isGraded(q.subtest)
+    ? `opsi ${reply.answer}${picked ? ` (skor ${picked.score})` : ''} sebagai yang paling tepat, bukan ${best ?? '—'}`
+    : `jawaban ${reply.answer}, bukan ${best ?? '—'}`;
   return [
     ...flags,
     {

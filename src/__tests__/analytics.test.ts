@@ -1,18 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { computeResult } from '../domain/scoring';
 import type { Attempt, OptionLabel, Question, Subtest } from '../domain/types';
-import {
-  calibration,
-  examSeries,
-  likelyGuesses,
-  reasonSummary,
-  recommendations,
-  timing,
-  tkpPattern,
-  topicMovers,
-  topicStats,
-  trend,
-} from '../engine/analytics';
+import { calibration, examSeries, likelyGuesses, reasonSummary, recommendations, timing, tkpPattern, topicMovers, topicStats, trend } from '../engine/analytics';
 
 const LABELS: OptionLabel[] = ['A', 'B', 'C', 'D', 'E'];
 let n = 0;
@@ -37,8 +26,7 @@ function mkQ(partial: Partial<Question> = {}): Question {
     ...partial,
   };
 }
-const tkp = (topic = 'Pelayanan Publik') =>
-  mkQ({ subtest: 'TKP', topic, answer: undefined, options: LABELS.map((label, i) => ({ label, text: label, score: 5 - i })) });
+const tkp = (topic = 'Pelayanan Publik') => mkQ({ subtest: 'TKP', topic, answer: undefined, options: LABELS.map((label, i) => ({ label, text: label, score: 5 - i })) });
 
 function mkAttempt(questions: Question[], partial: Partial<Attempt> = {}): Attempt {
   const a: Attempt = {
@@ -261,10 +249,7 @@ describe('recommendations', () => {
 
   it('points out time lost on wrong answers and missed TKP top options', () => {
     const qs = [...Array.from({ length: 4 }, () => mkQ()), tkp(), tkp(), tkp()];
-    const a = mkAttempt(
-      qs,
-      answered(qs, 'A', 20_000, { 0: { answer: 'B', ms: 200_000 }, 4: { answer: 'C' }, 5: { answer: 'D' }, 6: { answer: 'B' } }),
-    );
+    const a = mkAttempt(qs, answered(qs, 'A', 20_000, { 0: { answer: 'B', ms: 200_000 }, 4: { answer: 'C' }, 5: { answer: 'D' }, 6: { answer: 'B' } }));
     const kinds = recommendations(a, qs, 10).map((r) => r.kind);
     expect(kinds).toContain('wasted-time');
     expect(kinds).toContain('tkp');

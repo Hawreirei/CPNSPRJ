@@ -86,7 +86,14 @@ export async function createVariantSet(source: QSet): Promise<QSet> {
     const ai = qs.filter((q) => q.source !== 'procedural');
     const items = (list: Question[]) => list.map((q) => ({ topic: q.topic, difficulty: q.difficulty }));
     batches.push(...chunkItems(s, items(figural), settings.questionsPerRequest));
-    batches.push(...chunkItems(s, items(ai), settings.questionsPerRequest, ai.map((q) => q.id)));
+    batches.push(
+      ...chunkItems(
+        s,
+        items(ai),
+        settings.questionsPerRequest,
+        ai.map((q) => q.id),
+      ),
+    );
   }
   const set = newSet({ name: `${source.name} (varian)`, blueprint: source.blueprint, source: 'variant', keyId: source.keyId, batches });
   await db.sets.add(set);
@@ -101,9 +108,13 @@ export async function createRemedialSet(weak: TopicResult[], perTopic = 5, attem
   const batches: PlanBatch[] = [];
   const needed: Record<Subtest, BatchItem[]> = {};
   for (const t of weak) {
-    const pool = shuffle(await db.questions.where('topic').equals(t.topic).filter((q) => q.subtest === t.subtest && !exclude.has(q.id) && !isReported(q)).toArray()).sort(
-      (a, b) => bankPriority(a) - bankPriority(b),
-    );
+    const pool = shuffle(
+      await db.questions
+        .where('topic')
+        .equals(t.topic)
+        .filter((q) => q.subtest === t.subtest && !exclude.has(q.id) && !isReported(q))
+        .toArray(),
+    ).sort((a, b) => bankPriority(a) - bankPriority(b));
     const take = takeUnits(pool, perTopic);
     picked.push(...take);
     const missing = perTopic - take.length;

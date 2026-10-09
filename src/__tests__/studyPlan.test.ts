@@ -125,7 +125,7 @@ describe('daily plan', () => {
     expect(kinds({ now: SAT, attempts: [exam(5, 10, SAT - 3_600_000)] })).toEqual(['simulation:done']);
   });
 
-  it('shows the review as done once today\'s queue is empty', () => {
+  it("shows the review as done once today's queue is empty", () => {
     expect(kinds({ reviewQueue: 0, reviewedToday: 12 })).toEqual(['review:done']);
   });
 

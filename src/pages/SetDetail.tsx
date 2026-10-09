@@ -176,11 +176,19 @@ export default function SetDetail() {
                 ) : (
                   <>
                     {needsRepair(q) && (
-                      <button className="btn btn-sm" title="Minta AI mencocokkan ulang kunci jawaban dan pembahasan" onClick={() => void act(q, () => repairQuestion(q, set.keyId))}>
+                      <button
+                        className="btn btn-sm"
+                        title="Minta AI mencocokkan ulang kunci jawaban dan pembahasan"
+                        onClick={() => void act(q, () => repairQuestion(q, set.keyId))}
+                      >
                         🔧 Perbaiki
                       </button>
                     )}
-                    <button className="btn btn-ghost btn-sm" title={q.starred ? 'Hapus bintang' : 'Beri bintang'} onClick={() => db.questions.update(q.id, { starred: !q.starred })}>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      title={q.starred ? 'Hapus bintang' : 'Beri bintang'}
+                      onClick={() => db.questions.update(q.id, { starred: !q.starred })}
+                    >
                       {q.starred ? '★' : '☆'}
                     </button>
                     <ActionMenu
@@ -202,7 +210,8 @@ export default function SetDetail() {
                           onClick: () =>
                             void act(q, async () => {
                               const r = await crossCheckQuestions([q], set.keyId);
-                              if (!r.checked) throw new Error(r.pending ? 'Kuota AI hari ini habis; soal belum diperiksa silang.' : 'Pemeriksa tidak memberi jawaban untuk soal ini. Coba lagi.');
+                              if (!r.checked)
+                                throw new Error(r.pending ? 'Kuota AI hari ini habis; soal belum diperiksa silang.' : 'Pemeriksa tidak memberi jawaban untuk soal ini. Coba lagi.');
                             }),
                         },
                         {
@@ -238,9 +247,7 @@ export default function SetDetail() {
           <ShareDialog setId={set.id} name={set.name} onClose={() => setSharing(false)} />
         </Suspense>
       )}
-      {downloading && (
-        <DownloadDialog open onClose={() => setDownloading(false)} meta={{ name: set.name, durationMinutes: set.blueprint.durationMinutes }} questions={questions} />
-      )}
+      {downloading && <DownloadDialog open onClose={() => setDownloading(false)} meta={{ name: set.name, durationMinutes: set.blueprint.durationMinutes }} questions={questions} />}
     </div>
   );
 }
@@ -317,9 +324,7 @@ function GenerationPanel({ set }: { set: QSet }) {
       </div>
       <ProgressBar value={done} max={total} />
       {running && prog?.waitUntil && <WaitCountdown until={prog.waitUntil} />}
-      {!running && !finished && lastError && (
-        <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">{lastError}</p>
-      )}
+      {!running && !finished && lastError && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">{lastError}</p>}
       {running && <p className="muted text-xs">Soal tersimpan otomatis. Anda boleh membuka halaman lain selama tab ini tetap terbuka.</p>}
       {prog?.log.length ? (
         <details>

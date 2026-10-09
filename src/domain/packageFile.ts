@@ -19,7 +19,9 @@ const int = (min: number, max: number, what: string) =>
 
 const scoringSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('keyed'), correct: int(1, 10, 'nilai jawaban benar') }),
-  z.object({ kind: z.literal('graded'), min: int(0, 9, 'skor terendah'), max: int(1, 10, 'skor tertinggi') }).refine((r) => r.max > r.min, 'skor tertinggi harus lebih besar dari skor terendah'),
+  z
+    .object({ kind: z.literal('graded'), min: int(0, 9, 'skor terendah'), max: int(1, 10, 'skor tertinggi') })
+    .refine((r) => r.max > r.min, 'skor tertinggi harus lebih besar dari skor terendah'),
 ]);
 
 const subtestSchema = z.object({
@@ -77,8 +79,7 @@ export function parsePackageFile(raw: unknown): ExamPackage {
     if (ids.has(s.id)) throw new Error(`Paket tidak valid: id sub-tes "${s.id}" dipakai dua kali.`);
     ids.add(s.id);
     if (!s.fromJobTitle && !s.topics?.length) throw new Error(`Paket tidak valid: sub-tes ${s.id} butuh daftar topik, atau "fromJobTitle": true.`);
-    if (s.passing !== undefined && s.passing > s.count * maxScore(s))
-      throw new Error(`Paket tidak valid: ambang batas ${s.id} melebihi skor maksimal (${s.count * maxScore(s)}).`);
+    if (s.passing !== undefined && s.passing > s.count * maxScore(s)) throw new Error(`Paket tidak valid: ambang batas ${s.id} melebihi skor maksimal (${s.count * maxScore(s)}).`);
   }
   return {
     ...p,

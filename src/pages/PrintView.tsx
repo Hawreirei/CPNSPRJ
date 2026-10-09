@@ -67,7 +67,12 @@ export default function PrintView() {
   const kunci = (
     <section>
       <h2 className="mt-6 mb-2">Kunci Jawaban & Skor</h2>
-      <p className="mb-2 text-xs">{scoringRulesText(groups.map((g) => g.s), true)}</p>
+      <p className="mb-2 text-xs">
+        {scoringRulesText(
+          groups.map((g) => g.s),
+          true,
+        )}
+      </p>
       {groups.map((g) => (
         <div key={g.s} className="mb-4">
           <h3 className="mb-1">{g.s}</h3>

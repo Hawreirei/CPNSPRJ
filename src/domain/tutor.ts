@@ -43,7 +43,12 @@ export function tutorContext(q: Question, userAnswer?: OptionLabel): string {
   lines.push(`Soal: ${q.stem}`);
   lines.push(
     'Opsi:\n' +
-      q.options.map((o) => `${o.label}. ${o.figure ? `[gambar: ${describeCell(o.figure)}]` : o.text}${isGraded(q.subtest) ? ` (skor ${o.score}${o.rationale ? `: ${o.rationale}` : ''})` : ''}`).join('\n'),
+      q.options
+        .map(
+          (o) =>
+            `${o.label}. ${o.figure ? `[gambar: ${describeCell(o.figure)}]` : o.text}${isGraded(q.subtest) ? ` (skor ${o.score}${o.rationale ? `: ${o.rationale}` : ''})` : ''}`,
+        )
+        .join('\n'),
   );
   if (!isGraded(q.subtest)) lines.push(`Kunci jawaban: ${q.answer ?? '-'}`);
   lines.push(`Pembahasan: ${q.explanation || '-'}`);
@@ -81,4 +86,3 @@ export function tutorCost(prompt: string, price: { input: number; output: number
   const output = 400;
   return (input * price.input + output * price.output) / 1e6;
 }
-

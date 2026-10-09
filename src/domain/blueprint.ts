@@ -3,18 +3,7 @@ import type { Blueprint, Difficulty, DifficultyChoice, ExamNumbers, KisiProfile,
 import { isSkd, packageOf, SKD_CPNS, specOf, type ExamPackage } from './examPackage';
 
 export const TOPICS: Record<Subtest, string[]> = {
-  TWK: [
-    'Pancasila',
-    'UUD 1945',
-    'NKRI',
-    'Bhinneka Tunggal Ika',
-    'Nasionalisme',
-    'Integritas',
-    'Bela Negara',
-    'Sejarah Indonesia',
-    'Bahasa Indonesia',
-    'Pilar Negara',
-  ],
+  TWK: ['Pancasila', 'UUD 1945', 'NKRI', 'Bhinneka Tunggal Ika', 'Nasionalisme', 'Integritas', 'Bela Negara', 'Sejarah Indonesia', 'Bahasa Indonesia', 'Pilar Negara'],
   TIU: [
     'Sinonim',
     'Antonim',

@@ -97,6 +97,9 @@ export async function importShared(shared: SharedSet): Promise<QSet> {
   await db.questions.bulkPut(fresh);
   const all = (await db.questions.bulkGet(ordered)).filter((q): q is Question => !!q);
   const set = await createBankSet(shared.set.name, shared.set.blueprint, all);
-  await db.questions.where('id').anyOf(fresh.map((q) => q.id)).modify({ originSetId: set.id });
+  await db.questions
+    .where('id')
+    .anyOf(fresh.map((q) => q.id))
+    .modify({ originSetId: set.id });
   return set;
 }

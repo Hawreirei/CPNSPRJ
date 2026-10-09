@@ -34,7 +34,10 @@ export async function completeAnthropic(cfg: ProviderConfig, req: LlmRequest): P
           {
             role: 'user',
             content: req.images?.length
-              ? [...req.images.map((i) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: i.mimeType, data: i.data } })), { type: 'text' as const, text: req.prompt }]
+              ? [
+                  ...req.images.map((i) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: i.mimeType, data: i.data } })),
+                  { type: 'text' as const, text: req.prompt },
+                ]
               : req.prompt,
           },
         ],

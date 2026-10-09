@@ -36,7 +36,9 @@ function axes(d: DataFigure, color: string) {
   const parts: string[] = [];
   for (let v = 0; v <= yMax + 1e-9; v += step) {
     // Recessive hairline grid; the baseline a step stronger.
-    parts.push(`<line x1="${left}" x2="${W - right}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${color}" stroke-opacity="${v === 0 ? 0.6 : 0.15}" stroke-width="1"/>`);
+    parts.push(
+      `<line x1="${left}" x2="${W - right}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${color}" stroke-opacity="${v === 0 ? 0.6 : 0.15}" stroke-width="1"/>`,
+    );
     parts.push(`<text x="${left - 6}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" ${FONT} fill="${color}" fill-opacity="0.75">${fmtNum(v)}</text>`);
   }
   d.labels.forEach((l, i) => parts.push(`<text x="${x(i).toFixed(1)}" y="${H - 10}" text-anchor="middle" ${FONT} fill="${color}">${esc(l)}</text>`));
@@ -91,7 +93,9 @@ function pieSvg(d: DataFigure, color: string, surface: string): string {
     const mid = a + sweep / 2;
     const lx = cx + (r + 14) * Math.cos(mid);
     const ly = cy + (r + 14) * Math.sin(mid) + 4;
-    parts.push(`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${Math.cos(mid) >= 0 ? 'start' : 'end'}" ${FONT} fill="${color}"><tspan font-weight="600">${esc(d.labels[i])}</tspan> ${fmtNum(v)}%</text>`);
+    parts.push(
+      `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${Math.cos(mid) >= 0 ? 'start' : 'end'}" ${FONT} fill="${color}"><tspan font-weight="600">${esc(d.labels[i])}</tspan> ${fmtNum(v)}%</text>`,
+    );
     a = a2;
   });
   return wrap(parts);

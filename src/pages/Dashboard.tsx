@@ -47,10 +47,18 @@ export default function Dashboard() {
           <h2>Mulai dalam 3 langkah</h2>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">
             <li>
-              Buat API key gratis di Google AI Studio, lalu tempel di halaman <Link className="text-brand-600 dark:text-brand-300 underline" to="/keys">API Key</Link>.
+              Buat API key gratis di Google AI Studio, lalu tempel di halaman{' '}
+              <Link className="text-brand-600 dark:text-brand-300 underline" to="/keys">
+                API Key
+              </Link>
+              .
             </li>
             <li>
-              Buka <Link className="text-brand-600 dark:text-brand-300 underline" to="/new">Buat Soal</Link>, pilih <b>Latihan Singkat</b>, lalu klik Buat Soal.
+              Buka{' '}
+              <Link className="text-brand-600 dark:text-brand-300 underline" to="/new">
+                Buat Soal
+              </Link>
+              , pilih <b>Latihan Singkat</b>, lalu klik Buat Soal.
             </li>
             <li>Unduh soalnya sebagai PDF/Word, atau langsung kerjakan di Latihan Ujian.</li>
           </ol>

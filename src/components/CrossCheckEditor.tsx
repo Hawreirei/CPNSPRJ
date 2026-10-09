@@ -15,8 +15,8 @@ export function CrossCheckEditor({ settings }: { settings: Settings }) {
   return (
     <div className="space-y-3">
       <p className="muted text-sm">
-        Setelah soal dibuat, model AI lain diminta menjawab soal TWK, TIU non-hitungan, dan TKP <b>tanpa melihat kunci</b>. Bila jawabannya berbeda, soal ditandai
-        "perlu dicek" beserta alasannya; kunci tidak diubah otomatis. TIU hitungan sudah diperiksa ulang otomatis, dan soal gambar selalu benar, jadi dilewati.
+        Setelah soal dibuat, model AI lain diminta menjawab soal TWK, TIU non-hitungan, dan TKP <b>tanpa melihat kunci</b>. Bila jawabannya berbeda, soal ditandai "perlu dicek"
+        beserta alasannya; kunci tidak diubah otomatis. TIU hitungan sudah diperiksa ulang otomatis, dan soal gambar selalu benar, jadi dilewati.
       </p>
       {!keys.length ? (
         <p className="text-sm">
@@ -62,8 +62,8 @@ export function CrossCheckEditor({ settings }: { settings: Settings }) {
             )}
           </div>
           <p className="muted text-xs">
-            Model yang berbeda dari pembuat soal menangkap lebih banyak kesalahan. Dua model yang sama-sama keliru tetap bisa lolos: ini menambah kepercayaan,
-            bukan jaminan. Soal lama bisa diperiksa dari halaman set.
+            Model yang berbeda dari pembuat soal menangkap lebih banyak kesalahan. Dua model yang sama-sama keliru tetap bisa lolos: ini menambah kepercayaan, bukan jaminan. Soal
+            lama bisa diperiksa dari halaman set.
           </p>
         </>
       )}
