@@ -16,10 +16,11 @@ import { fmtSec } from '../engine/analytics';
 import { QuestionCard } from '../components/QuestionCard';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { FeedbackDialog } from '../components/FeedbackDialog';
-import { Badge, Empty, fmtDate, ProgressBar, SubtestBadge } from '../components/ui';
+import { Badge, Empty, ProgressBar, SubtestBadge } from '../components/ui';
 import { tabAwaySummary } from '../domain/catMode';
 import type { TabAway } from '../domain/types';
 import { isGraded, maxPerQuestion, specOf } from '../domain/examPackage';
+import { fmtDate } from '../lib/format';
 
 /** What Mode CAT recorded. Shown, never scored. */
 function CatModeCard({ aways, lockedOrder }: { aways?: TabAway[]; lockedOrder: boolean }) {

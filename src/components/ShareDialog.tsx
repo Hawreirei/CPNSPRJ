@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { COPYRIGHT_SHARE, encodeLinkData, LINK_PREFIX, MAX_LINK, MAX_QR_LINK } from '../domain/share';
 import { sharedSetOf } from '../engine/share';
-import { downloadBlob, Modal } from './ui';
+import { Modal } from './ui';
+import { downloadBlob } from '../lib/download';
 
 /** Dark modules of a QR code as one SVG path (drawn here, so no library markup reaches the page). */
 async function qrPath(text: string): Promise<{ d: string; size: number }> {

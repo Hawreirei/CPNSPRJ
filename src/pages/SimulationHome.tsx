@@ -5,19 +5,21 @@ import { db, getSetQuestions } from '../db';
 import { attemptMode, attemptPath, filterQuestions } from '../domain/practice';
 import type { AttemptMode } from '../domain/types';
 import { startAttempt } from '../engine/attempts';
-import { Badge, Empty, fmtDate, SubtestBadge } from '../components/ui';
+import { Badge, Empty, SubtestBadge } from '../components/ui';
 import { errorText } from '../engine/storage';
 import { subtestsIn } from '../domain/examPackage';
+import { fmtDate } from '../lib/format';
 
 export default function SimulationHome() {
   const nav = useNavigate();
   const [params] = useSearchParams();
   const sets = useLiveQuery(() => db.sets.orderBy('updatedAt').reverse().filter((s) => s.questionIds.length > 0).toArray(), []);
   const attempts = useLiveQuery(() => db.attempts.orderBy('startedAt').reverse().limit(20).toArray(), []);
-  const [setId, setSetId] = useState(params.get('set') ?? '');
+  const [pickedSetId, setSetId] = useState(params.get('set') ?? '');
   const [mode, setMode] = useState<AttemptMode>(params.get('mode') === 'practice' ? 'practice' : 'exam');
   const [shuffleQ, setShuffleQ] = useState(false);
-  const [duration, setDuration] = useState<number | ''>('');
+  /** The time the learner typed, for the set it was typed for; otherwise the set's own. */
+  const [durationEdit, setDurationEdit] = useState<{ setId: string; value: number | '' } | null>(null);
   const [practiceTimed, setPracticeTimed] = useState(false);
   const [catMode, setCatMode] = useState(false);
   const [lockedOrder, setLockedOrder] = useState(false);
@@ -25,18 +27,15 @@ export default function SimulationHome() {
   const [topics, setTopics] = useState<string[] | null>(null);
   const [error, setError] = useState('');
 
+  // Until the learner picks one, the most recently changed set.
+  const setId = pickedSetId || sets?.[0]?.id || '';
   const set = sets?.find((s) => s.id === setId);
   // Tagged with its set id: right after switching sets the hook can still hold the previous set's result.
   const loaded = useLiveQuery(async () => (set ? { setId: set.id, questions: await getSetQuestions(set) } : undefined), [set]);
   const setQuestions = loaded?.setId === setId ? loaded.questions : undefined;
-  useEffect(() => {
-    if (!setId && sets?.length) setSetId(sets[0].id);
-  }, [sets, setId]);
-  // Keyed on the set id: a background generation refreshes the set object but must not reset the form.
+  // Keyed on the set id: a background generation refreshes the set object but must not reset what was typed.
   const durationMinutes = set?.blueprint.durationMinutes;
-  useEffect(() => {
-    if (durationMinutes) setDuration(durationMinutes);
-  }, [setId, durationMinutes]);
+  const duration = durationEdit?.setId === setId ? durationEdit.value : (durationMinutes ?? '');
 
   // Topics in the chosen set, in sub-test order. A `topics` link param (from a score report) preselects some.
   const setTopicsBySubtest = useMemo(
@@ -124,7 +123,14 @@ export default function SimulationHome() {
                 <label className="label" htmlFor="sim-duration">
                   Durasi (menit)
                 </label>
-                <input id="sim-duration" type="number" min={1} className="input" value={duration} onChange={(e) => setDuration(e.target.value ? Number(e.target.value) : '')} />
+                <input
+                  id="sim-duration"
+                  type="number"
+                  min={1}
+                  className="input"
+                  value={duration}
+                  onChange={(e) => setDurationEdit({ setId, value: e.target.value ? Number(e.target.value) : '' })}
+                />
               </div>
             )}
           </div>

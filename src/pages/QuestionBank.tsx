@@ -21,6 +21,7 @@ export default function QuestionBank() {
   const nav = useNavigate();
   // Set by the photo import after saving.
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
+  const [today] = useState(() => new Date().toLocaleDateString('id-ID'));
   const settings = useSettings();
   const all = useLiveQuery(() => db.questions.orderBy('createdAt').reverse().toArray(), []);
   const [q, setQ] = useState('');
@@ -246,7 +247,7 @@ export default function QuestionBank() {
         <DownloadDialog
           open
           onClose={() => setDownloading(false)}
-          meta={{ name: `Soal pilihan ${new Date().toLocaleDateString('id-ID')}`, durationMinutes: Math.max(5, Math.round((settings.durationMinutes * toDownload.length) / 110)) }}
+          meta={{ name: `Soal pilihan ${today}`, durationMinutes: Math.max(5, Math.round((settings.durationMinutes * toDownload.length) / 110)) }}
           questions={toDownload}
         />
       )}

@@ -2,13 +2,13 @@ import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import { getSettings } from '../db';
 import { fmtNum } from '../domain/describe';
 import type { DataFigure, Question } from '../domain/types';
-import { toPlain } from '../components/RichText';
 import { dataChartSvg } from './dataSvg';
 import { isImageSrc, printSize } from '../domain/questionImage';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
 import { hasStudentHeader, keyText, PACK_TITLES, type ExportMeta, type PackKind } from './exportDocx';
 import { isGraded, isTopOption, scoringRulesText, specOf, subtestsIn } from '../domain/examPackage';
+import { toPlain } from './richText';
 
 function toBase64(bytes: Uint8Array): string {
   let bin = '';

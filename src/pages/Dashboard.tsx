@@ -9,7 +9,8 @@ import { BackupReminderCard } from '../components/BackupReminder';
 import { StorageWarningCard } from '../components/StorageCard';
 import { StreakCard } from '../components/StreakCard';
 import { StudyPlanCard } from '../components/StudyPlanCard';
-import { Badge, Stat, fmtDate } from '../components/ui';
+import { Badge, Stat } from '../components/ui';
+import { fmtDate } from '../lib/format';
 
 export default function Dashboard() {
   const settings = useSettings();

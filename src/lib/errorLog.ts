@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { appendEntry, logText, toEntry, type ErrorEntry, type ErrorSource } from '../domain/errorLog';
-import { downloadBlob } from '../components/ui';
+import { downloadBlob } from './download';
 
 /** Meta row holding the log. Not in backups: it describes this device. */
 const LOG_KEY = 'errorLog';
