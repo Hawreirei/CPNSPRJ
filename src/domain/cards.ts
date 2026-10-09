@@ -1,4 +1,5 @@
 import { startOfDay } from '../engine/srs';
+import type { Lembaga } from '../data/lembagaNegara';
 import type { CardState } from './types';
 
 /*
@@ -47,6 +48,8 @@ export interface Card {
   back: string;
   /** Which amendment wrote it, or "Rumusan asli". Absent for the preamble and Pancasila. */
   origin?: string;
+  /** Where the answer is quoted from, when the front does not say it: "UUD 1945 Pasal 24C ayat (1)". */
+  source?: string;
 }
 
 export interface Deck {
@@ -122,6 +125,33 @@ export function buildDecks(uud: UudData): Deck[] {
     decks.push({ id: deck, title: babLabel(b), cards });
   }
   return decks;
+}
+
+/**
+ * Lembaga negara (#61): one deck per institution, each card an ayat about it, quoted from the
+ * Constitution's data (so never anything but the official text). Throws on a reference to an
+ * ayat that does not exist; the unit test runs every reference.
+ */
+export function buildLembagaDecks(uud: UudData, lembaga: readonly Lembaga[]): Deck[] {
+  return lembaga.map((l) => {
+    const deck = `lembaga-${l.id}`;
+    const cards = l.refs.map((r): Card => {
+      const found = findPasal(uud, r.pasal);
+      const ayat = r.ayat === undefined ? undefined : found?.pasal.ayat.find((a) => a.no === r.ayat);
+      const text = r.ayat === undefined ? found?.pasal.text : ayat?.text;
+      if (!found || !text) throw new Error(`Lembaga negara ${l.id}: Pasal ${r.pasal}${r.ayat ? ` ayat (${r.ayat})` : ''} tidak ada di data UUD.`);
+      return {
+        id: `${deck}-${r.pasal}${r.ayat ? `-${r.ayat}` : ''}`,
+        deck,
+        front: r.front,
+        context: `Lembaga negara · ${l.name}`,
+        back: text,
+        origin: originOf(r.ayat === undefined ? found.pasal.amendments : ayat?.amendments),
+        source: `UUD 1945 ${pasalLabel(found.bab, found.pasal)}${r.ayat ? ` ayat (${r.ayat})` : ''}`,
+      };
+    });
+    return { id: deck, title: l.name, cards };
+  });
 }
 
 /** The article a reference names, with its chapter; aturan articles are looked up as "peralihan-I". */

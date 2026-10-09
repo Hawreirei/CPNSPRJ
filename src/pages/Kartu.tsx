@@ -3,13 +3,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import uudJson from '../data/uud1945.json';
 import { db } from '../db';
-import { babLabel, buildDecks, cardQueue, findPasal, originOf, pasalLabel, type Card, type UudData } from '../domain/cards';
+import { LEMBAGA_NEGARA } from '../data/lembagaNegara';
+import { babLabel, buildDecks, buildLembagaDecks, cardQueue, findPasal, originOf, pasalLabel, type Card, type Deck, type UudData } from '../domain/cards';
 import { GRADES, type Grade } from '../domain/types';
 import { gradeCard, startCards, stopCards } from '../engine/cards';
 import { Badge } from '../components/ui';
 
 const uud = uudJson as UudData;
-const DECKS = buildDecks(uud);
+const UUD_DECKS = buildDecks(uud);
+const LEMBAGA_DECKS = buildLembagaDecks(uud, LEMBAGA_NEGARA);
+const DECKS = [...UUD_DECKS, ...LEMBAGA_DECKS];
 const CARDS = new Map(DECKS.flatMap((d) => d.cards.map((c) => [c.id, c] as const)));
 const ORDER = DECKS.flatMap((d) => d.cards.map((c) => c.id));
 const GRADE_LABEL: Record<Grade, string> = { lupa: 'Lupa', sulit: 'Sulit', baik: 'Baik', mudah: 'Mudah' };
@@ -91,9 +94,10 @@ function Session({ queue, onDone }: { queue: Card[]; onDone: () => void }) {
       ) : (
         <>
           <p className="rounded-md bg-slate-50 p-3 leading-relaxed dark:bg-slate-800">{card.back}</p>
-          {card.origin && (
+          {(card.source || card.origin) && (
             <p className="muted text-xs">
-              <Badge>{card.origin}</Badge>
+              {card.source && <>Sumber: {card.source} </>}
+              {card.origin && <Badge>{card.origin}</Badge>}
             </p>
           )}
           <div>
@@ -134,8 +138,8 @@ export default function Kartu() {
       <div>
         <h1>Kartu Hafalan TWK</h1>
         <p className="muted mt-1">
-          Hafalkan Pancasila, Pembukaan, dan pasal-pasal UUD 1945 dari teks resminya, dengan jadwal ulangan seperti Buku Kesalahan: kartu yang mudah diingat makin jarang muncul,
-          yang terlupa muncul lagi besok.
+          Hafalkan Pancasila, Pembukaan, pasal-pasal UUD 1945, dan lembaga negara dari teks resminya, dengan jadwal ulangan seperti Buku Kesalahan: kartu yang mudah diingat makin
+          jarang muncul, yang terlupa muncul lagi besok.
         </p>
       </div>
 
@@ -174,42 +178,57 @@ export default function Kartu() {
         </section>
       )}
 
-      <section className="space-y-2" aria-labelledby="decks-title">
-        <h2 id="decks-title">Materi</h2>
-        <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
-          {DECKS.map((d) => {
-            const on = d.cards.filter((c) => learning.has(c.id)).length;
-            return (
-              <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
-                <span>
-                  {d.title}{' '}
-                  <span className="muted text-xs">
-                    · {d.cards.length} kartu{on ? `, ${on} dipelajari` : ''}
-                  </span>
-                </span>
-                {on < d.cards.length ? (
-                  <button className="btn btn-sm" aria-label={`Pelajari ${d.title}`} onClick={() => void startCards(d.cards.map((c) => c.id))}>
-                    Pelajari
-                  </button>
-                ) : (
-                  <button
-                    className="btn btn-sm btn-ghost"
-                    aria-label={`Berhenti mempelajari ${d.title}`}
-                    onClick={() => confirm(`Berhenti mempelajari ${d.title}? Jadwal ulangan kartunya dihapus.`) && void stopCards(d.cards.map((c) => c.id))}
-                  >
-                    Berhenti
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+      <DeckList id="decks-title" title="Pancasila dan UUD 1945" decks={UUD_DECKS} learning={learning} />
+      <DeckList
+        id="lembaga-title"
+        title="Lembaga negara"
+        note="Kedudukan, tugas, dan wewenang lembaga negara, dikutip apa adanya dari pasal UUD 1945. Setiap kartu menyebut pasal dan ayatnya."
+        decks={LEMBAGA_DECKS}
+        learning={learning}
+      />
 
       <p className="muted text-xs">
         Sumber: {uud.source.title}, {uud.source.publisher} (berkas {uud.source.fileDate}). Teks disalin apa adanya, termasuk ejaannya; setiap kartu pasal menyebut perubahan UUD
         yang merumuskannya. Rumusan Pancasila diambil dari alinea keempat Pembukaan. Bukan materi resmi BKN.
       </p>
     </div>
+  );
+}
+
+/** Decks to start or stop learning, one row each. */
+function DeckList({ id, title, note, decks, learning }: { id: string; title: string; note?: string; decks: Deck[]; learning: Set<string> }) {
+  return (
+    <section className="space-y-2" aria-labelledby={id}>
+      <h2 id={id}>{title}</h2>
+      {note && <p className="muted text-sm">{note}</p>}
+      <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+        {decks.map((d) => {
+          const on = d.cards.filter((c) => learning.has(c.id)).length;
+          return (
+            <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+              <span>
+                {d.title}{' '}
+                <span className="muted text-xs">
+                  · {d.cards.length} kartu{on ? `, ${on} dipelajari` : ''}
+                </span>
+              </span>
+              {on < d.cards.length ? (
+                <button className="btn btn-sm" aria-label={`Pelajari ${d.title}`} onClick={() => void startCards(d.cards.map((c) => c.id))}>
+                  Pelajari
+                </button>
+              ) : (
+                <button
+                  className="btn btn-sm btn-ghost"
+                  aria-label={`Berhenti mempelajari ${d.title}`}
+                  onClick={() => confirm(`Berhenti mempelajari ${d.title}? Jadwal ulangan kartunya dihapus.`) && void stopCards(d.cards.map((c) => c.id))}
+                >
+                  Berhenti
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

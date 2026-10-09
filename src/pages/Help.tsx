@@ -74,8 +74,9 @@ export default function Help() {
           </li>
           <li>
             <b>Kartu Hafalan TWK</b>: Pancasila, Pembukaan, dan setiap ayat UUD 1945 sebagai kartu, dari teks resmi "UUD NRI Tahun 1945 Dalam Satu Naskah" (Sekretariat Jenderal
-            MPR), bukan buatan AI. Pilih bab yang ingin dihafal; kartu diulang terjadwal seperti Buku Kesalahan (paling banyak 20 kartu baru per hari). Rujukan soal TWK yang
-            menyebut pasal UUD menautkan ke teks resmi pasal itu.
+            MPR), bukan buatan AI. Ada juga dek Lembaga negara (MPR, DPR, DPD, BPK, MA, KY, MK) yang mengutip ayat UUD tentang tugas dan wewenangnya, dengan pasal di setiap kartu.
+            Pilih bab atau lembaga yang ingin dihafal; kartu diulang terjadwal seperti Buku Kesalahan (paling banyak 20 kartu baru per hari). Rujukan soal TWK yang menyebut pasal
+            UUD menautkan ke teks resmi pasal itu.
           </li>
           <li>
             <b>Kamus Rumus TIU</b>: rumus dan pola deret, persen, jarak-waktu-kecepatan, perbandingan, dan silogisme, masing-masing dengan contoh. Disusun manual dan bisa dicari;
