@@ -20,8 +20,21 @@ interface Metrics {
   tbt: number;
 }
 
-/** Budgets in ms, per page; see the PR of #70 for the measurements behind them. */
-const BUDGET: Record<string, Metrics> = {};
+/*
+ * Budgets in ms. Three CI runs (9 October 2026) gave these medians for LCP / usable:
+ *   dashboard 1216–1228 / 1249–1262, exam 1752–1784 / 1736–1770, practice 1768–1824 / 1755–1813,
+ *   exam from the service worker 516–568 / 499–545; total blocking time 0 in every median.
+ * Each budget is about 1.4× that median, rounded up to 100 ms, so the runner's noise (the
+ * slowest single load seen was 2028 ms, a practice) does not fail a run, while a page that got
+ * 40% slower does. All of them stay under the 3 s LCP the proposal aims for (§8). TBT: 200 ms,
+ * where Lighthouse starts calling it slow.
+ */
+const BUDGET: Record<string, Metrics> = {
+  'dashboard, first visit': { lcp: 1800, usable: 1800, tbt: 200 },
+  'exam, first visit': { lcp: 2500, usable: 2500, tbt: 200 },
+  'practice, first visit': { lcp: 2600, usable: 2600, tbt: 200 },
+  'exam, repeat visit': { lcp: 800, usable: 800, tbt: 200 },
+};
 
 const report: string[] = [];
 
@@ -37,7 +50,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterAll(() => {
-  if (report.length) console.log(['', 'page | LCP ms | usable ms | TBT ms', ...report].join('\n'));
+  // Printed once: Playwright may run afterAll more than once in a worker, so the rows go with it.
+  if (report.length) console.log(['', 'page | LCP ms | usable ms | TBT ms', ...report.splice(0)].join('\n'));
 });
 
 async function throttle(cdp: CDPSession, on: boolean) {
