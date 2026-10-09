@@ -47,6 +47,7 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 | Keamanan API key | Halaman API Key memperingatkan bahwa ekstensi browser yang bisa membaca halaman dapat melihat key, disertai panduan membatasi key per penyedia. Lihat juga [Penyedia AI](#penyedia-ai) |
 | Aksesibilitas | Bisa dipakai penuh dengan keyboard (fokus pindah ke judul soal, status tiap nomor dibacakan), cincin fokus jelas, kontras teks memenuhi WCAG AA di tema terang dan gelap, tombol nomor soal dan pilihan jawaban setinggi minimal 44px di ponsel, menghormati "kurangi gerakan" sistem, dan pilihan ukuran teks (Normal/Besar/Sangat besar). Diperiksa otomatis dengan axe di uji e2e |
 | PWA | Bisa dipasang; set tersimpan dan simulasi berjalan offline |
+| Apa yang baru | Nomor versi di Pengaturan dan log galat; setelah pembaruan, Beranda menampilkan perubahan sejak versi terakhir yang dilihat. Riwayat lengkap di Bantuan dan [CHANGELOG.md](CHANGELOG.md) |
 
 ## Penyedia AI
 
@@ -109,7 +110,20 @@ npm run lint
 npm run format     # Prettier (.prettierrc.json); CI menjalankan format:check
 npm run build      # build statis ke dist/
 npm run preview
+npm run changelog  # tulis ulang CHANGELOG.md dari src/data/changelog.ts
 ```
+
+### Rilis
+
+Versi aplikasi mengikuti semver di `package.json` dan tampil sebagai `1.0.0 (7a73b52)` (versi dan commit) di menu, Pengaturan, dan log galat. Catatan rilis ada di [CHANGELOG.md](CHANGELOG.md).
+
+Fitur yang terasa bagi pengguna dirilis di PR yang sama dengan fiturnya:
+
+1. Naikkan `version` di `package.json` (dan `package-lock.json`, misalnya dengan `npm version minor --no-git-tag-version`): patch untuk perbaikan, minor untuk fitur baru, mayor bila data lama atau berkas lama tidak lagi terbaca.
+2. Tambahkan entri versi itu di awal `src/data/changelog.ts`: tanggal dan butir singkat yang dirasakan pengguna, tanpa detail teknis.
+3. Jalankan `npm run changelog`. Unit test gagal bila `CHANGELOG.md` tidak sama dengan datanya atau bila entri terbaru tidak sama dengan versi di `package.json`.
+
+Setelah pembaruan, Beranda menampilkan kartu "Apa yang baru" sekali untuk versi yang belum dilihat, sampai ditutup. Pengguna baru tidak melihatnya, dan kartu ini tidak muncul saat ujian atau latihan karena hanya ada di Beranda. Riwayat lengkapnya ada di Bantuan.
 
 ### Uji end-to-end
 

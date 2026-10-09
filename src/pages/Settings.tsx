@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { db, saveSettings, useSettings } from '../db';
 import { getBackupState, importBackup } from '../db/backup';
 import { fmtAgo } from '../domain/backupReminder';
@@ -183,6 +184,17 @@ export default function SettingsPage() {
       <section className="card space-y-3">
         <h2>Log galat</h2>
         <ErrorLogSection />
+      </section>
+
+      <section className="card space-y-2">
+        <h2>Tentang aplikasi</h2>
+        <p className="text-sm">
+          Versi <b>{__APP_VERSION__}</b>, dibuat {new Date(__BUILD_TIME__).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}. Sebutkan versi ini saat
+          melaporkan masalah; log galat yang diunduh juga mencantumkannya.
+        </p>
+        <Link className="btn" to="/help?bagian=perubahan">
+          Riwayat perubahan
+        </Link>
       </section>
 
       <details className="card">

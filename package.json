@@ -1,11 +1,12 @@
 {
   "name": "cpns-skd-set-builder",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "changelog": "node scripts/changelog.mjs",
     "check:bundle": "node scripts/check-bundle.mjs",
     "lint": "oxlint --deny-warnings",
     "format": "prettier --write .",

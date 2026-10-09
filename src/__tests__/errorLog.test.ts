@@ -75,8 +75,13 @@ describe('entries', () => {
   });
 
   it('writes a text file with the app version and the browser', () => {
-    const text = logText([toEntry('import', new Error('Berkas rusak'), 0, '#/import')], { version: 'abc1234', buildTime: '2026-10-08', userAgent: 'TestBrowser/1', now: 0 });
-    expect(text).toContain('Versi aplikasi: abc1234 (2026-10-08)');
+    const text = logText([toEntry('import', new Error('Berkas rusak'), 0, '#/import')], {
+      version: '1.0.0 (abc1234)',
+      buildTime: '2026-10-08',
+      userAgent: 'TestBrowser/1',
+      now: 0,
+    });
+    expect(text).toContain('Versi aplikasi: 1.0.0 (abc1234), dibuat 2026-10-08');
     expect(text).toContain('Browser: TestBrowser/1');
     expect(text).toContain('impor · #/import');
     expect(text).toContain('Error: Berkas rusak');

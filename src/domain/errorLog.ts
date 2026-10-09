@@ -101,7 +101,7 @@ export function logText(entries: readonly ErrorEntry[], env: { version: string; 
   const head = [
     'Log galat CPNS SKD Set Builder',
     `Dibuat: ${new Date(env.now).toISOString()}`,
-    `Versi aplikasi: ${env.version} (${env.buildTime})`,
+    `Versi aplikasi: ${env.version}, dibuat ${env.buildTime}`,
     `Browser: ${env.userAgent}`,
     `Jumlah entri: ${entries.length}`,
     'Berkas ini hanya ada di perangkat Anda. Isinya sudah disaring: tanpa API key, isi soal, atau prompt.',

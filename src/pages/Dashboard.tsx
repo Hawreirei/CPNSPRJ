@@ -9,6 +9,7 @@ import { BackupReminderCard } from '../components/BackupReminder';
 import { StorageWarningCard } from '../components/StorageCard';
 import { StreakCard } from '../components/StreakCard';
 import { StudyPlanCard } from '../components/StudyPlanCard';
+import { WhatsNewCard } from '../components/WhatsNewCard';
 import { Badge, Stat } from '../components/ui';
 import { fmtDate } from '../lib/format';
 
@@ -41,6 +42,8 @@ export default function Dashboard() {
         <h1>Beranda</h1>
         <p className="muted mt-1">Buat soal latihan SKD dengan AI, unduh sebagai PDF/Word, atau latihan langsung seperti ujian CAT.</p>
       </div>
+
+      <WhatsNewCard />
 
       {data.keys === 0 && (
         <div className="card border-brand-500">
