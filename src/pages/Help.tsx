@@ -78,7 +78,8 @@ export default function Help() {
             <b>Impor dari foto/PDF</b>: di Bank Soal, klik "Impor dari foto/PDF", potret halaman soal atau pilih gambar/PDF. Setiap halaman dikirim sebagai satu
             request ke penyedia AI pada API key Anda (perkiraan biaya tampil sebelum mengirim). AI menyalin soal dan opsinya; kunci dan pembahasan diusulkan AI
             bila halaman tidak memuatnya. Tinjau dan perbaiki setiap soal di samping gambar aslinya sebelum menyimpan; soal tersimpan bertanda "perlu dicek".
-            Soal yang memakai gambar (grafik, diagram) bisa diberi gambar: seret kotak di atas halaman aslinya lalu tempelkan ke soalnya; soal yang pilihan
+            Soal yang memakai gambar (grafik, diagram) bisa diberi gambar: seret kotak di atas halaman aslinya (atau Tab ke "Area potong" lalu atur dengan tombol
+            panah) dan tempelkan ke soalnya; soal yang pilihan
             jawabannya berupa gambar masih dilewati. Hanya untuk materi milik Anda sendiri atau yang lisensinya membolehkan disalin; soal hasil impor tidak ikut dibagikan kecuali
             Anda memilihnya.
           </li>

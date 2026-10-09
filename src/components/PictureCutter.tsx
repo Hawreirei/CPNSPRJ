@@ -1,16 +1,16 @@
-import { useRef, useState, type PointerEvent } from 'react';
+import { useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { areaAfterKey, describeArea, START_AREA, type Area } from '../domain/cropArea';
 import { DEFAULT_ALT } from '../domain/questionImage';
 import type { QuestionImage } from '../domain/types';
 import { errorText } from '../engine/storage';
 import { cropPicture } from '../lib/pageImage';
 
-type Rect = { x: number; y: number; w: number; h: number };
-const FULL: Rect = { x: 0, y: 0, w: 1, h: 1 };
+const FULL: Area = { x: 0, y: 0, w: 1, h: 1 };
 
 /**
  * The original page, on which the learner drags a box around a question's picture and attaches it
- * to one of the questions copied from that page (#49). "Seluruh halaman" selects the whole page,
- * so the cutter works without a pointer too.
+ * to one of the questions copied from that page (#49). Without a pointer, the box is a button: Tab
+ * to it and set it with the arrow keys (#59). "Seluruh halaman" selects the whole page.
  */
 export function PictureCutter({
   src,
@@ -24,11 +24,14 @@ export function PictureCutter({
   targets: { no: number; id: string; needsImage?: boolean }[];
   onAttach: (questionId: string, image: QuestionImage) => void;
 }) {
-  const [rect, setRect] = useState<Rect | null>(null);
+  const [rect, setRect] = useState<Area | null>(null);
   const [target, setTarget] = useState(() => (targets.find((t) => t.needsImage) ?? targets[0])?.id ?? '');
   const [alt, setAlt] = useState('');
   const [msg, setMsg] = useState('');
+  // Said by screen readers after each arrow key; empty until the keyboard is used.
+  const [spoken, setSpoken] = useState('');
   const start = useRef<{ x: number; y: number } | null>(null);
+  const hint = useId();
 
   const at = (e: PointerEvent<HTMLDivElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -50,8 +53,19 @@ export function PictureCutter({
     }
   }
 
-  // Normalised for drawing: a drag up or to the left gives a negative width or height.
-  const box = rect && { left: Math.min(rect.x, rect.x + rect.w), top: Math.min(rect.y, rect.y + rect.h), width: Math.abs(rect.w), height: Math.abs(rect.h) };
+  function keyboard(e: KeyboardEvent<HTMLButtonElement>) {
+    const next = areaAfterKey(rect ?? START_AREA, e);
+    if (!next) return;
+    // Arrows would scroll the page, and Alt + arrow go back or forward in history.
+    e.preventDefault();
+    setRect(next);
+    setSpoken(describeArea(next));
+  }
+
+  // Normalised for drawing: a drag up or to the left gives a negative width or height. Before anything
+  // is chosen, the keyboard's starting box is drawn only while it has focus.
+  const shown = rect ?? START_AREA;
+  const box = { left: Math.min(shown.x, shown.x + shown.w), top: Math.min(shown.y, shown.y + shown.h), width: Math.abs(shown.w), height: Math.abs(shown.h) };
   return (
     <div className="space-y-2">
       <div
@@ -60,6 +74,7 @@ export function PictureCutter({
           e.currentTarget.setPointerCapture(e.pointerId);
           start.current = at(e);
           setRect({ ...start.current, w: 0, h: 0 });
+          setSpoken('');
         }}
         onPointerMove={(e) => {
           if (!start.current) return;
@@ -74,18 +89,30 @@ export function PictureCutter({
         data-testid="picture-cutter"
       >
         <img src={src} alt={`Halaman asli: ${label}`} draggable={false} className="w-full rounded border border-slate-200 dark:border-slate-700" />
-        {box && (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute border-2 border-brand-500 bg-brand-500/15"
-            style={{ left: `${box.left * 100}%`, top: `${box.top * 100}%`, width: `${box.width * 100}%`, height: `${box.height * 100}%` }}
-          />
-        )}
+        <button
+          type="button"
+          aria-label="Area potong"
+          aria-describedby={hint}
+          className={`pointer-events-none absolute border-2 border-brand-500 bg-brand-500/15 focus-visible:ring-4 focus-visible:ring-brand-500/50 focus-visible:outline-none ${rect ? '' : 'opacity-0 focus-visible:opacity-100'}`}
+          style={{ left: `${box.left * 100}%`, top: `${box.top * 100}%`, width: `${box.width * 100}%`, height: `${box.height * 100}%` }}
+          onFocus={() => {
+            if (rect) return;
+            setRect(START_AREA);
+            setSpoken(describeArea(START_AREA));
+          }}
+          onKeyDown={keyboard}
+        />
       </div>
+      <p aria-live="polite" className="muted text-xs">
+        {spoken}
+      </p>
       {targets.length > 0 && (
         <fieldset className="space-y-2 rounded-lg border border-slate-200 p-2 text-sm dark:border-slate-700">
           <legend className="px-1 text-xs font-medium">Gambar soal</legend>
-          <p className="muted text-xs">Seret kotak di atas gambar halaman untuk memotong gambar soal, atau pakai seluruh halaman.</p>
+          <p id={hint} className="muted text-xs">
+            Seret kotak di atas gambar halaman untuk memotong gambar soal, atau pakai seluruh halaman. Dengan keyboard: Tab ke area potong, geser dengan tombol panah, ubah
+            ukurannya dengan Shift + panah, dan tambahkan Alt untuk langkah besar.
+          </p>
           <div className="flex flex-wrap items-end gap-2">
             <button type="button" className="btn btn-sm" onClick={() => setRect(FULL)}>
               Seluruh halaman

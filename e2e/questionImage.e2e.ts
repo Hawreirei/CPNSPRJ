@@ -32,14 +32,19 @@ async function seriousViolations(page: Page) {
   return r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id);
 }
 
-test('a picture cut from the page goes with its question: review, bank, exam and the PDF', async ({ page }) => {
-  test.setTimeout(90_000);
+/** Import a 600 × 850 page whose third question shows the chart; the review screen is left open. */
+async function importChartPage(page: Page) {
   await addGeminiKey(page);
   await page.goto('#/bank/import');
   await page.getByLabel('Materi yang saya impor milik saya sendiri').check();
   await page.getByLabel('Atau pilih gambar/PDF').setInputFiles({ name: 'grafik.png', mimeType: 'image/png', buffer: png(600, 850) });
   await page.getByRole('button', { name: 'Kirim halaman ini' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'grafik.png: 3 soal disalin, 1 dilewati.' })).toBeVisible();
+}
+
+test('a picture cut from the page goes with its question: review, bank, exam and the PDF', async ({ page }) => {
+  test.setTimeout(90_000);
+  await importChartPage(page);
 
   const chart = page.locator('article', { hasText: 'penjualan tertinggi' });
   await expect(chart).toContainText('perlu dicek');
@@ -104,4 +109,48 @@ test('a picture cut from the page goes with its question: review, bank, exam and
     await page.keyboard.press('ArrowRight');
   }
   await expect(page.getByRole('img', { name: 'Grafik batang penjualan 2020–2024' })).toBeVisible();
+});
+
+test('the picture can be cut with the keyboard alone, to the size of the area chosen (#59)', async ({ page }) => {
+  await importChartPage(page);
+  const chart = page.locator('article', { hasText: 'penjualan tertinggi' });
+
+  // Tab from the page's heading to the cut-out area; it starts as a box in the middle.
+  await page.locator('summary', { hasText: 'Halaman asli: grafik.png' }).focus();
+  await page.keyboard.press('Tab');
+  const area = page.getByRole('button', { name: 'Area potong' });
+  await expect(area).toBeFocused();
+  await expect(area).toHaveAccessibleDescription(/Tab ke area potong, geser dengan tombol panah, ubah ukurannya dengan Shift \+ panah/);
+  const said = page.getByText(/^Area \d+% × \d+% mulai dari \d+%, \d+%$/);
+  await expect(said).toHaveText('Area 50% × 30% mulai dari 25%, 35%');
+  expect(await seriousViolations(page)).toEqual([]);
+
+  // Around the chart (20–60% across, 20–40% down): move, with one large step, then shrink.
+  for (const k of ['ArrowLeft', 'ArrowLeft', 'ArrowLeft', 'Alt+ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowUp']) await page.keyboard.press(k);
+  await expect(said).toHaveText('Area 50% × 30% mulai dari 19%, 19%');
+  for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowLeft');
+  for (let i = 0; i < 4; i++) await page.keyboard.press('Shift+ArrowUp');
+  await expect(said).toHaveText('Area 42% × 22% mulai dari 19%, 19%');
+  // Alt + arrow did not leave the page.
+  await expect(page).toHaveURL(/#\/bank\/import$/);
+
+  // On to the question, the description and "Tempel gambar", still by keyboard.
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Seluruh halaman' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByLabel('Tempel ke')).toBeFocused();
+  await expect(page.getByLabel('Tempel ke').locator('option:checked')).toHaveText('Soal 3 (perlu gambar)');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('Grafik batang penjualan');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Tempel gambar' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Gambar ditempel ke soal 3.')).toBeVisible();
+
+  // 42% × 22% of a 600 × 850 page, not the whole page.
+  const picture = chart.getByRole('img', { name: 'Grafik batang penjualan' });
+  await expect(picture).toBeVisible();
+  expect(await picture.evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])).toEqual([252, 187]);
+  await expect(page.getByText('Soal ini memakai gambar di halaman.')).toHaveCount(0);
+  expect(await seriousViolations(page)).toEqual([]);
 });

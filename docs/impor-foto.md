@@ -39,7 +39,13 @@ Keluaran diperkirakan paling banyak 5000 token per halaman.
 
 Soal yang memakai grafik, diagram, atau tabel bergambar tidak lagi dilewati, **bila opsinya berupa teks**. Soal seperti itu menjadi draf bertanda "Soal ini memakai gambar di halaman", dan tidak bisa disimpan sebelum diberi gambar atau dihapus. Soal yang opsinya berupa gambar tetap dilewati.
 
-- **Memotong:** pengguna menyeret kotak di atas gambar halaman asli, atau memilih "Seluruh halaman" bila tidak memakai mouse atau layar sentuh. Lalu pengguna memilih soal tujuan dan mengisi keterangan gambar (teks alternatif). Model tidak pernah memotong gambar.
+- **Memotong:** pengguna menyeret kotak di atas gambar halaman asli, atau memilih "Seluruh halaman". Lalu pengguna memilih soal tujuan dan mengisi keterangan gambar (teks alternatif). Model tidak pernah memotong gambar.
+- **Dengan keyboard (#59):** kotak potong adalah tombol "Area potong".
+  - Saat difokuskan dengan Tab, kotak mulai di tengah halaman, selebar 50% dan setinggi 30%.
+  - Panah menggeser kotak; Shift + panah mengubah ukurannya dari sudut kiri atas. Langkahnya 2% dari halaman, atau 10% dengan Alt.
+  - Kotak selalu di dalam halaman, dengan sisi paling kecil 5%.
+  - Posisi dan ukuran diumumkan ke pembaca layar, misalnya "Area 40% × 25% mulai dari 10%, 20%".
+  - Logikanya fungsi murni di `src/domain/cropArea.ts`; pikselnya tetap dihitung `cropBox`.
 - **Bentuk simpanan:** potongan disimpan sebagai data URL JPEG di soal (`Question.image`):
   - sisi terpanjang paling banyak 1000 px;
   - mutu diturunkan bertahap sampai ukurannya paling besar ±300 KB;
