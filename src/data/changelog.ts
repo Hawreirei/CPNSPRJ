@@ -17,6 +17,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.2.0',
+    date: '2026-10-09',
+    items: [
+      'Profil kisi-kisi baru "SKD Sekolah Kedinasan 2026" dari Keputusan MenPAN-RB Nomor 406 Tahun 2026: topik per sub-tes, 110 soal dalam 100 menit, dan ambang batas TWK 65, TIU 80, TKP 156. Pilih di Pengaturan → Profil kisi-kisi. Aturan afirmasi daerah tertentu tampil sebagai catatan.',
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-10-09',
     items: [

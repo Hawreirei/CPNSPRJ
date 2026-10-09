@@ -428,6 +428,8 @@ export interface KisiProfile {
   date?: string;
   topics: Record<Subtest, KisiTopic[]>;
   exam?: ExamNumbers;
+  /** Rules the numbers cannot express (e.g. another pass mark for some applicants), shown with the profile. */
+  notes?: string[];
 }
 
 export interface KisiSettings {

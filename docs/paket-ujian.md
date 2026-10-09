@@ -103,3 +103,40 @@ Keputusan ini khusus tahun anggaran 2024. Bila aturan tahun berikutnya berbeda, 
 
 - **Kompetensi teknis dari nama jabatan** (diputuskan pemilik produk, 8 Oktober 2026). Pengguna menulis nama jabatannya; soal teknis dibuat AI dari nama itu dan ditandai "bukan kisi-kisi resmi".
 - **Wawancara** dilaksanakan berbasis komputer dengan CAT BKN (Diktum KEEMPAT BELAS dan KEENAM BELAS) dan dinilai 1–4 per jawaban, jadi di aplikasi dibuat sebagai sub-tes pilihan ganda bertingkat.
+
+## SKD Sekolah Kedinasan 2026 (profil kisi-kisi bawaan)
+
+Seleksi Sekolah Kedinasan memakai SKD yang sama dengan CPNS, yaitu TWK, TIU, dan TKP dengan penilaian yang sama. Karena itu, keputusan ini masuk ke aplikasi sebagai **profil kisi-kisi bawaan**, bukan paket ujian baru. Profil dipilih di Pengaturan → Profil kisi-kisi. Saat dipilih, jumlah soal, durasi, dan ambang batasnya mengganti angka di Pengaturan.
+
+| | |
+|---|---|
+| Dokumen | Keputusan Menteri PANRB Nomor 406 Tahun 2026 tentang Nilai Ambang Batas Seleksi Kompetensi Dasar Seleksi Penerimaan Peserta Didik Sekolah Kedinasan Tahun Anggaran 2026 |
+| Ditetapkan | 27 Juli 2026 (Diktum KESEBELAS: berlaku sejak tanggal ditetapkan) |
+| Diberikan oleh | pemilik produk, Oktober 2026 (Google Drive, `2026kepmenpanrb406.pdf`, 7 halaman) |
+| SHA-256 PDF | `144afaaa4459a13b7a94e0209eb64a132dacaa72f14c9bf0cb54fddbe0003d93` |
+| Data | `src/data/kisiSekolahKedinasan2026.ts`, diperiksa oleh `src/__tests__/sekolahKedinasan.test.ts` |
+
+Nomor keputusan hanya tercetak di halaman 1, yang berupa gambar. Nomor itu dibaca dari gambar halaman tersebut, bukan dari teks PDF.
+
+| Isi profil | Nilai | Diktum |
+|---|---|---|
+| Jumlah soal | 110: TWK 30, TIU 35, TKP 45 | KEEMPAT |
+| Durasi | 100 menit | KETIGA |
+| Penilaian | TWK dan TIU: benar 5, salah atau kosong 0. TKP: 1 sampai 5, kosong 0 (sama dengan SKD CPNS di aplikasi) | KELIMA |
+| Nilai tertinggi | 550: TWK 150, TIU 175, TKP 225 (cocok dengan jumlah soal × 5) | KEENAM |
+| Ambang batas | TWK 65, TIU 80, TKP 156 | KEDELAPAN |
+| Afirmasi daerah tertentu | nilai kumulatif minimal 281 dan TIU minimal 55. Tidak bisa dinyatakan sebagai ambang per sub-tes, jadi tampil sebagai catatan profil | KESEMBILAN, KESEPULUH |
+
+Topik diambil dari sub-materi Diktum KEDUA. Bila aplikasi sudah punya nama topik untuk sub-materi yang sama, nama itu yang dipakai. Dengan begitu, hitungan dicek ulang dengan mathjs, soal figural digambar aplikasi, dan pembahasan TIU tetap menautkan ke Kamus Rumus.
+
+| Sub-tes | Sub-materi di keputusan | Topik di aplikasi |
+|---|---|---|
+| TWK | nasionalisme, integritas, bela negara, pilar negara, bahasa negara | Nasionalisme, Integritas, Bela Negara, Pilar Negara, Bahasa Negara |
+| TIU verbal | analogi, silogisme, analitis | Analogi Verbal, Silogisme, Penalaran Analitis |
+| TIU numerik | berhitung, deret angka, perbandingan kuantitatif, soal cerita | Aritmetika, Deret Angka, Perbandingan Kuantitatif, Soal Cerita |
+| TIU figural | analogi, ketidaksamaan, serial | Analogi Figural, Figural Berbeda, Deret Figural |
+| TKP | pelayanan publik, jejaring kerja, sosial budaya, teknologi informasi dan komunikasi, profesionalisme, anti radikalisme | Pelayanan Publik, Jejaring Kerja, Sosial Budaya, Teknologi Informasi & Komunikasi, Profesionalisme, Anti Radikalisme |
+
+- **Bukan angka CPNS.** Ambang batas TKP 156 hanya berlaku untuk Sekolah Kedinasan 2026. Angka bawaan aplikasi untuk SKD CPNS tidak berubah dan tetap ditandai bukan kisi-kisi resmi.
+- **Tidak bisa diubah atau dihapus.** Profil bawaan dari dokumen resmi hanya bisa dipilih atau diduplikat. Salinannya menjadi profil milik pengguna dan tetap membawa sumber serta catatannya.
+- **Field `notes` di berkas profil.** Ini field opsional dan aditif: paling banyak 5 catatan, masing-masing paling panjang 400 karakter. Berkas lama tanpa field ini tetap terbaca, dan aplikasi versi lama mengabaikannya.

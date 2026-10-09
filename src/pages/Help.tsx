@@ -98,7 +98,8 @@ export default function Help() {
           </li>
           <li>
             <b>Profil kisi-kisi</b>: di Pengaturan, atur topik per sub-tes SKD (dengan bobot bila perlu), jumlah soal, durasi, dan ambang batas sebagai profil. Profil bisa diimpor
-            dan diekspor, jadi bila kisi-kisi resmi berubah Anda tidak perlu menunggu aplikasi diperbarui.
+            dan diekspor, jadi bila kisi-kisi resmi berubah Anda tidak perlu menunggu aplikasi diperbarui. Profil bawaan "SKD Sekolah Kedinasan 2026" memakai topik, jumlah soal,
+            durasi, dan ambang batas dari Keputusan MenPAN-RB Nomor 406 Tahun 2026; angka itu khusus Sekolah Kedinasan, bukan CPNS.
           </li>
           <li>
             <b>Unduh PDF / Word</b>: di halaman set atau Bank Soal, klik Unduh, pilih format (PDF atau Word) dan isinya (soal saja, soal + kunci, atau lengkap dengan pembahasan).
