@@ -1,6 +1,9 @@
 import { attemptMode } from './practice';
-import type { Attempt, Flag, Question, QuestionReport, ReportReason } from './types';
+import type { Attempt, Flag, FlagKind, Question, QuestionReport, ReportReason } from './types';
 import { isGraded } from './examPackage';
+
+/** Flags left by a second model's opinion (engine/crosscheck.ts); re-checking stored answers keeps them. */
+export const CROSS_CHECK_KINDS = new Set<FlagKind>(['cross-check-mismatch', 'cross-checked', 'cross-check-pending']);
 
 export const REPORT_REASONS: Record<ReportReason, string> = {
   'kunci-salah': 'Kunci jawaban salah',

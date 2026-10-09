@@ -6,7 +6,7 @@ import { answerStats, bankPriority, MIN_CALIBRATION_ANSWERS, reportFlag, withRep
 import { loadMath, validateQuestion } from '../domain/validators';
 import type { Attempt, AttemptResult, Blueprint, OptionLabel, Question, QuestionReport } from '../domain/types';
 import { saveFeedback } from '../engine/feedback';
-import { revalidateStored } from '../engine/generator';
+import { revalidateStored } from '../engine/revalidate';
 import { createRemedialSet, pickFromBank } from '../engine/sets';
 
 beforeAll(() => loadMath());

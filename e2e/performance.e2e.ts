@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import { expect, keyAndSet, test } from './fixtures';
 
-/** The libraries kept out of the startup bundle (chunk names come from vite.config.ts). */
-const LAZY = /\/assets\/(mathjs|katex|anthropic)-[\w-]+\.(js|css)$/;
+/** The libraries kept out of the startup bundle, and the app code only other pages share (chunk names come from vite.config.ts). */
+const LAZY = /\/assets\/(mathjs|katex|anthropic|pages)-[\w-]+\.(js|css)$/;
 
 function lazyRequests(page: Page) {
   const seen: string[] = [];
@@ -36,7 +36,7 @@ async function editNumericQuestion(page: Page) {
   await expect(edited.getByText(/Kunci jawaban A dan pembahasan berbeda dengan hitungan ulang otomatis \(\d+, opsi B\)/)).toBeVisible();
 }
 
-test('the dashboard loads without mathjs, KaTeX or the Anthropic SDK; they load when needed', async ({ page }) => {
+test('the dashboard loads without mathjs, KaTeX, the Anthropic SDK or code only other pages use; they load when needed', async ({ page }) => {
   const seen = lazyRequests(page);
 
   // First visit, empty database.
@@ -47,7 +47,7 @@ test('the dashboard loads without mathjs, KaTeX or the Anthropic SDK; they load 
 
   // Generating questions checks TIU arithmetic, so mathjs loads then.
   const setUrl = await keyAndSet(page);
-  expect(seen).toContain('mathjs');
+  expect(seen).toEqual(expect.arrayContaining(['pages', 'mathjs']));
 
   // Returning with a filled database: still nothing heavy on the dashboard.
   seen.length = 0;

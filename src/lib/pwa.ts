@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { registerSW } from 'virtual:pwa-register';
-import { isAnyGenerationRunning } from '../engine/generator';
+import { isAnyGenerationRunning } from '../engine/running';
 
 let updateWaiting = false;
 const listeners = new Set<() => void>();

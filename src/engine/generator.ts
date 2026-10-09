@@ -9,10 +9,11 @@ import type { FlagKind, PlanBatch, QSet, Question } from '../domain/types';
 import { uid } from '../lib/id';
 import { batchLabel, isPassageBatch, isProcedural, passageSizes } from './plan';
 import { isLimited, keyUsage, limitsOf, QuotaExhaustedError } from './quota';
-import { CROSS_CHECK_KINDS, isCrossCheckable, openCheckerSession, runCrossCheck } from './crosscheck';
+import { isCrossCheckable, openCheckerSession, runCrossCheck } from './crosscheck';
 import { callAndParse, callAndParsePassages, openSession, type ModelSession } from './session';
 import { errorText, isQuotaError } from './storage';
 import { logError } from '../lib/errorLog';
+import { controllers } from './running';
 import { examRank, isGraded, subtestsIn } from '../domain/examPackage';
 
 export interface GenProgress {
@@ -29,7 +30,6 @@ export interface GenProgress {
 
 // ---- tiny external store so progress survives page navigation ----
 const progress = new Map<string, GenProgress>();
-const controllers = new Map<string, AbortController>();
 const listeners = new Set<() => void>();
 let snapshot = new Map(progress);
 function emit() {
@@ -173,8 +173,6 @@ const fmtWait = (ms: number) => (ms >= 60_000 ? `${Math.ceil(ms / 60_000)} menit
 export function isRunning(setId: string) {
   return controllers.has(setId);
 }
-
-export const isAnyGenerationRunning = () => controllers.size > 0;
 
 /** Generate every pending or failed batch. Safe to call again to resume. */
 export async function startGeneration(setId: string): Promise<void> {
@@ -392,34 +390,4 @@ export async function moreLikeThis(setId: string, q: Question, count: number, ke
   const validated = questions.slice(0, count).map((x) => validateQuestion(x, hashes));
   await appendToSet(setId, validated, q.id);
   return validated.length;
-}
-
-/** Recover sets left in "generating" after a reload. */
-export async function recoverInterrupted() {
-  await db.sets.where('status').equals('generating').modify({ status: 'paused' });
-}
-
-const VALIDATOR_VERSION = '2';
-
-/** Re-run the answer checks on saved questions once, after the checks themselves improve. */
-export async function revalidateStored() {
-  try {
-    if (localStorage.getItem('validatorVersion') === VALIDATOR_VERSION) return;
-  } catch {
-    return;
-  }
-  const qs = await db.questions.filter((q) => !isGraded(q.subtest) && q.source !== 'procedural' && !q.locked).toArray();
-  if (qs.length) await loadMath();
-  const changed = qs.flatMap((q) => {
-    const v = validateQuestion(q);
-    // Flags from outside the validator (duplicates, a second model's opinion) survive re-checking.
-    const next = { ...v, flags: [...v.flags, ...q.flags.filter((f) => f.kind === 'duplicate' || CROSS_CHECK_KINDS.has(f.kind))] };
-    return JSON.stringify(next.flags) !== JSON.stringify(q.flags) || next.answer !== q.answer ? [next] : [];
-  });
-  if (changed.length) await db.questions.bulkPut(changed);
-  try {
-    localStorage.setItem('validatorVersion', VALIDATOR_VERSION);
-  } catch {
-    // Private mode: the check simply runs again next time.
-  }
 }
