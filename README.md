@@ -124,6 +124,8 @@ Aksesibilitas diperiksa dengan axe (`@axe-core/playwright`) di semua halaman uta
 
 Cakupan: tambah API key → buat set → ujian (termasuk kirim otomatis saat waktu habis) → laporan & progres; unduh PDF/Word; cadangan ekspor/impor ke browser bersih, pengingat, dan simpan otomatis; Mode Latihan; Buku Kesalahan; paket ujian dan PPPK; berbagi set; impor foto/PDF dan gambar soal; Kartu Hafalan dan Kamus; tutor; uji performa dan offline. Daftar lengkapnya ada di `e2e/`.
 
+Dependabot (`.github/dependabot.yml`) membuka PR pembaruan dependensi npm dan GitHub Actions setiap Senin: pembaruan minor dan patch dikelompokkan jadi satu PR per ekosistem, dan setiap pembaruan mayor mendapat PR sendiri.
+
 Commit yang hanya memformat ulang kode tercatat di `.git-blame-ignore-revs`, supaya `git blame` menunjuk perubahan isinya. GitHub membacanya sendiri; di lokal jalankan sekali `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 
 Setiap PR menjalankan typecheck, lint (`--deny-warnings`), pemeriksaan format (Prettier), unit test, e2e, dan `npm run check:bundle`, yang gagal bila JavaScript dan CSS yang diunduh saat aplikasi pertama dibuka melebihi 210 KB (gzip) atau memuat library yang seharusnya dimuat saat dipakai.

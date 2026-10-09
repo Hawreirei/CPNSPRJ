@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { test as base, expect, type Page } from '@playwright/test';
 
 /**
@@ -307,3 +308,23 @@ export async function keyAndSet(page: Page) {
 
 /** Option A is the key of every AI question; procedural figural ones have their own key. */
 export const KEY = 'A';
+
+/**
+ * Serious and critical WCAG A/AA violations on the page as it is now, as "rule: element | element"
+ * lines, so a failure says where. CSS transitions finish first: after a theme switch or a button
+ * becoming enabled, colours fade for 150 ms and axe would measure them halfway (#68).
+ */
+export async function seriousViolations(page: Page, include?: string): Promise<string[]> {
+  await page.waitForFunction(() => document.getAnimations().every((a) => !(a instanceof CSSTransition) || a.playState !== 'running'));
+  const axe = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
+  const r = await (include ? axe.include(include) : axe).analyze();
+  return r.violations
+    .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+    .map(
+      (v) =>
+        `${v.id}: ${v.nodes
+          .map((n) => n.target.join(' '))
+          .slice(0, 3)
+          .join(' | ')}`,
+    );
+}

@@ -1,7 +1,6 @@
 import { crc32, deflateSync } from 'node:zlib';
-import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { addGeminiKey, expect, test } from './fixtures';
+import { addGeminiKey, expect, seriousViolations, test } from './fixtures';
 
 /** A plain grey RGB picture, as a photographed page would arrive (the fake model does not look at it). */
 function png(width: number, height: number): Buffer {
@@ -48,11 +47,6 @@ function pdf(): Buffer {
   body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}`;
   body += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
   return Buffer.from(body, 'latin1');
-}
-
-async function seriousViolations(page: Page) {
-  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  return r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`);
 }
 
 async function sendPhoto(page: Page) {

@@ -1,6 +1,4 @@
-import AxeBuilder from '@axe-core/playwright';
-import type { Page } from '@playwright/test';
-import { addGeminiKey, expect, test } from './fixtures';
+import { addGeminiKey, expect, seriousViolations, test } from './fixtures';
 
 /** A made-up exam package: its numbers are for this test only and come from no document. */
 const PACKAGE = {
@@ -18,12 +16,6 @@ const PACKAGE = {
     ],
   },
 };
-
-async function seriousViolations(page: Page) {
-  await page.waitForFunction(() => document.getAnimations().every((a) => !(a instanceof CSSTransition) || a.playState !== 'running'));
-  const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  return r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id);
-}
 
 test('an imported exam package: questions from a job title, an exam without pass marks, its own history', async ({ page, gemini }) => {
   test.setTimeout(90_000);

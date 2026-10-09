@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { addGeminiKey, expect, test } from './fixtures';
+import { addGeminiKey, expect, seriousViolations, test } from './fixtures';
 
 async function download(page: Page, format: 'PDF' | 'Word') {
   await page.getByRole('button', { name: /Unduh PDF \/ Word/ }).click();
@@ -49,11 +48,7 @@ test('reading passages keep their questions together everywhere, and hard TKP ex
   await expect(page.getByText(/^Alasan skor [1-5] untuk tindakan [A-E] situasi \d+$/)).toHaveCount(15);
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
-    const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-    expect(
-      r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id),
-      scheme,
-    ).toEqual([]);
+    expect(await seriousViolations(page), scheme).toEqual([]);
   }
 
   const pdf = await download(page, 'PDF');
