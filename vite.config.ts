@@ -3,6 +3,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import pkg from './package.json' with { type: 'json' };
 
 // Strict CSP only for the production build (dev server needs inline scripts for HMR).
 const csp = [
@@ -50,7 +51,9 @@ const cspPlugin: Plugin = {
 
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify((process.env.GITHUB_SHA ?? 'dev').slice(0, 7)),
+    // The release (package.json, raised with each CHANGELOG entry, #71) and the commit it was built from.
+    __APP_RELEASE__: JSON.stringify(pkg.version),
+    __APP_VERSION__: JSON.stringify(`${pkg.version} (${(process.env.GITHUB_SHA ?? 'dev').slice(0, 7)})`),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
   // Relative base so the static build works on any host or sub-path.

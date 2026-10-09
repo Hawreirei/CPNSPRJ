@@ -464,6 +464,8 @@ export interface Settings {
   examPackages?: ExamPackage[];
   /** Streak and badges; on unless switched off. */
   streak?: StreakSettings;
+  /** Newest release whose "Apa yang baru" card was closed (#71). Absent in data from before version numbers. */
+  lastSeenVersion?: string;
   /** USD per 1M tokens, keyed by model id; fallback used when unknown. */
   priceOverrides: Record<string, { input: number; output: number }>;
 }

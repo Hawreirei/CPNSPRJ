@@ -27,7 +27,7 @@ test('uncaught errors are logged locally, cleaned, and downloaded as text withou
   const [file] = await Promise.all([page.waitForEvent('download'), section.getByRole('button', { name: 'Unduh log galat' }).click()]);
   expect(file.suggestedFilename()).toMatch(/^log-galat-skd-\d{4}-\d{2}-\d{2}\.txt$/);
   const text = await readFile((await file.path())!, 'utf8');
-  expect(text).toContain('Versi aplikasi:');
+  expect(text).toMatch(/Versi aplikasi: \d+\.\d+\.\d+ \(\w+\), dibuat /);
   expect(text).toContain('Browser: Mozilla/');
   expect(text).toContain('galat halaman · #/settings');
   expect(text).toContain('galat tak tertangani · #/settings');

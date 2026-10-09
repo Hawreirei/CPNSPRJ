@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { SNOOZE_DAYS } from '../domain/backupReminder';
 import { db } from './index';
-import type { Attempt, CardState, QSet, Question, ReviewItem } from '../domain/types';
+import type { Attempt, CardState, QSet, Question, ReviewItem, Settings } from '../domain/types';
+import { newerVersion } from '../domain/whatsNew';
 import { REVIEW_DAYS_KEY } from '../engine/review';
 import { logDay } from '../engine/streak';
 
@@ -47,7 +48,14 @@ export async function importBackup(file: File): Promise<{ sets: number; question
     if (data.attempts?.length) await db.attempts.bulkPut(data.attempts);
     if (data.reviews?.length) await db.reviews.bulkPut(data.reviews);
     if (data.cards?.length) await db.cards.bulkPut(data.cards);
-    if (data.settings) await db.meta.put({ key: 'settings', value: data.settings });
+    if (data.settings) {
+      // The newer "Apa yang baru" version seen wins: a backup from before version numbers (#71) has none,
+      // and an older backup should not show this device's news again.
+      const mine = ((await db.meta.get('settings'))?.value as Partial<Settings> | undefined)?.lastSeenVersion;
+      const theirs = (data.settings as Partial<Settings>).lastSeenVersion;
+      const lastSeenVersion = newerVersion(mine, typeof theirs === 'string' ? theirs : undefined);
+      await db.meta.put({ key: 'settings', value: lastSeenVersion ? { ...(data.settings as object), lastSeenVersion } : data.settings });
+    }
     if (Array.isArray(data.reviewDays) && data.reviewDays.length) {
       const mine = ((await db.meta.get(REVIEW_DAYS_KEY))?.value as string[] | undefined) ?? [];
       const days = data.reviewDays.filter((d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)).reduce(logDay, mine);

@@ -1,4 +1,15 @@
+import { useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { CHANGELOG } from '../data/changelog';
+
 export default function Help() {
+  const [params] = useSearchParams();
+  const changes = useRef<HTMLElement>(null);
+  // "Riwayat perubahan" links here from the dashboard card and Pengaturan.
+  useEffect(() => {
+    if (params.get('bagian') === 'perubahan') changes.current?.scrollIntoView({ block: 'start' });
+  }, [params]);
+
   return (
     <div className="max-w-3xl space-y-6 text-sm leading-relaxed">
       <h1>Bantuan</h1>
@@ -189,6 +200,24 @@ export default function Help() {
             berhenti saat kuota harian habis; buka set lalu klik Lanjutkan setelah kuota direset. Soal dari bank soal dan soal figural tidak memakai kuota.
           </li>
         </ul>
+      </section>
+
+      <section ref={changes} className="card space-y-3" aria-labelledby="riwayat-perubahan">
+        <h2 id="riwayat-perubahan">Riwayat perubahan</h2>
+        <p className="muted">Versi yang Anda pakai: {__APP_VERSION__}.</p>
+        {CHANGELOG.map((r) => (
+          <div key={r.version} className="space-y-1">
+            <h3>
+              Versi {r.version}{' '}
+              <span className="muted text-xs font-normal">{new Date(`${r.date}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            </h3>
+            <ul className="list-disc space-y-1 pl-5">
+              {r.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
     </div>
   );
