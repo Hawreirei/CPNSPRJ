@@ -2,6 +2,10 @@
 
 Perubahan yang terasa bagi pengguna, per versi. Berkas ini dibuat dari `src/data/changelog.ts` dengan `npm run changelog`; jangan diedit langsung.
 
+## 1.2.0 (2026-10-09)
+
+- Profil kisi-kisi baru "SKD Sekolah Kedinasan 2026" dari Keputusan MenPAN-RB Nomor 406 Tahun 2026: topik per sub-tes, 110 soal dalam 100 menit, dan ambang batas TWK 65, TIU 80, TKP 156. Pilih di Pengaturan → Profil kisi-kisi. Aturan afirmasi daerah tertentu tampil sebagai catatan.
+
 ## 1.1.0 (2026-10-09)
 
 - Kartu Hafalan TWK: dek baru Lembaga negara untuk MPR, DPR, DPD, BPK, Mahkamah Agung, Komisi Yudisial, dan Mahkamah Konstitusi. Jawabannya kutipan ayat UUD 1945 tentang kedudukan, tugas, dan wewenangnya, dan setiap kartu menyebut pasal serta ayatnya.

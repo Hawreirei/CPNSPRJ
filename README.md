@@ -16,7 +16,7 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 |---|---|
 | Set builder | Preset (SKD lengkap, Mini SKD, TWK saja, drill TIU, drill TKP), pilihan topik, jumlah, dan kesulitan |
 | Paket ujian dan PPPK 2024 | SKD CPNS dan PPPK 2024 bawaan; ujian lain diimpor sebagai berkas paket di Pengaturan, dan paket tanpa dokumen resmi ditandai "bukan data resmi". Soal kompetensi teknis PPPK dibuat dari nama jabatan yang diisi pengguna. Lihat [docs/paket-ujian.md](docs/paket-ujian.md) |
-| Profil kisi-kisi | Daftar topik per sub-tes SKD (dengan bobot opsional), plus jumlah soal, durasi, dan ambang batas bila perlu. Bisa dibuat, diimpor, dan diekspor di Pengaturan tanpa menunggu aplikasi diperbarui |
+| Profil kisi-kisi | Daftar topik per sub-tes SKD (dengan bobot opsional), plus jumlah soal, durasi, dan ambang batas bila perlu. Bisa dibuat, diimpor, dan diekspor di Pengaturan tanpa menunggu aplikasi diperbarui. Profil bawaan "SKD Sekolah Kedinasan 2026" diambil dari Keputusan MenPAN-RB Nomor 406 Tahun 2026; lihat [docs/paket-ujian.md](docs/paket-ujian.md#skd-sekolah-kedinasan-2026-profil-kisi-kisi-bawaan) |
 | Panel rencana | Jumlah permintaan API, perkiraan token, biaya, dan waktu sebelum generasi |
 | Generasi | Batch campuran topik, progres, stop/lanjut, coba ulang batch gagal, autosave per batch |
 | Pemeriksaan keandalan | TIU numerik dihitung ulang dengan mathjs (kunci dikoreksi otomatis bila jelas); TKP wajib skor 1–5 tanpa skor tertinggi kembar; TWK wajib rujukan, ditandai bila meragukan; deteksi duplikat |

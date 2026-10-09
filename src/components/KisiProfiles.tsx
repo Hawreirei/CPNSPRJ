@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { activeProfile, allProfiles, BUILTIN_ID, examNumbersOf } from '../domain/blueprint';
+import { activeProfile, allProfiles, BUILTIN_ID, examNumbersOf, isBuiltinProfile } from '../domain/blueprint';
 import { parseProfile, profileFile, textToTopics, topicsToText } from '../domain/kisi';
 import { SUBTESTS } from '../domain/types';
 import type { KisiProfile, Settings, Subtest } from '../domain/types';
@@ -65,7 +65,7 @@ export function KisiProfiles({ settings }: { settings: Settings }) {
         <button className="btn" onClick={duplicate}>
           Duplikat & ubah
         </button>
-        {active.id !== BUILTIN_ID && (
+        {!isBuiltinProfile(active.id) && (
           <button className="btn" onClick={() => setEditing(structuredClone(active))}>
             Ubah
           </button>
@@ -81,6 +81,13 @@ export function KisiProfiles({ settings }: { settings: Settings }) {
         {active.id === BUILTIN_ID && (
           <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">Bila kisi-kisi resmi terbit, buat profil dari dokumen resminya dan cantumkan sumber serta tanggalnya.</p>
         )}
+        {active.notes?.length ? (
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-xs">
+            {active.notes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        ) : null}
         <details className="mt-2">
           <summary className="cursor-pointer text-xs">
             Topik: {SUBTESTS.map((s) => `${s} ${active.topics[s].length}`).join(' · ')}
@@ -118,7 +125,7 @@ export function KisiProfiles({ settings }: { settings: Settings }) {
         <button className="btn btn-sm" onClick={() => downloadBlob(new Blob([profileFile(active)], { type: 'application/json' }), `kisi-kisi-${slug(active.name)}.json`)}>
           Ekspor profil ini
         </button>
-        {active.id !== BUILTIN_ID && (
+        {!isBuiltinProfile(active.id) && (
           <button
             className="btn btn-danger btn-sm"
             onClick={() =>
@@ -177,6 +184,8 @@ function ProfileEditor({ initial, settings, onClose, onSaved }: { initial: KisiP
           date,
           topics: Object.fromEntries(SUBTESTS.map((s) => [s, textToTopics(topics[s])])),
           exam: exam === 'keep' ? initial.exam : exam === 'current' ? examNumbersOf(settings) : undefined,
+          // Not editable here; a copy keeps the notes of the profile it came from.
+          notes: initial.notes,
         },
         initial.id,
       );

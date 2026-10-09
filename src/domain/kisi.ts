@@ -35,6 +35,7 @@ const profileSchema = z.object({
       durationMinutes: z.number().int().min(1).max(600),
     })
     .optional(),
+  notes: z.array(z.string().trim().min(1).max(400, 'catatan lebih dari 400 karakter')).max(5, 'paling banyak 5 catatan').optional(),
 });
 
 /**
@@ -72,7 +73,16 @@ export function parseProfile(raw: unknown, id: string): KisiProfile {
     const over = SKD_SUBTESTS.find((s) => p.exam!.passing[s] > p.exam!.counts[s] * 5);
     if (over) throw new Error(`Profil tidak valid: ambang batas ${over} melebihi skor maksimal (${p.exam.counts[over] * 5}).`);
   }
-  return { version: 1, id, name: p.name, ...(p.source ? { source: p.source } : {}), ...(p.date ? { date: p.date } : {}), topics, ...(p.exam ? { exam: p.exam } : {}) };
+  return {
+    version: 1,
+    id,
+    name: p.name,
+    ...(p.source ? { source: p.source } : {}),
+    ...(p.date ? { date: p.date } : {}),
+    topics,
+    ...(p.exam ? { exam: p.exam } : {}),
+    ...(p.notes?.length ? { notes: p.notes } : {}),
+  };
 }
 
 /** The file a profile is shared as. */

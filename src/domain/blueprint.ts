@@ -1,6 +1,7 @@
 import { SUBTESTS } from './types';
 import type { Blueprint, Difficulty, DifficultyChoice, ExamNumbers, KisiProfile, KisiTopic, Settings, Subtest } from './types';
 import { isSkd, packageOf, SKD_CPNS, specOf, type ExamPackage } from './examPackage';
+import { SEKOLAH_KEDINASAN_2026 } from '../data/kisiSekolahKedinasan2026';
 
 export const TOPICS: Record<Subtest, string[]> = {
   TWK: ['Pancasila', 'UUD 1945', 'NKRI', 'Bhinneka Tunggal Ika', 'Nasionalisme', 'Integritas', 'Bela Negara', 'Sejarah Indonesia', 'Bahasa Indonesia', 'Pilar Negara'],
@@ -71,13 +72,17 @@ export const BUILTIN_PROFILE: KisiProfile = {
   exam: { counts: DEFAULT_SETTINGS.counts, passing: DEFAULT_SETTINGS.passing, durationMinutes: DEFAULT_SETTINGS.durationMinutes },
 };
 
+/** Profiles that come with the app and cannot be edited or removed: the app's own topics, then ones from official documents. */
+export const BUILTIN_PROFILES: KisiProfile[] = [BUILTIN_PROFILE, SEKOLAH_KEDINASAN_2026];
+export const isBuiltinProfile = (id: string) => BUILTIN_PROFILES.some((p) => p.id === id);
+
 export function allProfiles(settings: Pick<Settings, 'kisi'>): KisiProfile[] {
-  return [BUILTIN_PROFILE, ...(settings.kisi?.custom ?? [])];
+  return [...BUILTIN_PROFILES, ...(settings.kisi?.custom ?? [])];
 }
 
 export function activeProfile(settings: Pick<Settings, 'kisi'>): KisiProfile {
   const id = settings.kisi?.activeId;
-  return settings.kisi?.custom.find((p) => p.id === id) ?? BUILTIN_PROFILE;
+  return allProfiles(settings).find((p) => p.id === id) ?? BUILTIN_PROFILE;
 }
 
 /** Topics offered for new questions in a sub-test. Existing questions may carry others; they stay valid. */
