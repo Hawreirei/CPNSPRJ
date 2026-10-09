@@ -57,8 +57,8 @@ export function StorageCard() {
       ) : (
         <div className="space-y-2 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
           <p>
-            Bisa dihapus: {preview.requests} log permintaan AI yang sudah lebih dari 2 hari dan {preview.attempts} percobaan yang belum selesai lebih dari{' '}
-            {STALE_ATTEMPT_DAYS} hari, sekitar {fmtBytes(preview.bytes)}. Set, soal, riwayat ujian yang selesai, dan Buku Kesalahan tidak disentuh.
+            Bisa dihapus: {preview.requests} log permintaan AI yang sudah lebih dari 2 hari dan {preview.attempts} percobaan yang belum selesai lebih dari {STALE_ATTEMPT_DAYS}{' '}
+            hari, sekitar {fmtBytes(preview.bytes)}. Set, soal, riwayat ujian yang selesai, dan Buku Kesalahan tidak disentuh.
           </p>
           <p className="muted">Sebaiknya unduh cadangan dulu.</p>
           <div className="flex flex-wrap gap-2">

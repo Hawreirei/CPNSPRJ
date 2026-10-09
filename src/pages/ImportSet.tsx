@@ -106,8 +106,8 @@ export default function ImportSet() {
             </p>
           ))}
           <p className="muted text-sm">
-            Soal dari orang lain belum tentu benar. Setelah diimpor, setiap soal diperiksa ulang oleh aplikasi dan ditandai "dari berkas bersama"; periksa dulu yang
-            bertanda "perlu dicek".
+            Soal dari orang lain belum tentu benar. Setelah diimpor, setiap soal diperiksa ulang oleh aplikasi dan ditandai "dari berkas bersama"; periksa dulu yang bertanda "perlu
+            dicek".
           </p>
           <div className="flex gap-2">
             <button className="btn btn-primary" disabled={busy} onClick={() => void confirm()}>

@@ -51,13 +51,7 @@ export function ScoreTrend({ title, points, passing, max }: { title: string; poi
             <path d={path} fill="none" className="stroke-[#2a78d6] dark:stroke-[#3987e5]" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
             {points.map((p, i) => (
               <g key={i}>
-                <circle
-                  cx={x(i)}
-                  cy={y(p.value)}
-                  r={hover === i ? 5 : 4}
-                  className="fill-[#2a78d6] stroke-white dark:fill-[#3987e5] dark:stroke-slate-900"
-                  strokeWidth={2}
-                />
+                <circle cx={x(i)} cy={y(p.value)} r={hover === i ? 5 : 4} className="fill-[#2a78d6] stroke-white dark:fill-[#3987e5] dark:stroke-slate-900" strokeWidth={2} />
                 <rect
                   x={x(i) - Math.max(8, iw / Math.max(1, points.length) / 2)}
                   y={pad.t}

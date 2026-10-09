@@ -7,19 +7,7 @@ import { computeResult } from '../domain/scoring';
 import type { Attempt, OptionLabel, Question, ReviewItem, Subtest } from '../domain/types';
 import { getReviewDays, gradeReview } from '../engine/review';
 import { newReview } from '../engine/srs';
-import {
-  activityDays,
-  answeredCount,
-  badgeLabel,
-  dayKey,
-  earnedBadges,
-  endPause,
-  inPause,
-  logDay,
-  MAX_LOGGED_DAYS,
-  startPause,
-  streak,
-} from '../engine/streak';
+import { activityDays, answeredCount, badgeLabel, dayKey, earnedBadges, endPause, inPause, logDay, MAX_LOGGED_DAYS, startPause, streak } from '../engine/streak';
 
 const at = (y: number, m: number, d: number, h = 9, min = 0) => new Date(y, m - 1, d, h, min).getTime();
 // Friday 9 October 2026.

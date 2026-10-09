@@ -12,7 +12,13 @@ async function violations(page: Page): Promise<string[]> {
   const r = await new AxeBuilder({ page }).withTags(WCAG).analyze();
   return r.violations
     .filter((v) => v.impact === 'serious' || v.impact === 'critical')
-    .map((v) => `${v.impact} ${v.id}: ${v.help} → ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' | ')}`);
+    .map(
+      (v) =>
+        `${v.impact} ${v.id}: ${v.help} → ${v.nodes
+          .map((n) => n.target.join(' '))
+          .slice(0, 3)
+          .join(' | ')}`,
+    );
 }
 
 const hashPath = (page: Page) => '#/' + page.url().split('#/')[1];
@@ -54,7 +60,23 @@ test('main pages and dialogs have no serious or critical WCAG violations, light 
   await page.waitForURL(/#\/cat\//);
   const exam = hashPath(page);
 
-  const pages = ['#/', '#/new', setPath, '#/sets', '#/bank', '#/simulation', exam, practice, results, '#/progress', '#/review', '#/review?tab=semua', '#/keys', '#/settings', '#/help'];
+  const pages = [
+    '#/',
+    '#/new',
+    setPath,
+    '#/sets',
+    '#/bank',
+    '#/simulation',
+    exam,
+    practice,
+    results,
+    '#/progress',
+    '#/review',
+    '#/review?tab=semua',
+    '#/keys',
+    '#/settings',
+    '#/help',
+  ];
   const found: string[] = [];
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });

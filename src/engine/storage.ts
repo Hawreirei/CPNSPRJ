@@ -54,8 +54,15 @@ const sizeOf = (rows: unknown[]) => rows.reduce<number>((n, r) => n + JSON.strin
 
 async function staleRows(now: number) {
   const [requests, attempts] = await Promise.all([
-    db.requests.where('at').below(now - OLD_REQUEST_MS).toArray(),
-    db.attempts.where('startedAt').below(now - STALE_ATTEMPT_DAYS * 86_400_000).filter((a) => !a.finishedAt).toArray(),
+    db.requests
+      .where('at')
+      .below(now - OLD_REQUEST_MS)
+      .toArray(),
+    db.attempts
+      .where('startedAt')
+      .below(now - STALE_ATTEMPT_DAYS * 86_400_000)
+      .filter((a) => !a.finishedAt)
+      .toArray(),
   ]);
   return { requests, attempts };
 }

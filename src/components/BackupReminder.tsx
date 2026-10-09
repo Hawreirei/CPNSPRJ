@@ -65,12 +65,7 @@ export function BackupReminderCard() {
 
   const r = backupReminder({ lastBackupAt: state.lastBackupAt, lastChangeAt: changedAt, snoozedUntil: state.snoozedUntil, setCreatedAt, now });
   if (!r) return null;
-  const title =
-    r.reason === 'sets'
-      ? `${r.newSets} set belum dicadangkan`
-      : state.lastBackupAt
-        ? `Cadangan terakhir ${r.days} hari lalu`
-        : 'Data Anda belum pernah dicadangkan';
+  const title = r.reason === 'sets' ? `${r.newSets} set belum dicadangkan` : state.lastBackupAt ? `Cadangan terakhir ${r.days} hari lalu` : 'Data Anda belum pernah dicadangkan';
   return (
     <div className="card flex flex-wrap items-center justify-between gap-3 border-amber-300 dark:border-amber-800">
       <div className="min-w-0">

@@ -49,7 +49,14 @@ describe('penyedia Anthropic (SDK dimuat saat dipakai)', () => {
   });
 
   it('mendaftar model', async () => {
-    stubFetch(() => json({ data: [{ type: 'model', id: 'claude-haiku-5-5', display_name: 'Claude Haiku 5.5', created_at: '2026-01-01T00:00:00Z' }], has_more: false, first_id: 'a', last_id: 'a' }));
+    stubFetch(() =>
+      json({
+        data: [{ type: 'model', id: 'claude-haiku-5-5', display_name: 'Claude Haiku 5.5', created_at: '2026-01-01T00:00:00Z' }],
+        has_more: false,
+        first_id: 'a',
+        last_id: 'a',
+      }),
+    );
     expect(await listModelInfo(cfg)).toEqual([{ id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5' }]);
   });
 });

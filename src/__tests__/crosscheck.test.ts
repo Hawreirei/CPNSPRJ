@@ -36,7 +36,8 @@ function mkQ(partial: Partial<Question> = {}): Question {
     ...partial,
   };
 }
-const tkp = () => mkQ({ subtest: 'TKP', topic: 'Pelayanan Publik', answer: undefined, options: LABELS.map((label, i) => ({ label, text: `Tindakan ${label}`, score: [3, 5, 1, 2, 4][i] })) });
+const tkp = () =>
+  mkQ({ subtest: 'TKP', topic: 'Pelayanan Publik', answer: undefined, options: LABELS.map((label, i) => ({ label, text: `Tindakan ${label}`, score: [3, 5, 1, 2, 4][i] })) });
 
 describe('what gets checked', () => {
   it('takes AI-written TWK, TKP and non-numeric TIU only', () => {
@@ -88,7 +89,7 @@ describe('flags from a reply', () => {
     expect(flags).toEqual([other, { kind: 'cross-checked', severity: 'info', message: 'Diperiksa silang oleh model-2: jawabannya sama.' }]);
   });
 
-  it('warns on a different answer with the checker\'s reason, and never touches the key', () => {
+  it("warns on a different answer with the checker's reason, and never touches the key", () => {
     const q = mkQ();
     const [f] = applyCrossCheck(q, { answer: 'C', reason: 'Sila ke-2 lebih tepat' }, 'model-2');
     expect(f).toMatchObject({ kind: 'cross-check-mismatch', severity: 'warn' });

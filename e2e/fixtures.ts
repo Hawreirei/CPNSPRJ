@@ -49,7 +49,12 @@ export function fakeQuestions(prompt: string) {
       return {
         topic,
         stem: `Situasi uji ${n} (${topic}): seorang warga meminta bantuan di luar jam layanan. Apa yang Anda lakukan?`,
-        options: LABELS.map((label, i) => ({ label, text: `Tindakan ${label} untuk situasi ${n}`, score: 5 - i, ...(hard ? { rationale: `Alasan skor ${5 - i} untuk tindakan ${label} situasi ${n}` } : {}) })),
+        options: LABELS.map((label, i) => ({
+          label,
+          text: `Tindakan ${label} untuk situasi ${n}`,
+          score: 5 - i,
+          ...(hard ? { rationale: `Alasan skor ${5 - i} untuk tindakan ${label} situasi ${n}` } : {}),
+        })),
         explanation: `Tindakan A paling sesuai dengan nilai pelayanan publik (situasi ${n}).`,
         confidence: 'high',
       };
@@ -125,15 +130,38 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
       });
     }
     if (req.method() === 'POST' && url.pathname.endsWith(':generateContent')) {
-      const body = req.postDataJSON() as { systemInstruction: { parts: { text: string }[] }; contents: { parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] }[] };
+      const body = req.postDataJSON() as {
+        systemInstruction: { parts: { text: string }[] };
+        contents: { parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] }[];
+      };
       const image = body.contents[0].parts.find((p) => p.inlineData)?.inlineData;
       if (image) {
         // Photo import: the same page every time, with a key printed, a key to propose, and a figure to skip.
         stats.pageImages.push({ mimeType: image.mimeType, length: image.data.length });
         const n = stats.pageImages.length;
         const questions = [
-          { no: 1, subtest: 'TWK', topic: 'Pancasila', difficulty: 'mudah', stem: `Sila keempat Pancasila berbunyi … (halaman ${n})`, options: LABELS.map((label) => ({ label, text: `Bunyi sila ${label}` })), answer: 'D', answerFromPage: true, explanation: 'Sila keempat tentang kerakyatan.' },
-          { no: 2, subtest: 'TIU', topic: 'Aritmetika', difficulty: 'sedang', stem: `Hasil dari 12 × 3 adalah … (halaman ${n})`, options: ['30', '33', '36', '39', '42'].map((text, i) => ({ label: LABELS[i], text })), answer: 'C', answerFromPage: false, explanation: '12 × 3 = 36.' },
+          {
+            no: 1,
+            subtest: 'TWK',
+            topic: 'Pancasila',
+            difficulty: 'mudah',
+            stem: `Sila keempat Pancasila berbunyi … (halaman ${n})`,
+            options: LABELS.map((label) => ({ label, text: `Bunyi sila ${label}` })),
+            answer: 'D',
+            answerFromPage: true,
+            explanation: 'Sila keempat tentang kerakyatan.',
+          },
+          {
+            no: 2,
+            subtest: 'TIU',
+            topic: 'Aritmetika',
+            difficulty: 'sedang',
+            stem: `Hasil dari 12 × 3 adalah … (halaman ${n})`,
+            options: ['30', '33', '36', '39', '42'].map((text, i) => ({ label: LABELS[i], text })),
+            answer: 'C',
+            answerFromPage: false,
+            explanation: '12 × 3 = 36.',
+          },
           { no: 3, subtest: 'TIU', stem: 'Gambar manakah yang melanjutkan pola?', options: [], figure: true },
           {
             no: 4,
@@ -149,13 +177,18 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
           },
         ];
         return route.fulfill({
-          json: { candidates: [{ content: { parts: [{ text: JSON.stringify({ questions }) }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 1800, candidatesTokenCount: 700 } },
+          json: {
+            candidates: [{ content: { parts: [{ text: JSON.stringify({ questions }) }] }, finishReason: 'STOP' }],
+            usageMetadata: { promptTokenCount: 1800, candidatesTokenCount: 700 },
+          },
         });
       }
       const prompt = body.contents[0].parts[0].text!;
       // "Uji koneksi" on the API Key page.
       if (prompt.startsWith('Balas tepat: {"ok": true}')) {
-        return route.fulfill({ json: { candidates: [{ content: { parts: [{ text: '{"ok": true}' }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 } } });
+        return route.fulfill({
+          json: { candidates: [{ content: { parts: [{ text: '{"ok": true}' }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 } },
+        });
       }
       if (body.systemInstruction.parts[0].text.startsWith('Anda tutor')) {
         // The tutor doubts the key only when the learner asks whether it is wrong.
@@ -163,20 +196,32 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
         const question = /Pertanyaan pengguna: (.*)$/m.exec(prompt)?.[1] ?? '';
         const reply = { answer: `Penjelasan uji ${stats.tutorPrompts.length}: kunci A sesuai pembahasan.`, keyLooksWrong: /salah\?$/.test(question) && question.includes('kunci') };
         return route.fulfill({
-          json: { candidates: [{ content: { parts: [{ text: JSON.stringify(reply) }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 80 } },
+          json: {
+            candidates: [{ content: { parts: [{ text: JSON.stringify(reply) }] }, finishReason: 'STOP' }],
+            usageMetadata: { promptTokenCount: 500, candidatesTokenCount: 80 },
+          },
         });
       }
       if (body.systemInstruction.parts[0].text.includes('penguji')) {
         stats.checkCalls++;
         const subtest = /Untuk setiap soal (TWK|TIU|TKP)/.exec(prompt)?.[1] ?? '';
-        const answers = [...prompt.matchAll(/^(\d+)\. (.*)$/gm)].map(([, no, stem]) => ({ no: Number(no), answer: stats.checkAnswer(subtest, Number(no), stem), reason: `alasan uji ${no}` }));
+        const answers = [...prompt.matchAll(/^(\d+)\. (.*)$/gm)].map(([, no, stem]) => ({
+          no: Number(no),
+          answer: stats.checkAnswer(subtest, Number(no), stem),
+          reason: `alasan uji ${no}`,
+        }));
         return route.fulfill({
-          json: { candidates: [{ content: { parts: [{ text: JSON.stringify({ answers }) }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 800, candidatesTokenCount: 60 * answers.length } },
+          json: {
+            candidates: [{ content: { parts: [{ text: JSON.stringify({ answers }) }] }, finishReason: 'STOP' }],
+            usageMetadata: { promptTokenCount: 800, candidatesTokenCount: 60 * answers.length },
+          },
         });
       }
       stats.generateCalls++;
       const reading = fakePassages(prompt);
-      const reply = reading ? { subtest: 'TIU' as const, body: { passages: reading.passages }, count: reading.count } : (({ subtest, questions }) => ({ subtest, body: { questions }, count: questions.length }))(fakeQuestions(prompt));
+      const reply = reading
+        ? { subtest: 'TIU' as const, body: { passages: reading.passages }, count: reading.count }
+        : (({ subtest, questions }) => ({ subtest, body: { questions }, count: questions.length }))(fakeQuestions(prompt));
       stats.served[reply.subtest] = (stats.served[reply.subtest] ?? 0) + reply.count;
       return route.fulfill({
         json: {
@@ -224,7 +269,10 @@ export async function addGeminiKey(page: Page, { unlimited = false } = {}) {
   await page.getByPlaceholder('AIza…').fill('AIza-e2e-fake-key');
   if (unlimited) {
     await page.getByText('Pengaturan lanjutan (opsional)').click();
-    await page.getByRole('combobox').filter({ has: page.getByRole('option', { name: /Tanpa batas/ }) }).selectOption({ label: 'Tanpa batas (akun berbayar)' });
+    await page
+      .getByRole('combobox')
+      .filter({ has: page.getByRole('option', { name: /Tanpa batas/ }) })
+      .selectOption({ label: 'Tanpa batas (akun berbayar)' });
   }
   await page.getByRole('button', { name: 'Simpan', exact: true }).click();
   // The picked model shows up in the key's model selector.

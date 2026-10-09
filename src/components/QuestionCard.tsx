@@ -88,10 +88,7 @@ export function QuestionCard({
             {q.options.map((o) => {
               const isKey = mode === 'pembahasan' && (isGraded(q.subtest) ? isTopOption(q, o) : o.label === q.answer);
               return (
-                <li
-                  key={o.label}
-                  className={`flex items-start gap-2 rounded-lg px-2 py-1 text-sm ${isKey ? 'bg-green-50 dark:bg-green-950' : ''}`}
-                >
+                <li key={o.label} className={`flex items-start gap-2 rounded-lg px-2 py-1 text-sm ${isKey ? 'bg-green-50 dark:bg-green-950' : ''}`}>
                   <span className="w-5 shrink-0 font-semibold">{o.label}.</span>
                   <span className="flex-1">
                     {o.figure ? <CellView cell={o.figure} /> : <RichText text={o.text} />}
@@ -131,9 +128,7 @@ export function Explanation({
   const [tutorOpen, setTutorOpen] = useState(false);
   return (
     <div className="mt-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-800">
-      <div className="mb-1 font-semibold">
-        Pembahasan {!isGraded(q.subtest) && <span className="font-normal">· Jawaban: {q.answer}</span>}
-      </div>
+      <div className="mb-1 font-semibold">Pembahasan {!isGraded(q.subtest) && <span className="font-normal">· Jawaban: {q.answer}</span>}</div>
       <div className="leading-relaxed text-slate-700 dark:text-slate-300">
         <RichText text={q.explanation || '—'} />
       </div>

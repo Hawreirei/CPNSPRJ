@@ -106,6 +106,7 @@ npm test           # unit test (vitest)
 npm run test:e2e   # uji end-to-end di browser (Playwright, memakai build produksi)
 npm run typecheck
 npm run lint
+npm run format     # Prettier (.prettierrc.json); CI menjalankan format:check
 npm run build      # build statis ke dist/
 npm run preview
 ```
@@ -123,7 +124,9 @@ Aksesibilitas diperiksa dengan axe (`@axe-core/playwright`) di semua halaman uta
 
 Cakupan: tambah API key → buat set → ujian (termasuk kirim otomatis saat waktu habis) → laporan & progres; unduh PDF/Word; cadangan ekspor/impor ke browser bersih, pengingat, dan simpan otomatis; Mode Latihan; Buku Kesalahan; paket ujian dan PPPK; berbagi set; impor foto/PDF dan gambar soal; Kartu Hafalan dan Kamus; tutor; uji performa dan offline. Daftar lengkapnya ada di `e2e/`.
 
-Setiap PR menjalankan typecheck, lint (`--deny-warnings`), unit test, e2e, dan `npm run check:bundle`, yang gagal bila JavaScript dan CSS yang diunduh saat aplikasi pertama dibuka melebihi 210 KB (gzip) atau memuat library yang seharusnya dimuat saat dipakai.
+Commit yang hanya memformat ulang kode tercatat di `.git-blame-ignore-revs`, supaya `git blame` menunjuk perubahan isinya. GitHub membacanya sendiri; di lokal jalankan sekali `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+
+Setiap PR menjalankan typecheck, lint (`--deny-warnings`), pemeriksaan format (Prettier), unit test, e2e, dan `npm run check:bundle`, yang gagal bila JavaScript dan CSS yang diunduh saat aplikasi pertama dibuka melebihi 210 KB (gzip) atau memuat library yang seharusnya dimuat saat dipakai.
 
 Hasil build adalah situs statis (router berbasis hash, `base: './'`), sehingga bisa di-host di Netlify, Cloudflare Pages, GitHub Pages, dan sejenisnya tanpa konfigurasi rewrite.
 

@@ -40,7 +40,9 @@ export default function SavedSets() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {shown.map((s) => {
-            const counts = subtestsIn(s.blueprint.sections).map((st) => [st, s.blueprint.sections.find((x) => x.subtest === st)?.count ?? 0] as const).filter(([, n]) => n);
+            const counts = subtestsIn(s.blueprint.sections)
+              .map((st) => [st, s.blueprint.sections.find((x) => x.subtest === st)?.count ?? 0] as const)
+              .filter(([, n]) => n);
             return (
               <div key={s.id} className="card flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">

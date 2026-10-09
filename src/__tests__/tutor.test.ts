@@ -39,7 +39,15 @@ function mkQ(partial: Partial<Question> = {}): Question {
 describe('what the tutor is told', () => {
   it('gets the question, its key, explanation, reference and the learner answer', () => {
     const p = buildTutorPrompt(mkQ(), { question: 'Kenapa B?', userAnswer: 'D' });
-    for (const part of ['Pasal berapa yang mengatur', 'D. Pasal 1 ayat (4)', 'Kunci jawaban: B', 'Pembahasan: Kedaulatan', 'Rujukan: UUD 1945 Pasal 1 ayat (2)', 'Jawaban pengguna: D', 'Pertanyaan pengguna: Kenapa B?']) {
+    for (const part of [
+      'Pasal berapa yang mengatur',
+      'D. Pasal 1 ayat (4)',
+      'Kunci jawaban: B',
+      'Pembahasan: Kedaulatan',
+      'Rujukan: UUD 1945 Pasal 1 ayat (2)',
+      'Jawaban pengguna: D',
+      'Pertanyaan pengguna: Kenapa B?',
+    ]) {
       expect(p).toContain(part);
     }
   });
@@ -108,10 +116,13 @@ describe('asking, notes and easier questions', () => {
       vi.fn(async (_url: string, init: RequestInit) => {
         bodies.push(JSON.parse(String(init.body)));
         const text = JSON.stringify({ answer: 'Kedaulatan rakyat diatur di Pasal 1 ayat (2).', keyLooksWrong: false });
-        return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 300, candidatesTokenCount: 50 } }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
+        return new Response(
+          JSON.stringify({ candidates: [{ content: { parts: [{ text }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 300, candidatesTokenCount: 50 } }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          },
+        );
       }),
     );
     const est = await tutorEstimate(mkQ(), { question: 'Kenapa B?' });
@@ -142,7 +153,18 @@ describe('asking, notes and easier questions', () => {
     expect([easier('sulit'), easier('sedang'), easier('mudah')]).toEqual(['sedang', 'mudah', 'mudah']);
     const q = { ...generateFiguralSeries('sulit'), originSetId: 's1' };
     await db.questions.put(q);
-    await db.sets.put({ id: 's1', name: 'Set', blueprint: { sections: [], durationMinutes: 10, passing: { TWK: 0, TIU: 0, TKP: 0 } }, questionIds: [q.id, 'other'], status: 'ready', batches: [], usage: { inputTokens: 0, outputTokens: 0, requests: 0 }, source: 'ai', createdAt: 0, updatedAt: 0 });
+    await db.sets.put({
+      id: 's1',
+      name: 'Set',
+      blueprint: { sections: [], durationMinutes: 10, passing: { TWK: 0, TIU: 0, TKP: 0 } },
+      questionIds: [q.id, 'other'],
+      status: 'ready',
+      batches: [],
+      usage: { inputTokens: 0, outputTokens: 0, requests: 0 },
+      source: 'ai',
+      createdAt: 0,
+      updatedAt: 0,
+    });
     expect(await moreLikeThis('s1', q, 2, undefined, { easier: true })).toBe(2);
     const set = await db.sets.get('s1');
     expect(set!.questionIds[0]).toBe(q.id);

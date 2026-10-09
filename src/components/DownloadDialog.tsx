@@ -30,8 +30,7 @@ export function DownloadDialog({ open, onClose, meta, questions }: { open: boole
     setBusy(true);
     setError(null);
     try {
-      const blob =
-        format === 'pdf' ? await (await import('../lib/exportPdf')).exportPdf(meta, questions, pack) : await exportDocx(meta, questions, pack);
+      const blob = format === 'pdf' ? await (await import('../lib/exportPdf')).exportPdf(meta, questions, pack) : await exportDocx(meta, questions, pack);
       downloadBlob(blob, `${safeFileName(`${meta.name} - ${FILE_SUFFIX[pack]}`)}.${format}`);
       onClose();
     } catch (e) {

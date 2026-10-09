@@ -8,9 +8,8 @@ export { describeCell, describeFigure } from './describe';
 const SHAPES: ShapeKind[] = ['circle', 'square', 'triangle', 'diamond', 'star', 'arrow', 'pentagon'];
 const FILLS: Fill[] = ['solid', 'empty', 'striped'];
 export type Rand = () => number;
-const pick = <T,>(arr: T[], r: Rand) => arr[Math.floor(r() * arr.length)];
-const sameCell = (a: FigureCell, b: FigureCell) =>
-  a.shape === b.shape && a.fill === b.fill && a.count === b.count && norm(a.rotation) === norm(b.rotation);
+const pick = <T>(arr: T[], r: Rand) => arr[Math.floor(r() * arr.length)];
+const sameCell = (a: FigureCell, b: FigureCell) => a.shape === b.shape && a.fill === b.fill && a.count === b.count && norm(a.rotation) === norm(b.rotation);
 const norm = (deg: number) => ((deg % 360) + 360) % 360;
 
 /**
@@ -67,7 +66,11 @@ function rules(difficulty: Difficulty, r: Rand): Rule[] {
 }
 
 const COMPATIBLE: [Rule['key'], Rule['key']][] = [
-  ['rotate', 'fill'], ['rotate', 'count'], ['count', 'fill'], ['shape', 'fill'], ['shape', 'count'],
+  ['rotate', 'fill'],
+  ['rotate', 'count'],
+  ['count', 'fill'],
+  ['shape', 'fill'],
+  ['shape', 'count'],
 ];
 
 function pickRule(difficulty: Difficulty, r: Rand): Rule {
@@ -95,7 +98,13 @@ function distractors(answer: FigureCell, r: Rand): FigureCell[] {
     { ...answer, fill: FILLS[(FILLS.indexOf(answer.fill) + 2) % 3] },
     { ...answer, count: (answer.count % 4) + 1 },
     { ...answer, count: answer.count === 1 ? 3 : answer.count - 1 },
-    { ...answer, shape: pick(SHAPES.filter((s) => s !== answer.shape), r) },
+    {
+      ...answer,
+      shape: pick(
+        SHAPES.filter((s) => s !== answer.shape),
+        r,
+      ),
+    },
   ];
   const isSymmetric = !ROTATABLE.includes(answer.shape);
   const out: FigureCell[] = [];
@@ -106,7 +115,6 @@ function distractors(answer: FigureCell, r: Rand): FigureCell[] {
   }
   return out;
 }
-
 
 type FiguralTopic = 'Deret Figural' | 'Analogi Figural' | 'Matriks Figural' | 'Transformasi Figural' | 'Figural Berbeda';
 
@@ -225,7 +233,11 @@ function trait(attr: Attr, v: AttrValue): string {
 
 /** Three distinct values of an attribute. Rotation is only used on the arrow, whose direction is unambiguous. */
 function threeValues(attr: Attr, r: Rand): AttrValue[] {
-  if (attr === 'shape') return shuffle(SHAPES.filter((x) => x !== 'arrow'), r).slice(0, 3);
+  if (attr === 'shape')
+    return shuffle(
+      SHAPES.filter((x) => x !== 'arrow'),
+      r,
+    ).slice(0, 3);
   if (attr === 'fill') return shuffle([...FILLS], r);
   if (attr === 'count') return [1, 2, 3];
   return [0, 90, 180];
@@ -248,11 +260,28 @@ export function matrixCell(m: MatrixRule, i: number, j: number): FigureCell {
 function matrixRule(difficulty: Difficulty, r: Rand): MatrixRule {
   // Shape and rotation never vary together: rotation needs the arrow.
   const pairs: [Attr, Attr][] = [
-    ['shape', 'fill'], ['shape', 'count'], ['fill', 'count'], ['fill', 'rotation'], ['count', 'rotation'], ['count', 'fill'], ['fill', 'shape'], ['count', 'shape'],
+    ['shape', 'fill'],
+    ['shape', 'count'],
+    ['fill', 'count'],
+    ['fill', 'rotation'],
+    ['count', 'rotation'],
+    ['count', 'fill'],
+    ['fill', 'shape'],
+    ['count', 'shape'],
   ];
   const [a, b] = pick(pairs, r);
   const rotates = a === 'rotation' || b === 'rotation';
-  const base: FigureCell = { shape: rotates ? 'arrow' : pick(SHAPES.filter((x) => x !== 'arrow'), r), fill: pick(FILLS, r), rotation: 0, count: 1 };
+  const base: FigureCell = {
+    shape: rotates
+      ? 'arrow'
+      : pick(
+          SHAPES.filter((x) => x !== 'arrow'),
+          r,
+        ),
+    fill: pick(FILLS, r),
+    rotation: 0,
+    count: 1,
+  };
   return {
     row: { attr: a, values: threeValues(a, r) },
     col: { attr: b, values: threeValues(b, r) },
@@ -358,7 +387,14 @@ export function generateFiguralOddOne(difficulty: Difficulty, r: Rand = Math.ran
       for (const a of varying) Object.assign(c, { [a]: pick(ATTR_VALUES[a], r) });
       return c;
     });
-    cells[odd] = withAttr(cells[odd], broken, pick(ATTR_VALUES[broken].filter((v) => v !== common[broken]), r));
+    cells[odd] = withAttr(
+      cells[odd],
+      broken,
+      pick(
+        ATTR_VALUES[broken].filter((v) => v !== common[broken]),
+        r,
+      ),
+    );
     const distinct = cells.every((c, i) => cells.every((d, k) => k === i || !looksSame(c, d)));
     // Only the intended property may single out an option, or two answers could be argued for.
     const fair = singledOut(cells, broken) === odd && (['shape', 'fill', 'count'] as const).every((a) => a === broken || singledOut(cells, a) === null);
@@ -375,7 +411,6 @@ export function generateFiguralOddOne(difficulty: Difficulty, r: Rand = Math.ran
     );
   }
 }
-
 
 const GENERATORS: Record<FiguralTopic, (d: Difficulty) => Question> = {
   'Deret Figural': generateFiguralSeries,

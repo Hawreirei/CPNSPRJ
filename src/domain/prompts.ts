@@ -86,13 +86,7 @@ function formatSpec(subtest: Subtest): string {
   return base;
 }
 
-export function buildPrompt(opts: {
-  subtest: Subtest;
-  items: BatchItem[];
-  avoid?: string[];
-  basedOn?: Question[];
-  instruction?: string;
-}): string {
+export function buildPrompt(opts: { subtest: Subtest; items: BatchItem[]; avoid?: string[]; basedOn?: Question[]; instruction?: string }): string {
   const topics = [...new Set(opts.items.map((i) => i.topic))];
   const parts = [
     subtestGuide(opts.subtest, topics),
@@ -107,7 +101,12 @@ export function buildPrompt(opts: {
   }
   if (opts.instruction) parts.push(`Instruksi tambahan dari pengguna: ${opts.instruction}`);
   if (opts.avoid?.length) {
-    parts.push(`Jangan mengulang soal yang mirip dengan ini:\n- ${opts.avoid.slice(0, 15).map((s) => s.slice(0, 120)).join('\n- ')}`);
+    parts.push(
+      `Jangan mengulang soal yang mirip dengan ini:\n- ${opts.avoid
+        .slice(0, 15)
+        .map((s) => s.slice(0, 120))
+        .join('\n- ')}`,
+    );
   }
   parts.push(`Format JSON:\n${formatSpec(opts.subtest)}`);
   return parts.join('\n\n');
@@ -133,7 +132,13 @@ Setiap soal harus bisa dijawab HANYA dari isi wacananya: gagasan utama, informas
 Variasikan jenis pertanyaan di dalam satu wacana. Akhiri pembahasan dengan kalimat "Jawaban: <huruf opsi>.".`,
     `Buat ${opts.sizes.length} wacana berbeda, berurutan sesuai daftar ini, masing-masing dengan TEPAT jumlah soal yang diminta:\n${plan}`,
   ];
-  if (opts.avoid?.length) parts.push(`Jangan mengulang wacana atau soal yang mirip dengan ini:\n- ${opts.avoid.slice(0, 10).map((s) => s.slice(0, 120)).join('\n- ')}`);
+  if (opts.avoid?.length)
+    parts.push(
+      `Jangan mengulang wacana atau soal yang mirip dengan ini:\n- ${opts.avoid
+        .slice(0, 10)
+        .map((s) => s.slice(0, 120))
+        .join('\n- ')}`,
+    );
   parts.push(`Format JSON:
 {
   "passages": [
@@ -177,7 +182,14 @@ export function buildRepairPrompt(subtest: Subtest, questions: Question[]): stri
   const list = questions
     .map((q, i) => {
       const problems = q.flags.filter((f) => f.severity === 'warn').map((f) => f.message);
-      const data = { stem: q.stem, options: q.options.map(({ label, text }) => ({ label, text })), answer: q.answer, explanation: q.explanation, reference: q.reference, mathExpression: q.mathExpression };
+      const data = {
+        stem: q.stem,
+        options: q.options.map(({ label, text }) => ({ label, text })),
+        answer: q.answer,
+        explanation: q.explanation,
+        reference: q.reference,
+        mathExpression: q.mathExpression,
+      };
       return `${i + 1}. Masalah: ${problems.join(' ')}\n${passageBlock(q)}${JSON.stringify(data)}`;
     })
     .join('\n\n');
@@ -209,7 +221,10 @@ export function buildCrossCheckPrompt(subtest: Subtest, questions: Pick<Question
         : `Untuk setiap soal ${subtest}, pilih SATU opsi yang benar.`;
   const list = questions
     // A reading question can only be answered with its passage, given inline on the question's line.
-    .map((q, i) => `${i + 1}. ${q.passage ? `[Bacaan: ${q.passage.text.replace(/\s*\n\s*/g, ' ')}] ` : ''}${q.stem.replace(/\s*\n\s*/g, ' ')}\n${q.options.map((o) => `${o.label}. ${o.figure ? '[gambar]' : o.text}`).join('\n')}`)
+    .map(
+      (q, i) =>
+        `${i + 1}. ${q.passage ? `[Bacaan: ${q.passage.text.replace(/\s*\n\s*/g, ' ')}] ` : ''}${q.stem.replace(/\s*\n\s*/g, ' ')}\n${q.options.map((o) => `${o.label}. ${o.figure ? '[gambar]' : o.text}`).join('\n')}`,
+    )
     .join('\n\n');
   return `${task}
 Beri alasan singkat (satu kalimat) untuk setiap jawaban.

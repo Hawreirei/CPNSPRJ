@@ -17,7 +17,11 @@ const icsDate = (t: number) => {
   const d = new Date(t);
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
 };
-const icsStamp = (t: number) => new Date(t).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+const icsStamp = (t: number) =>
+  new Date(t)
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '');
 
 /** Escape TEXT values: backslash, semicolon, comma and newlines. */
 export const escapeText = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');

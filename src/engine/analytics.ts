@@ -88,7 +88,13 @@ export function timing(a: Pick<Attempt, 'answers' | 'flagged' | 'timeSpent'>, qu
     const totalMs = timed.reduce((n, r) => n + r.ms, 0);
     const avgMs = totalMs / timed.length;
     const wastedMs = isGraded(s) ? 0 : timed.filter((r) => !r.correct).reduce((n, r) => n + r.ms, 0);
-    const slow = timed.length >= MIN_TIMED ? timed.filter((r) => r.ms > avgMs * SLOW_FACTOR).sort((x, y) => y.ms - x.ms).map(ref) : [];
+    const slow =
+      timed.length >= MIN_TIMED
+        ? timed
+            .filter((r) => r.ms > avgMs * SLOW_FACTOR)
+            .sort((x, y) => y.ms - x.ms)
+            .map(ref)
+        : [];
     return [{ subtest: s, timed: timed.length, avgMs, totalMs, wastedMs, slow }];
   });
 }
@@ -154,7 +160,11 @@ export function calibration(a: Pick<Attempt, 'answers' | 'flagged' | 'timeSpent'
  * some questions are simply easy.
  */
 export function likelyGuesses(a: Pick<Attempt, 'answers' | 'flagged' | 'timeSpent'>, questions: Question[]): QuestionRef[] {
-  const avg = new Map(timing(a, questions).filter((t) => t.timed >= MIN_TIMED).map((t) => [t.subtest, t.avgMs]));
+  const avg = new Map(
+    timing(a, questions)
+      .filter((t) => t.timed >= MIN_TIMED)
+      .map((t) => [t.subtest, t.avgMs]),
+  );
   return rows(a, questions)
     .filter((r) => !isGraded(r.q.subtest) && r.correct && !r.flagged && r.ms > 0)
     .filter((r) => {
@@ -311,8 +321,7 @@ export interface Recommendation {
 }
 
 /** Short duration for tables: "45d", "2m 5d". */
-export const fmtSec = (ms: number) =>
-  ms >= 60000 ? `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}d` : ms > 0 && ms < 500 ? '<1d' : `${Math.round(ms / 1000)}d`;
+export const fmtSec = (ms: number) => (ms >= 60000 ? `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}d` : ms > 0 && ms < 500 ? '<1d' : `${Math.round(ms / 1000)}d`);
 
 const sec = (ms: number) => `${Math.round(ms / 1000)} detik`;
 const min = (ms: number) => (ms >= 60_000 ? `${Math.round(ms / 60_000)} menit` : sec(ms));

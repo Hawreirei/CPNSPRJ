@@ -9,17 +9,7 @@ import { isGraded, isTopOption, maxPerQuestion } from '../domain/examPackage';
  * Selectable options that turn into a marked key once `revealed`: top option green,
  * a wrong pick red (TKP: blue, since every TKP option scores), the rest dimmed.
  */
-export function AnswerOptions({
-  q,
-  chosen,
-  revealed,
-  onAnswer,
-}: {
-  q: Question;
-  chosen?: OptionLabel;
-  revealed: boolean;
-  onAnswer: (label: OptionLabel) => void;
-}) {
+export function AnswerOptions({ q, chosen, revealed, onAnswer }: { q: Question; chosen?: OptionLabel; revealed: boolean; onAnswer: (label: OptionLabel) => void }) {
   const best = feedback(q, chosen ?? 'A').best;
   return (
     // Keyed per question so the previous answer's colors never fade over the next question.

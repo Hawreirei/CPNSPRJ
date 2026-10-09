@@ -204,13 +204,7 @@ export default function QuestionBank() {
         <div className="space-y-3">
           {filtered.slice(0, limit).map((x) => (
             <div key={x.id} className="flex items-start gap-2">
-              <input
-                type="checkbox"
-                className="mt-5 h-4 w-4 shrink-0"
-                checked={selected.has(x.id)}
-                onChange={() => toggle(x.id)}
-                aria-label="Pilih soal"
-              />
+              <input type="checkbox" className="mt-5 h-4 w-4 shrink-0" checked={selected.has(x.id)} onChange={() => toggle(x.id)} aria-label="Pilih soal" />
               <div className="min-w-0 flex-1">
                 <QuestionCard
                   q={x}
@@ -219,7 +213,11 @@ export default function QuestionBank() {
                   onFeedback={() => setFeedbackFor(x)}
                   actions={
                     <>
-                      <button className="btn btn-ghost btn-sm" title={x.starred ? 'Hapus bintang' : 'Beri bintang'} onClick={() => db.questions.update(x.id, { starred: !x.starred })}>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        title={x.starred ? 'Hapus bintang' : 'Beri bintang'}
+                        onClick={() => db.questions.update(x.id, { starred: !x.starred })}
+                      >
                         {x.starred ? '★' : '☆'}
                       </button>
                       <button className="btn btn-ghost btn-sm" disabled={x.locked} onClick={() => setEditing(x)}>

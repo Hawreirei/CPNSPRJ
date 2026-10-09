@@ -65,12 +65,18 @@ export async function appendToSet(setId: string, questions: Question[], afterId?
     let ids = [...set.questionIds];
     if (afterId && ids.includes(afterId)) {
       // After a passage question means after its whole group, which must not be split.
-      const after = endOfGroup((await db.questions.bulkGet(ids)).filter((q): q is Question => !!q), afterId);
+      const after = endOfGroup(
+        (await db.questions.bulkGet(ids)).filter((q): q is Question => !!q),
+        afterId,
+      );
       ids.splice(ids.indexOf(after) + 1, 0, ...questions.map((q) => q.id));
     } else {
       ids.push(...questions.map((q) => q.id));
       const all = (await db.questions.bulkGet(ids)).filter((q): q is Question => !!q);
-      ids = all.map((q, i) => ({ q, i })).sort((a, b) => subtestOrder(a.q) - subtestOrder(b.q) || a.i - b.i).map((x) => x.q.id);
+      ids = all
+        .map((q, i) => ({ q, i }))
+        .sort((a, b) => subtestOrder(a.q) - subtestOrder(b.q) || a.i - b.i)
+        .map((x) => x.q.id);
     }
     await db.sets.update(setId, { questionIds: ids, updatedAt: Date.now() });
   });
@@ -86,7 +92,13 @@ async function recentStems(subtest: string, topics: string[]): Promise<string[]>
   const per = Math.max(2, Math.ceil(15 / topics.length));
   const out: string[] = [];
   for (const t of topics) {
-    const rows = await db.questions.where('topic').equals(t).filter((q) => q.subtest === subtest).reverse().limit(per).toArray();
+    const rows = await db.questions
+      .where('topic')
+      .equals(t)
+      .filter((q) => q.subtest === subtest)
+      .reverse()
+      .limit(per)
+      .toArray();
     out.push(...rows.map((q) => q.stem));
   }
   return out;
@@ -310,7 +322,12 @@ export async function startGeneration(setId: string): Promise<void> {
   await db.sets.update(setId, { status: allDone ? 'ready' : 'paused', updatedAt: Date.now() });
   update(setId, { running: false, current: [], waitUntil: undefined, waitReason: undefined });
   if (quotaStop) log(setId, 'error', `${(quotaStop as QuotaExhaustedError).message} Soal yang sudah jadi tetap tersimpan.`);
-  else log(setId, failures ? 'error' : 'info', allDone ? 'Selesai.' : ctrl.signal.aborted ? 'Dihentikan. Klik Lanjutkan untuk meneruskan.' : `${failures} batch gagal. Klik Lanjutkan untuk mencoba lagi.`);
+  else
+    log(
+      setId,
+      failures ? 'error' : 'info',
+      allDone ? 'Selesai.' : ctrl.signal.aborted ? 'Dihentikan. Klik Lanjutkan untuk meneruskan.' : `${failures} batch gagal. Klik Lanjutkan untuk mencoba lagi.`,
+    );
 }
 
 export async function stopGeneration(setId: string) {
@@ -321,7 +338,13 @@ export async function stopGeneration(setId: string) {
 export async function rewriteQuestion(q: Question, instruction: string, keyId?: string): Promise<Question> {
   const session = await openSession(keyId);
   const ctrl = new AbortController();
-  const [nq] = await callAndParse(session, buildRewritePrompt(q, instruction), { subtest: q.subtest, items: [{ topic: q.topic, difficulty: q.difficulty }], setId: q.originSetId }, ctrl.signal, async () => {});
+  const [nq] = await callAndParse(
+    session,
+    buildRewritePrompt(q, instruction),
+    { subtest: q.subtest, items: [{ topic: q.topic, difficulty: q.difficulty }], setId: q.originSetId },
+    ctrl.signal,
+    async () => {},
+  );
   if (!nq) throw new Error('AI tidak mengembalikan soal.');
   await loadMath();
   // A report stays until the learner withdraws it, also through a rewrite; the old rating no longer applies.
@@ -333,8 +356,7 @@ export async function rewriteQuestion(q: Question, instruction: string, keyId?: 
 const REPAIRABLE = new Set<FlagKind>(['math-mismatch', 'explanation-mismatch']);
 
 /** A question whose key, explanation and calculation disagree, and that the AI may rewrite. */
-export const needsRepair = (q: Question) =>
-  q.source === 'ai' && !q.locked && !isGraded(q.subtest) && q.flags.some((f) => f.severity === 'warn' && REPAIRABLE.has(f.kind));
+export const needsRepair = (q: Question) => q.source === 'ai' && !q.locked && !isGraded(q.subtest) && q.flags.some((f) => f.severity === 'warn' && REPAIRABLE.has(f.kind));
 
 /** Ask the model to fix the given questions (one request per sub-test); returns how many were fixed. */
 async function repairWith(session: ModelSession, questions: Question[], signal: AbortSignal, onUsage: (i: number, o: number) => Promise<void>): Promise<number> {
@@ -348,7 +370,17 @@ async function repairWith(session: ModelSession, questions: Question[], signal: 
     if (out.length !== group.length) continue;
     await loadMath();
     for (const [i, old] of group.entries()) {
-      const v = validateQuestion({ ...out[i], id: old.id, originSetId: old.originSetId, starred: old.starred, report: old.report, rating: old.rating, passage: old.passage, createdAt: old.createdAt, updatedAt: Date.now() });
+      const v = validateQuestion({
+        ...out[i],
+        id: old.id,
+        originSetId: old.originSetId,
+        starred: old.starred,
+        report: old.report,
+        rating: old.rating,
+        passage: old.passage,
+        createdAt: old.createdAt,
+        updatedAt: Date.now(),
+      });
       if (needsRepair(v)) continue;
       await db.questions.put(v);
       fixed++;

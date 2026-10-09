@@ -79,8 +79,7 @@ export function schedule<T extends SrsState>(item: T, grade: Grade, now: number)
 
 export const isDue = (item: Pick<ReviewItem, 'due'>, now: number): boolean => item.due <= now;
 
-export const reviewedToday = (items: Pick<ReviewItem, 'lastReviewedAt'>[], now: number): number =>
-  items.filter((r) => (r.lastReviewedAt ?? 0) >= startOfDay(now)).length;
+export const reviewedToday = (items: Pick<ReviewItem, 'lastReviewedAt'>[], now: number): number => items.filter((r) => (r.lastReviewedAt ?? 0) >= startOfDay(now)).length;
 
 /** Today's queue: most overdue first, then most often forgotten, capped by what is left of the daily limit. */
 export function dueQueue(items: ReviewItem[], now: number, dailyLimit: number): ReviewItem[] {

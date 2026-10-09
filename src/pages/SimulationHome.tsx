@@ -13,7 +13,15 @@ import { fmtDate } from '../lib/format';
 export default function SimulationHome() {
   const nav = useNavigate();
   const [params] = useSearchParams();
-  const sets = useLiveQuery(() => db.sets.orderBy('updatedAt').reverse().filter((s) => s.questionIds.length > 0).toArray(), []);
+  const sets = useLiveQuery(
+    () =>
+      db.sets
+        .orderBy('updatedAt')
+        .reverse()
+        .filter((s) => s.questionIds.length > 0)
+        .toArray(),
+    [],
+  );
   const attempts = useLiveQuery(() => db.attempts.orderBy('startedAt').reverse().limit(20).toArray(), []);
   const [pickedSetId, setSetId] = useState(params.get('set') ?? '');
   const [mode, setMode] = useState<AttemptMode>(params.get('mode') === 'practice' ? 'practice' : 'exam');
@@ -39,7 +47,10 @@ export default function SimulationHome() {
 
   // Topics in the chosen set, in sub-test order. A `topics` link param (from a score report) preselects some.
   const setTopicsBySubtest = useMemo(
-    () => subtestsIn(setQuestions ?? []).map((s) => ({ subtest: s, topics: [...new Set((setQuestions ?? []).filter((q) => q.subtest === s).map((q) => q.topic))] })).filter((g) => g.topics.length),
+    () =>
+      subtestsIn(setQuestions ?? [])
+        .map((s) => ({ subtest: s, topics: [...new Set((setQuestions ?? []).filter((q) => q.subtest === s).map((q) => q.topic))] }))
+        .filter((g) => g.topics.length),
     [setQuestions],
   );
   const topicsFor = useRef('');
@@ -47,7 +58,10 @@ export default function SimulationHome() {
     if (!setQuestions || topicsFor.current === setId) return;
     topicsFor.current = setId;
     const all = setTopicsBySubtest.flatMap((g) => g.topics);
-    const wanted = params.get('topics')?.split('|').filter((t) => all.includes(t));
+    const wanted = params
+      .get('topics')
+      ?.split('|')
+      .filter((t) => all.includes(t));
     setTopics(wanted?.length && setId === params.get('set') ? wanted : all);
   }, [setQuestions, setTopicsBySubtest, params, setId]);
 
@@ -56,8 +70,7 @@ export default function SimulationHome() {
   const practice = mode === 'practice';
   const matching = practice && setQuestions && topics ? filterQuestions(setQuestions, { topics }).length : (set?.questionIds.length ?? 0);
   const toggleTopic = (t: string) => setTopics((cur) => (cur?.includes(t) ? cur.filter((x) => x !== t) : [...(cur ?? []), t]));
-  const toggleGroup = (group: string[], on: boolean) =>
-    setTopics((cur) => (on ? [...new Set([...(cur ?? []), ...group])] : (cur ?? []).filter((t) => !group.includes(t))));
+  const toggleGroup = (group: string[], on: boolean) => setTopics((cur) => (on ? [...new Set([...(cur ?? []), ...group])] : (cur ?? []).filter((t) => !group.includes(t))));
 
   async function start() {
     setError('');
@@ -255,7 +268,9 @@ export default function SimulationHome() {
                     <span className="font-semibold">
                       {a.result.total}/{a.result.maxTotal}
                     </span>
-                    {attemptMode(a) === 'exam' && a.result.passedAll !== undefined && <Badge tone={a.result.passedAll ? 'green' : 'red'}>{a.result.passedAll ? 'lulus' : 'belum lulus'}</Badge>}
+                    {attemptMode(a) === 'exam' && a.result.passedAll !== undefined && (
+                      <Badge tone={a.result.passedAll ? 'green' : 'red'}>{a.result.passedAll ? 'lulus' : 'belum lulus'}</Badge>
+                    )}
                   </div>
                 ) : (
                   <Badge tone="amber">lanjutkan</Badge>

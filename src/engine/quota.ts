@@ -87,7 +87,10 @@ const locks = new Map<string, Promise<unknown>>();
 function withLock<T>(keyId: string, fn: () => Promise<T>): Promise<T> {
   const prev = locks.get(keyId) ?? Promise.resolve();
   const next = prev.then(fn, fn);
-  locks.set(keyId, next.catch(() => undefined));
+  locks.set(
+    keyId,
+    next.catch(() => undefined),
+  );
   return next;
 }
 
@@ -154,5 +157,8 @@ export async function clearQuotaBlock(keyId: string) {
 }
 
 export async function pruneRequestLog() {
-  await db.requests.where('at').below(Date.now() - 3 * 24 * 3600_000).delete();
+  await db.requests
+    .where('at')
+    .below(Date.now() - 3 * 24 * 3600_000)
+    .delete();
 }

@@ -40,7 +40,14 @@ const ids = (qs: { id: string }[]) => qs.map((q) => q.id);
 function sample() {
   const p1 = passage('p1', ['a', 'b', 'c']);
   const p2 = passage('p2', ['d', 'e']);
-  return [mkQ({ id: 'a', passage: p1 }), mkQ({ id: 'b', passage: p1 }), mkQ({ id: 's', topic: 'Sinonim' }), mkQ({ id: 'c', passage: p1 }), mkQ({ id: 'd', passage: p2 }), mkQ({ id: 'e', passage: p2 })];
+  return [
+    mkQ({ id: 'a', passage: p1 }),
+    mkQ({ id: 'b', passage: p1 }),
+    mkQ({ id: 's', topic: 'Sinonim' }),
+    mkQ({ id: 'c', passage: p1 }),
+    mkQ({ id: 'd', passage: p2 }),
+    mkQ({ id: 'e', passage: p2 }),
+  ];
 }
 
 /** Every group's questions are next to each other and in their original order. */
@@ -65,7 +72,7 @@ describe('passage groups', () => {
     const qs = keepGroupsTogether(sample());
     for (let seed = 1; seed < 200; seed++) {
       let x = seed;
-      const r = () => ((x = (x * 16807) % 2147483647) / 2147483647);
+      const r = () => (x = (x * 16807) % 2147483647) / 2147483647;
       const out = shuffleUnits(qs, r);
       expect(out).toHaveLength(qs.length);
       groupsIntact(out, qs);
@@ -100,7 +107,11 @@ describe('passage groups', () => {
 });
 
 describe('planning passages', () => {
-  const bp = (count: number): Blueprint => ({ sections: [{ subtest: 'TIU', count, topics: [PASSAGE_TOPIC, 'Sinonim'], difficulty: 'sedang' }], durationMinutes: 10, passing: DEFAULT_SETTINGS.passing });
+  const bp = (count: number): Blueprint => ({
+    sections: [{ subtest: 'TIU', count, topics: [PASSAGE_TOPIC, 'Sinonim'], difficulty: 'sedang' }],
+    durationMinutes: 10,
+    passing: DEFAULT_SETTINGS.passing,
+  });
 
   it('puts two or more reading questions in their own passage batch', () => {
     const batches = planBatches(bp(10), 20);
@@ -180,7 +191,15 @@ describe('TKP dilemmas', () => {
   });
 
   it('keeps the reason per option', () => {
-    const raw = { questions: [{ stem: 'Situasi kerja yang sulit?', options: [5, 4, 3, 2, 1].map((s, i) => ({ label: 'ABCDE'[i], text: `Tindakan ${i}`, score: s, rationale: `Alasan ${s}` })), explanation: 'x' }] };
+    const raw = {
+      questions: [
+        {
+          stem: 'Situasi kerja yang sulit?',
+          options: [5, 4, 3, 2, 1].map((s, i) => ({ label: 'ABCDE'[i], text: `Tindakan ${i}`, score: s, rationale: `Alasan ${s}` })),
+          explanation: 'x',
+        },
+      ],
+    };
     const [q] = parseAiQuestions(JSON.stringify(raw), { subtest: 'TKP', items: [{ topic: 'Pelayanan Publik', difficulty: 'sulit' }] });
     expect(q.options.map((o) => o.rationale)).toEqual(['Alasan 5', 'Alasan 4', 'Alasan 3', 'Alasan 2', 'Alasan 1']);
     // Only TKP options have reasons.
@@ -196,7 +215,11 @@ describe('sets and attempts keep groups together', () => {
 
   async function setWith(order: Question[]) {
     await db.questions.bulkPut(order);
-    return createBankSet('Bacaan', { sections: [{ subtest: 'TIU', count: order.length, topics: [PASSAGE_TOPIC, 'Sinonim'], difficulty: 'campuran' }], durationMinutes: 10, passing: DEFAULT_SETTINGS.passing }, order);
+    return createBankSet(
+      'Bacaan',
+      { sections: [{ subtest: 'TIU', count: order.length, topics: [PASSAGE_TOPIC, 'Sinonim'], difficulty: 'campuran' }], durationMinutes: 10, passing: DEFAULT_SETTINGS.passing },
+      order,
+    );
   }
 
   it('builds a set from scattered picks with each group in one place', async () => {
@@ -229,7 +252,11 @@ describe('sets and attempts keep groups together', () => {
 
   it('picks whole groups from the bank, or none of a group that does not fit', async () => {
     await db.questions.bulkPut(sample());
-    const bp = (count: number): Blueprint => ({ sections: [{ subtest: 'TIU', count, topics: [PASSAGE_TOPIC], difficulty: 'campuran' }], durationMinutes: 10, passing: DEFAULT_SETTINGS.passing });
+    const bp = (count: number): Blueprint => ({
+      sections: [{ subtest: 'TIU', count, topics: [PASSAGE_TOPIC], difficulty: 'campuran' }],
+      durationMinutes: 10,
+      passing: DEFAULT_SETTINGS.passing,
+    });
     for (let i = 0; i < 20; i++) {
       const five = await pickFromBank(bp(5));
       expect(five.picked.map((q) => q.id).sort()).toEqual(['a', 'b', 'c', 'd', 'e']);

@@ -6,7 +6,11 @@ test('the tutor explains a question, its answer can be kept as a note, and a dou
   await page.goto(`#/simulation?set=${setUrl.split('/').pop()}&mode=practice`);
   await page.getByRole('button', { name: 'Mulai latihan' }).click();
   await expect(page.getByText('Soal 1', { exact: true })).toBeVisible();
-  const stem = (await page.locator('main').getByText(/^Soal uji TWK \d+ tentang/).first().textContent())!;
+  const stem = (await page
+    .locator('main')
+    .getByText(/^Soal uji TWK \d+ tentang/)
+    .first()
+    .textContent())!;
   await page.keyboard.press('b');
 
   await page.getByRole('button', { name: 'Tanya AI' }).click();

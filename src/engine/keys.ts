@@ -138,10 +138,7 @@ export async function switchToAutoModel(keyId: string) {
  * Re-read the account's model list and switch to the newest stable recommended
  * model. Returns the (possibly unchanged) model id.
  */
-export async function refreshKeyModel(
-  keyId: string,
-  opts: { exclude?: string; hint?: string } = {},
-): Promise<{ model: string; changed: boolean }> {
+export async function refreshKeyModel(keyId: string, opts: { exclude?: string; hint?: string } = {}): Promise<{ model: string; changed: boolean }> {
   const rec = await db.keys.get(keyId);
   if (!rec) throw new Error('API key tidak ditemukan.');
   const cfg = await providerConfig(keyId);
@@ -178,10 +175,7 @@ export async function refreshStaleKeyModels(): Promise<void> {
 }
 
 /** Config for a generation run; refreshes an auto-managed model if it has not been checked recently. */
-export async function freshProviderConfig(
-  keyId?: string,
-  modelOverride?: string,
-): Promise<ProviderConfig & { keyId: string; autoModel: boolean }> {
+export async function freshProviderConfig(keyId?: string, modelOverride?: string): Promise<ProviderConfig & { keyId: string; autoModel: boolean }> {
   const rec = await resolveKey(keyId);
   if (!rec) throw new Error('Belum ada API key. Tambahkan di halaman API Keys.');
   // A model picked for this set is used as-is and never switched behind the user's back.

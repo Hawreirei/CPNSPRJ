@@ -11,10 +11,7 @@ export async function postJson(url: string, body: unknown, headers: Record<strin
     });
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw e;
-    throw new ProviderError(
-      'Tidak dapat menghubungi server AI. Periksa koneksi internet, atau endpoint mungkin menolak akses dari browser (CORS).',
-      { retryable: true },
-    );
+    throw new ProviderError('Tidak dapat menghubungi server AI. Periksa koneksi internet, atau endpoint mungkin menolak akses dari browser (CORS).', { retryable: true });
   }
   return readResponse(res);
 }

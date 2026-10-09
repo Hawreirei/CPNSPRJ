@@ -33,7 +33,9 @@ describe('built-in profile', () => {
     const bp = buildPreset('full', s);
     expect(bp.sections.map((x) => ({ ...x }))).toEqual(SUBTESTS.map((sub) => ({ subtest: sub, count: s.counts[sub], topics: TOPICS[sub], difficulty: 'campuran' })));
     // Even spread: topics take turns, as before profiles existed.
-    const twk = planBatches(bp, 100).filter((b) => b.subtest === 'TWK').flatMap((b) => b.items.map((i) => i.topic));
+    const twk = planBatches(bp, 100)
+      .filter((b) => b.subtest === 'TWK')
+      .flatMap((b) => b.items.map((i) => i.topic));
     expect(twk).toEqual(Array.from({ length: s.counts.TWK }, (_, i) => TOPICS.TWK[i % TOPICS.TWK.length]));
   });
 
@@ -100,9 +102,9 @@ describe('profile files', () => {
     expect(() => parseProfile(raw({ topics: { ...raw().topics, TWK: [{ name: 'A', weight: Number.NaN }] } }), 'x')).toThrow('bobot harus berupa angka');
     expect(() => parseProfile(raw({ topics: { ...raw().topics, TWK: [{ name: 'Deret Figural' }] } }), 'x')).toThrow('hanya bisa dipakai di TIU');
     expect(() => parseProfile(raw({ date: '1/9/2026' }), 'x')).toThrow('YYYY-MM-DD');
-    expect(() =>
-      parseProfile(raw({ exam: { counts: { TWK: 10, TIU: 10, TKP: 10 }, passing: { TWK: 60, TIU: 10, TKP: 10 }, durationMinutes: 30 } }), 'x'),
-    ).toThrow('ambang batas TWK melebihi skor maksimal (50)');
+    expect(() => parseProfile(raw({ exam: { counts: { TWK: 10, TIU: 10, TKP: 10 }, passing: { TWK: 60, TIU: 10, TKP: 10 }, durationMinutes: 30 } }), 'x')).toThrow(
+      'ambang batas TWK melebihi skor maksimal (50)',
+    );
   });
 
   it('reads and writes the editor text format', () => {

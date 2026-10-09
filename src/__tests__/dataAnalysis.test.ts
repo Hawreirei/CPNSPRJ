@@ -80,20 +80,29 @@ describe('data analysis questions', () => {
           expect(q.topic).toBe(DATA_TOPIC);
           expect(q.options, ctx).toHaveLength(5);
           expect(new Set(q.options.map((o) => o.text)).size, ctx).toBe(5);
-          expect(q.options.filter((o) => o.score === 5).map((o) => o.label), ctx).toEqual([q.answer]);
+          expect(
+            q.options.filter((o) => o.score === 5).map((o) => o.label),
+            ctx,
+          ).toEqual([q.answer]);
           const key = q.options.find((o) => o.label === q.answer)!.text;
 
           const expected = solve(q);
           if (typeof expected === 'number') {
             const values = q.options.map((o) => parseNumeric(o.text));
             expect(parseNumeric(key), ctx).toBeCloseTo(expected, 9);
-            expect(values.filter((x) => x !== null && Math.abs(x - expected) < 1e-9), ctx).toHaveLength(1);
+            expect(
+              values.filter((x) => x !== null && Math.abs(x - expected) < 1e-9),
+              ctx,
+            ).toHaveLength(1);
             expect(q.mathExpression, ctx).toBeTruthy();
           } else {
             expect(key, ctx).toBe(expected);
           }
           // The app's own checker: key, explanation and the recomputed expression all agree.
-          expect(validateQuestion(q).flags.filter((f) => f.severity === 'warn'), ctx).toEqual([]);
+          expect(
+            validateQuestion(q).flags.filter((f) => f.severity === 'warn'),
+            ctx,
+          ).toEqual([]);
         }
       }
     }
@@ -119,7 +128,17 @@ describe('data analysis questions', () => {
   });
 
   it('describes the numbers in words for screen readers and exports', () => {
-    const d: DataFigure = { kind: 'table', title: 'Produksi (ton)', unit: 'ton', category: 'Kecamatan', labels: ['A', 'B'], series: [{ name: '2023', values: [1200, 300] }, { name: '2024', values: [1500, 360] }] };
+    const d: DataFigure = {
+      kind: 'table',
+      title: 'Produksi (ton)',
+      unit: 'ton',
+      category: 'Kecamatan',
+      labels: ['A', 'B'],
+      series: [
+        { name: '2023', values: [1200, 300] },
+        { name: '2024', values: [1500, 360] },
+      ],
+    };
     expect(describeData(d)).toBe('Produksi (ton). A: 2023 1.200 ton, 2024 1.500 ton; B: 2023 300 ton, 2024 360 ton.');
     expect(describeData({ ...d, kind: 'pie', series: [{ name: 'x', values: [60, 40] }] })).toBe('Produksi (ton). A: 60%; B: 40%.');
   });

@@ -82,7 +82,9 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
     const title = new Paragraph({ keepNext: true, spacing: { before: 80 }, children: [new TextRun({ text: data.title, bold: true, size: 20 })] });
     if (data.kind !== 'table') return [title, new Paragraph({ keepNext: true, children: [await image(dataChartSvg(data, '#111', '#fff'))] })];
     const cell = (text: string, opts: { bold?: boolean; right?: boolean } = {}) =>
-      new TableCell({ children: [new Paragraph({ alignment: opts.right ? AlignmentType.RIGHT : AlignmentType.LEFT, children: [new TextRun({ text, bold: opts.bold, size: 20 })] })] });
+      new TableCell({
+        children: [new Paragraph({ alignment: opts.right ? AlignmentType.RIGHT : AlignmentType.LEFT, children: [new TextRun({ text, bold: opts.bold, size: 20 })] })],
+      });
     const rows = [
       new TableRow({ tableHeader: true, children: [cell(data.category, { bold: true }), ...data.series.map((s) => cell(s.name, { bold: true, right: true }))] }),
       ...data.labels.map((l, i) => new TableRow({ children: [cell(l), ...data.series.map((s) => cell(fmtNum(s.values[i]), { right: true }))] })),
@@ -94,7 +96,13 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
     const out: Child[] = [];
     // A reading passage is printed once, above the first question of its group.
     if (q.passage && opensGroup(questions, q)) {
-      out.push(new Paragraph({ spacing: { before: 240 }, keepNext: true, children: [new TextRun({ text: `${passageLabel(questions, q)}${q.passage.title ? `: ${q.passage.title}` : ''}`, bold: true })] }));
+      out.push(
+        new Paragraph({
+          spacing: { before: 240 },
+          keepNext: true,
+          children: [new TextRun({ text: `${passageLabel(questions, q)}${q.passage.title ? `: ${q.passage.title}` : ''}`, bold: true })],
+        }),
+      );
       out.push(new Paragraph({ keepNext: true, alignment: AlignmentType.JUSTIFIED, children: text(q.passage.text) }));
     }
     out.push(new Paragraph({ spacing: { before: 200 }, keepNext: true, children: [new TextRun({ text: `${n}. `, bold: true }), ...text(q.stem)] }));
@@ -189,7 +197,13 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: 'Materi latihan buatan AI, bukan produk resmi BKN. Periksa materi TWK ke sumber resmi; skor TKP adalah rasional, bukan kunci resmi.', size: 14, color: '777777' })],
+                children: [
+                  new TextRun({
+                    text: 'Materi latihan buatan AI, bukan produk resmi BKN. Periksa materi TWK ke sumber resmi; skor TKP adalah rasional, bukan kunci resmi.',
+                    size: 14,
+                    color: '777777',
+                  }),
+                ],
               }),
             ],
           }),

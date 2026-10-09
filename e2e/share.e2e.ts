@@ -11,7 +11,10 @@ async function seriousViolations(page: Page) {
 /** A brand-new browser profile: nothing stored, nothing shared but what we hand over. */
 async function freshPage(browser: Browser) {
   const ctx = await browser.newContext({ baseURL: test.info().project.use.baseURL, serviceWorkers: 'block' });
-  await ctx.route((url) => url.hostname !== 'localhost', (route) => route.abort('blockedbyclient'));
+  await ctx.route(
+    (url) => url.hostname !== 'localhost',
+    (route) => route.abort('blockedbyclient'),
+  );
   return { ctx, page: await ctx.newPage() };
 }
 

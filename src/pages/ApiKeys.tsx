@@ -2,7 +2,19 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { db } from '../db';
 import type { ApiKeyRecord, KeyLimits, ProviderId } from '../domain/types';
-import { addKey, chooseKeyModel, deleteKey, hasSecret, loadKeyModels, providerConfig, refreshKeyModel, refreshStaleKeyModels, setDefaultKey, setSessionSecret, switchToAutoModel } from '../engine/keys';
+import {
+  addKey,
+  chooseKeyModel,
+  deleteKey,
+  hasSecret,
+  loadKeyModels,
+  providerConfig,
+  refreshKeyModel,
+  refreshStaleKeyModels,
+  setDefaultKey,
+  setSessionSecret,
+  switchToAutoModel,
+} from '../engine/keys';
 import { ModelSelect } from '../components/ModelSelect';
 import { clearQuotaBlock, defaultLimits, keyUsage, LIMIT_PRESETS, limitsOf, releaseRequest, reserveRequest } from '../engine/quota';
 import { complete, isModelUnavailable, listModelInfo, pickRecommendedModel, ProviderError, PROVIDERS, suggestedReplacement } from '../providers';
@@ -35,7 +47,9 @@ export default function ApiKeys() {
     <div className="max-w-3xl space-y-6">
       <div>
         <h1>API Keys</h1>
-        <p className="muted mt-1">Pakai API key AI milik Anda sendiri. Key hanya disimpan di browser ini, terenkripsi, atau tidak disimpan sama sekali bila Anda memilih "hanya untuk sesi ini".</p>
+        <p className="muted mt-1">
+          Pakai API key AI milik Anda sendiri. Key hanya disimpan di browser ini, terenkripsi, atau tidak disimpan sama sekali bila Anda memilih "hanya untuk sesi ini".
+        </p>
       </div>
 
       <ExtensionWarning />
@@ -57,8 +71,8 @@ export default function ApiKeys() {
         <ul className="muted mt-2 list-disc space-y-1 pl-5">
           <li>Key dienkripsi dengan kunci perangkat dan hanya tersimpan di browser ini; tidak ikut file cadangan.</li>
           <li>
-            Kunci enkripsinya juga ada di perangkat ini, jadi siapa pun yang bisa membuka profil browser ini bisa memakai key yang disimpan. Di komputer
-            bersama, pilih "Jangan simpan, hanya untuk sesi ini": key tidak ditulis ke penyimpanan browser dan hilang saat tab ditutup.
+            Kunci enkripsinya juga ada di perangkat ini, jadi siapa pun yang bisa membuka profil browser ini bisa memakai key yang disimpan. Di komputer bersama, pilih "Jangan
+            simpan, hanya untuk sesi ini": key tidak ditulis ke penyimpanan browser dan hilang saat tab ditutup.
           </li>
           <li>Permintaan dikirim langsung dari browser Anda ke penyedia AI, tanpa server perantara.</li>
           <li>Gunakan browser tepercaya, dan pasang batas pengeluaran di dasbor penyedia.</li>
@@ -79,8 +93,8 @@ function ExtensionWarning() {
         Ekstensi browser bisa membaca key Anda
       </h2>
       <p>
-        Ekstensi yang diizinkan membaca halaman bisa melihat API key di aplikasi ini, baik yang disimpan maupun yang hanya untuk sesi. Aplikasi tidak bisa
-        mendeteksi ekstensi seperti itu. Jadi:
+        Ekstensi yang diizinkan membaca halaman bisa melihat API key di aplikasi ini, baik yang disimpan maupun yang hanya untuk sesi. Aplikasi tidak bisa mendeteksi ekstensi
+        seperti itu. Jadi:
       </p>
       <ul className="list-disc space-y-1 pl-5">
         <li>Pakai profil browser tanpa ekstensi yang tidak Anda percayai, atau mode "hanya untuk sesi ini" di perangkat bersama.</li>
@@ -138,7 +152,17 @@ function AddKeyForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () =>
       }
       const model = (models && pickRecommendedModel(models.map((m) => m.id))) || info.defaultModel;
       if (!model) throw new Error('Tidak ada model yang bisa dipakai. Pilih model secara manual setelah menyimpan.');
-      const rec = await addKey({ provider, label: label.trim() || info.name, apiKey, model, baseUrl, autoModel: true, modelCheckedAt: models ? Date.now() : undefined, limits, sessionOnly });
+      const rec = await addKey({
+        provider,
+        label: label.trim() || info.name,
+        apiKey,
+        model,
+        baseUrl,
+        autoModel: true,
+        modelCheckedAt: models ? Date.now() : undefined,
+        limits,
+        sessionOnly,
+      });
       if (models) await db.keys.update(rec.id, { models, modelsFetchedAt: Date.now() });
       setApiKey('');
       onDone();
@@ -209,8 +233,8 @@ function AddKeyForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () =>
         <span>
           Jangan simpan, hanya untuk sesi ini
           <span id="session-only-help" className="muted block text-xs">
-            Key tidak ditulis ke penyimpanan browser dan hilang saat tab ditutup; setelah itu masukkan lagi. Cocok untuk komputer bersama. Ekstensi browser
-            yang bisa membaca halaman tetap bisa melihatnya.
+            Key tidak ditulis ke penyimpanan browser dan hilang saat tab ditutup; setelah itu masukkan lagi. Cocok untuk komputer bersama. Ekstensi browser yang bisa membaca
+            halaman tetap bisa melihatnya.
           </span>
         </span>
       </label>
@@ -356,12 +380,7 @@ function KeyCard({ k, single }: { k: ApiKeyRecord; single: boolean }) {
             <LimitsEditor value={limits} onChange={(l) => db.keys.update(k.id, { limits: l })} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              className="btn btn-sm"
-              disabled={busy}
-              onClick={() => act(async () => `${(await loadKeyModels(k.id)).length} model dimuat.`)}
-              title="Tidak memakai kuota"
-            >
+            <button className="btn btn-sm" disabled={busy} onClick={() => act(async () => `${(await loadKeyModels(k.id)).length} model dimuat.`)} title="Tidak memakai kuota">
               Muat ulang daftar model
             </button>
             {blocked && (

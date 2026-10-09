@@ -14,7 +14,8 @@ export interface RankedModel {
 }
 
 /** Non-text or special-purpose models that cannot write question sets. */
-const NOT_TEXT = /(antigravity|agent|embed|tts|audio|realtime|live|image|imagen|veo|whisper|dall-?e|transcribe|search|moderation|computer|codex|instruct|aqa|gemma|learnlm|robotics|native|vision|guard|rerank|ocr|deep-research|chat-latest)/i;
+const NOT_TEXT =
+  /(antigravity|agent|embed|tts|audio|realtime|live|image|imagen|veo|whisper|dall-?e|transcribe|search|moderation|computer|codex|instruct|aqa|gemma|learnlm|robotics|native|vision|guard|rerank|ocr|deep-research|chat-latest)/i;
 /** Labels that mean "may change or disappear without notice". */
 const UNSTABLE = /(preview|exp\b|experimental|-exp-|beta|alpha|thinking-exp)/i;
 

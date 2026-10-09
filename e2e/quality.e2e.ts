@@ -42,7 +42,10 @@ test('a reported question is flagged, filtered in the bank, left out of new sets
 
   // Withdraw it from the bank.
   await page.goto('#/bank');
-  await page.locator('article', { hasText: `${stem} tentang` }).getByRole('button', { name: 'Laporan' }).click();
+  await page
+    .locator('article', { hasText: `${stem} tentang` })
+    .getByRole('button', { name: 'Laporan' })
+    .click();
   await dialog.getByRole('radio', { name: 'Tidak ada lagi (cabut laporan)' }).check();
   await dialog.getByRole('button', { name: 'Simpan' }).click();
   await page.getByText('Filter lainnya').click();

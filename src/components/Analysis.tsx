@@ -99,7 +99,9 @@ export function UnsureCard({ a, questions }: { a: Attempt; questions: Question[]
     <section className="card space-y-2">
       <h2>Ragu-ragu dan tebakan</h2>
       {!cal ? (
-        <p className="muted text-sm">Butuh minimal {MIN_FLAGGED} jawaban bertanda ragu-ragu dan {MIN_FLAGGED} tanpa tanda untuk membandingkannya.</p>
+        <p className="muted text-sm">
+          Butuh minimal {MIN_FLAGGED} jawaban bertanda ragu-ragu dan {MIN_FLAGGED} tanpa tanda untuk membandingkannya.
+        </p>
       ) : (
         <>
           <div className="space-y-1 text-sm">
@@ -129,7 +131,11 @@ export function UnsureCard({ a, questions }: { a: Attempt; questions: Question[]
       )}
       {guesses.length > 0 && (
         <p className="text-sm">
-          <b>{guesses.length}</b> jawaban benar diberikan jauh lebih cepat dari biasanya tanpa tanda ragu (No. {guesses.slice(0, 6).map((g) => g.index + 1).join(', ')}
+          <b>{guesses.length}</b> jawaban benar diberikan jauh lebih cepat dari biasanya tanpa tanda ragu (No.{' '}
+          {guesses
+            .slice(0, 6)
+            .map((g) => g.index + 1)
+            .join(', ')}
           {guesses.length > 6 ? ', …' : ''}). Mungkin tebakan; pastikan Anda paham pembahasannya.
         </p>
       )}

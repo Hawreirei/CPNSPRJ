@@ -213,7 +213,9 @@ describe('AI output parsing', () => {
     expect(q.reference).toBe('Sila ke-3 Pancasila');
 
     const tkp = JSON.stringify({
-      questions: [{ stem: 'Anda melihat rekan kerja menerima uang dari warga…', options: [1, 2, 3, 4, 5].map((s) => ({ text: `opsi ${s}`, score: String(6 - s) })), explanation: '' }],
+      questions: [
+        { stem: 'Anda melihat rekan kerja menerima uang dari warga…', options: [1, 2, 3, 4, 5].map((s) => ({ text: `opsi ${s}`, score: String(6 - s) })), explanation: '' },
+      ],
     });
     const [t] = parseAiQuestions(tkp, { subtest: 'TKP', items: [{ topic: 'Integritas Diri', difficulty: 'sedang' }] });
     expect(t.options.map((o) => o.score)).toEqual([5, 4, 3, 2, 1]);

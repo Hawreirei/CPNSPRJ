@@ -64,13 +64,17 @@ export const pageOf = (hash: string) => hash.split('?')[0] || '#/';
 
 export function toEntry(source: ErrorSource, err: unknown, at: number, hash: string): ErrorEntry {
   const e = err instanceof Error ? err : undefined;
-  const raw = e ? e.message : typeof err === 'string' ? err : (() => {
-    try {
-      return JSON.stringify(err) ?? String(err);
-    } catch {
-      return String(err);
-    }
-  })();
+  const raw = e
+    ? e.message
+    : typeof err === 'string'
+      ? err
+      : (() => {
+          try {
+            return JSON.stringify(err) ?? String(err);
+          } catch {
+            return String(err);
+          }
+        })();
   return {
     at,
     source,

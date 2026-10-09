@@ -35,7 +35,18 @@ describe('model selection', () => {
   });
 
   it('picks the newest OpenAI mini, preferring the alias over a dated snapshot', () => {
-    const ids = ['gpt-5-mini', 'gpt-5.4-mini-2026-03-17', 'gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-5.5', 'gpt-4o-mini', 'gpt-realtime-mini', 'gpt-4.1-mini', 'o4-mini', 'text-embedding-3-small'];
+    const ids = [
+      'gpt-5-mini',
+      'gpt-5.4-mini-2026-03-17',
+      'gpt-5.4-mini',
+      'gpt-5.4-nano',
+      'gpt-5.5',
+      'gpt-4o-mini',
+      'gpt-realtime-mini',
+      'gpt-4.1-mini',
+      'o4-mini',
+      'text-embedding-3-small',
+    ];
     expect(pickRecommendedModel(ids)).toBe('gpt-5.4-mini');
     expect(pickRecommendedModel(['gpt-5.4-mini-2026-03-17', 'gpt-5-mini'])).toBe('gpt-5.4-mini-2026-03-17');
   });
@@ -78,7 +89,7 @@ describe('model selection', () => {
     expect(familyPrice('mystery-model')).toBeUndefined();
   });
 
-  it("offers every model from a real Gemini account list (user screenshot, Oct 2026)", () => {
+  it('offers every model from a real Gemini account list (user screenshot, Oct 2026)', () => {
     const ids = [
       'antigravity-preview-09-2026',
       'antigravity-preview-latest',
@@ -107,6 +118,8 @@ describe('model selection', () => {
     expect(groups[0].ids.slice(0, 3)).toEqual(['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash']);
     expect(pickRecommendedModel(ids)).toBe('gemini-3.8-flash');
     const special = groups.find((g) => g.label.startsWith('Khusus'))!.ids;
-    expect(special).toEqual(expect.arrayContaining(['antigravity-preview-latest', 'deep-research-preview-04-2026', 'gemini-3.5-transcribe', 'gemini-2.5-computer-use-preview-10-2025']));
+    expect(special).toEqual(
+      expect.arrayContaining(['antigravity-preview-latest', 'deep-research-preview-04-2026', 'gemini-3.5-transcribe', 'gemini-2.5-computer-use-preview-10-2025']),
+    );
   });
 });

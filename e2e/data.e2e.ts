@@ -38,7 +38,10 @@ test('data analysis questions come with their numbers as a table or chart, check
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-    expect(r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id), scheme).toEqual([]);
+    expect(
+      r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id),
+      scheme,
+    ).toEqual([]);
   }
 
   const pdf = await download(page, 'PDF');

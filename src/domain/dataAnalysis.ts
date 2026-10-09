@@ -14,7 +14,7 @@ export { describeData, fmtNum } from './describe';
 export const DATA_TOPIC = 'Analisis Data';
 
 type Rand = () => number;
-const pick = <T,>(arr: readonly T[], r: Rand) => arr[Math.floor(r() * arr.length)];
+const pick = <T>(arr: readonly T[], r: Rand) => arr[Math.floor(r() * arr.length)];
 const int = (lo: number, hi: number, r: Rand) => lo + Math.floor(r() * (hi - lo + 1));
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 const fmtPct = (fraction: number) => `${fmtNum(Math.round(fraction * 10000) / 100)}%`;
@@ -149,11 +149,20 @@ function bar(difficulty: Difficulty, r: Rand): Built {
     const top = Math.max(...ups);
     if (top > 0 && ups.filter((u) => u === top).length === 1 && new Set(v).size === 5) break;
   }
-  const data: DataFigure = { kind: 'bar', title: `${theme.what} per bulan (${theme.unit})`, unit: theme.unit, category: 'Bulan', labels: months, series: [{ name: theme.what, values: v }] };
+  const data: DataFigure = {
+    kind: 'bar',
+    title: `${theme.what} per bulan (${theme.unit})`,
+    unit: theme.unit,
+    category: 'Bulan',
+    labels: months,
+    series: [{ name: theme.what, values: v }],
+  };
   const withUnit = (n: number) => `${fmtNum(n)} ${theme.unit}`;
 
   if (difficulty === 'mudah') {
-    const [i, j] = shuffle([0, 1, 2, 3, 4], r).slice(0, 2).sort((x, y) => x - y);
+    const [i, j] = shuffle([0, 1, 2, 3, 4], r)
+      .slice(0, 2)
+      .sort((x, y) => x - y);
     const d = Math.abs(v[j] - v[i]);
     return {
       data,
@@ -269,7 +278,10 @@ function pie(difficulty: Difficulty, r: Rand): Built {
   // Shares in whole multiples of 5%, all different, adding up to 100%.
   let pct: number[];
   do {
-    const cuts = shuffle([...Array(19).keys()].map((k) => (k + 1) * 5), r)
+    const cuts = shuffle(
+      [...Array(19).keys()].map((k) => (k + 1) * 5),
+      r,
+    )
       .slice(0, 4)
       .sort((x, y) => x - y);
     pct = [cuts[0], cuts[1] - cuts[0], cuts[2] - cuts[1], cuts[3] - cuts[2], 100 - cuts[3]];
@@ -351,4 +363,3 @@ export function generateDataAnalysis(difficulty: Difficulty, r: Rand = Math.rand
     updatedAt: now,
   };
 }
-

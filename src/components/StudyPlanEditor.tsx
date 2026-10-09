@@ -180,9 +180,9 @@ function ReminderEditor({ plan, save }: { plan: StudyPlan; save: (patch: Partial
       )}
       <p className="muted text-xs">
         {notificationsSupported() ? '' : 'Browser ini tidak mendukung notifikasi. '}
-        Isinya dari rencana hari itu, misalnya jumlah ulangan jatuh tempo dan topik yang perlu dilatih, paling banyak sekali sehari. Keterbatasannya: browser
-        hanya bisa menampilkan pengingat saat aplikasi ini terbuka, jadi bila aplikasi tertutup pada jam itu, pengingat muncul saat aplikasi dibuka berikutnya.
-        Untuk pengingat yang pasti tepat waktu, unduh jadwal ke kalender (.ics).
+        Isinya dari rencana hari itu, misalnya jumlah ulangan jatuh tempo dan topik yang perlu dilatih, paling banyak sekali sehari. Keterbatasannya: browser hanya bisa menampilkan
+        pengingat saat aplikasi ini terbuka, jadi bila aplikasi tertutup pada jam itu, pengingat muncul saat aplikasi dibuka berikutnya. Untuk pengingat yang pasti tepat waktu,
+        unduh jadwal ke kalender (.ics).
       </p>
     </fieldset>
   );

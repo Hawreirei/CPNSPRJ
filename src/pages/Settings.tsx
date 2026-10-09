@@ -118,8 +118,8 @@ export default function SettingsPage() {
           Tampilkan streak, tanda target harian tercapai, dan lencana
         </label>
         <p className="muted text-xs">
-          Streak dihitung dari latihan, ujian, dan ulangan Buku Kesalahan yang selesai, menurut tanggal di perangkat ini. Saat dimatikan, semuanya disembunyikan; lencana
-          yang sudah diraih tetap tersimpan.
+          Streak dihitung dari latihan, ujian, dan ulangan Buku Kesalahan yang selesai, menurut tanggal di perangkat ini. Saat dimatikan, semuanya disembunyikan; lencana yang sudah
+          diraih tetap tersimpan.
         </p>
       </section>
 
@@ -140,7 +140,9 @@ export default function SettingsPage() {
 
       <section className="card space-y-3">
         <h2>Cadangan data</h2>
-        <p className="muted text-sm">Simpan semua set, bank soal, riwayat latihan, dan Buku Kesalahan ke satu file, lalu pulihkan di perangkat lain. API key tidak ikut tersimpan.</p>
+        <p className="muted text-sm">
+          Simpan semua set, bank soal, riwayat latihan, dan Buku Kesalahan ke satu file, lalu pulihkan di perangkat lain. API key tidak ikut tersimpan.
+        </p>
         <LastBackup />
         <div className="flex flex-wrap gap-2">
           <button className="btn btn-primary" onClick={() => void downloadBackup()}>
@@ -187,141 +189,163 @@ export default function SettingsPage() {
         <summary className="cursor-pointer font-medium">Pengaturan lanjutan</summary>
         <p className="muted mt-1 text-xs">Biasanya tidak perlu diubah.</p>
         <div className="mt-4 space-y-6">
-        <section className="space-y-3">
-          <h2>Jumlah soal & nilai minimal lulus</h2>
-          <div className="overflow-x-auto">
-            <table className="text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
-                  <th className="pr-4">Sub-tes</th>
-                  <th className="pr-4">Jumlah soal</th>
-                  <th className="pr-4">Skor maks.</th>
-                  <th>Ambang batas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {SUBTESTS.map((st) => (
-                  <tr key={st}>
-                    <td className="py-1 pr-4 font-medium">{st}</td>
-                    <td className="pr-4">
-                      <input type="number" className="input w-24" value={s.counts[st]} onChange={(e) => saveSettings({ counts: { ...s.counts, [st]: num(e.target.value, 1) } })} />
-                    </td>
-                    <td className="pr-4 tabular-nums">{s.counts[st] * 5}</td>
-                    <td>
-                      <input type="number" className="input w-24" value={s.passing[st]} onChange={(e) => saveSettings({ passing: { ...s.passing, [st]: num(e.target.value) } })} />
-                    </td>
+          <section className="space-y-3">
+            <h2>Jumlah soal & nilai minimal lulus</h2>
+            <div className="overflow-x-auto">
+              <table className="text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
+                    <th className="pr-4">Sub-tes</th>
+                    <th className="pr-4">Jumlah soal</th>
+                    <th className="pr-4">Skor maks.</th>
+                    <th>Ambang batas</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label className="label" htmlFor="full-duration">
-                Durasi SKD penuh (menit)
-              </label>
-              <input id="full-duration" type="number" className="input w-28" value={s.durationMinutes} onChange={(e) => saveSettings({ durationMinutes: num(e.target.value, 1) })} />
-            </div>
-            <button
-              className="btn"
-              onClick={() => saveSettings({ counts: DEFAULT_SETTINGS.counts, passing: DEFAULT_SETTINGS.passing, durationMinutes: DEFAULT_SETTINGS.durationMinutes })}
-            >
-              Kembalikan default
-            </button>
-          </div>
-          <p className="muted text-xs">
-            Ambang batas berbeda per tahun dan formasi. Cocokkan dengan pengumuman resmi KemenPANRB/BKN terbaru. Perubahan berlaku untuk set baru.
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <h2>Buku Kesalahan</h2>
-          <div>
-            <label className="label" htmlFor="review-limit">
-              Batas ulangan per hari
-            </label>
-            <input
-              id="review-limit"
-              type="number"
-              min={1}
-              max={200}
-              className="input w-28"
-              value={s.reviewDailyLimit}
-              onChange={(e) => saveSettings({ reviewDailyLimit: Math.min(200, num(e.target.value, 1)) })}
-            />
-          </div>
-          <p className="muted text-xs">Jumlah soal yang ditawarkan untuk diulang setiap hari. Sisa soal yang jatuh tempo menunggu hari berikutnya.</p>
-        </section>
-
-        <section className="space-y-3">
-          <h2>Pembuatan soal oleh AI</h2>
-          <div className="flex flex-wrap gap-3">
-            <div>
-              <label className="label" htmlFor="per-request">
-                Soal per request
-              </label>
-              <input
-                id="per-request"
-                type="number"
-                min={3}
-                max={25}
-                className="input w-28"
-                value={s.questionsPerRequest}
-                onChange={(e) => saveSettings({ questionsPerRequest: Math.min(25, num(e.target.value, 3)) })}
-              />
-            </div>
-            <div>
-              <label className="label" htmlFor="concurrency">
-                Permintaan paralel
-              </label>
-              <input id="concurrency" type="number" min={1} max={4} className="input w-28" value={s.concurrency} onChange={(e) => saveSettings({ concurrency: Math.min(4, num(e.target.value, 1)) })} />
-            </div>
-          </div>
-          <p className="muted text-xs">
-            Makin banyak soal per request, makin sedikit request yang dipakai. Ini penting untuk free tier: dengan 20 soal per request, SKD lengkap butuh sekitar 7
-            request. Bila respons sering terpotong, turunkan ke 10–15. Untuk key dengan batas per menit, permintaan selalu dijalankan satu per satu.
-          </p>
-          <details>
-            <summary className="cursor-pointer text-sm font-medium">Harga model untuk perkiraan biaya (USD per 1 juta token)</summary>
-            <table className="mt-2 text-sm">
-              <tbody>
-                {Object.entries(prices).map(([m, p]) => (
-                  <tr key={m}>
-                    <td className="pr-3 font-mono text-xs">{m}</td>
-                    {(['input', 'output'] as const).map((k) => (
-                      <td key={k} className="py-0.5 pr-2">
+                </thead>
+                <tbody>
+                  {SUBTESTS.map((st) => (
+                    <tr key={st}>
+                      <td className="py-1 pr-4 font-medium">{st}</td>
+                      <td className="pr-4">
                         <input
                           type="number"
-                          step="0.01"
                           className="input w-24"
-                          value={p[k]}
-                          aria-label={`${m} ${k}`}
-                          onChange={(e) => saveSettings({ priceOverrides: { ...s.priceOverrides, [m]: { ...p, [k]: num(e.target.value) } } })}
+                          value={s.counts[st]}
+                          onChange={(e) => saveSettings({ counts: { ...s.counts, [st]: num(e.target.value, 1) } })}
                         />
                       </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <AddPrice onAdd={(m) => saveSettings({ priceOverrides: { ...s.priceOverrides, [m]: { input: 1, output: 4 } } })} />
-          </details>
-        </section>
+                      <td className="pr-4 tabular-nums">{s.counts[st] * 5}</td>
+                      <td>
+                        <input
+                          type="number"
+                          className="input w-24"
+                          value={s.passing[st]}
+                          onChange={(e) => saveSettings({ passing: { ...s.passing, [st]: num(e.target.value) } })}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <label className="label" htmlFor="full-duration">
+                  Durasi SKD penuh (menit)
+                </label>
+                <input
+                  id="full-duration"
+                  type="number"
+                  className="input w-28"
+                  value={s.durationMinutes}
+                  onChange={(e) => saveSettings({ durationMinutes: num(e.target.value, 1) })}
+                />
+              </div>
+              <button
+                className="btn"
+                onClick={() => saveSettings({ counts: DEFAULT_SETTINGS.counts, passing: DEFAULT_SETTINGS.passing, durationMinutes: DEFAULT_SETTINGS.durationMinutes })}
+              >
+                Kembalikan default
+              </button>
+            </div>
+            <p className="muted text-xs">Ambang batas berbeda per tahun dan formasi. Cocokkan dengan pengumuman resmi KemenPANRB/BKN terbaru. Perubahan berlaku untuk set baru.</p>
+          </section>
 
-        <section className="space-y-2 rounded-lg border border-red-200 p-3 dark:border-red-900">
-          <h2>Hapus semua data</h2>
-          <p className="muted text-sm">Menghapus set, bank soal, riwayat, pengaturan, dan API key dari browser ini. Tidak bisa dibatalkan.</p>
-          <button
-            className="btn btn-danger"
-            onClick={async () => {
-              if (!confirm('Hapus SEMUA data? Unduh cadangan dulu bila perlu.')) return;
-              await db.delete();
-              location.reload();
-            }}
-          >
-            Hapus semua data
-          </button>
-        </section>
+          <section className="space-y-3">
+            <h2>Buku Kesalahan</h2>
+            <div>
+              <label className="label" htmlFor="review-limit">
+                Batas ulangan per hari
+              </label>
+              <input
+                id="review-limit"
+                type="number"
+                min={1}
+                max={200}
+                className="input w-28"
+                value={s.reviewDailyLimit}
+                onChange={(e) => saveSettings({ reviewDailyLimit: Math.min(200, num(e.target.value, 1)) })}
+              />
+            </div>
+            <p className="muted text-xs">Jumlah soal yang ditawarkan untuk diulang setiap hari. Sisa soal yang jatuh tempo menunggu hari berikutnya.</p>
+          </section>
+
+          <section className="space-y-3">
+            <h2>Pembuatan soal oleh AI</h2>
+            <div className="flex flex-wrap gap-3">
+              <div>
+                <label className="label" htmlFor="per-request">
+                  Soal per request
+                </label>
+                <input
+                  id="per-request"
+                  type="number"
+                  min={3}
+                  max={25}
+                  className="input w-28"
+                  value={s.questionsPerRequest}
+                  onChange={(e) => saveSettings({ questionsPerRequest: Math.min(25, num(e.target.value, 3)) })}
+                />
+              </div>
+              <div>
+                <label className="label" htmlFor="concurrency">
+                  Permintaan paralel
+                </label>
+                <input
+                  id="concurrency"
+                  type="number"
+                  min={1}
+                  max={4}
+                  className="input w-28"
+                  value={s.concurrency}
+                  onChange={(e) => saveSettings({ concurrency: Math.min(4, num(e.target.value, 1)) })}
+                />
+              </div>
+            </div>
+            <p className="muted text-xs">
+              Makin banyak soal per request, makin sedikit request yang dipakai. Ini penting untuk free tier: dengan 20 soal per request, SKD lengkap butuh sekitar 7 request. Bila
+              respons sering terpotong, turunkan ke 10–15. Untuk key dengan batas per menit, permintaan selalu dijalankan satu per satu.
+            </p>
+            <details>
+              <summary className="cursor-pointer text-sm font-medium">Harga model untuk perkiraan biaya (USD per 1 juta token)</summary>
+              <table className="mt-2 text-sm">
+                <tbody>
+                  {Object.entries(prices).map(([m, p]) => (
+                    <tr key={m}>
+                      <td className="pr-3 font-mono text-xs">{m}</td>
+                      {(['input', 'output'] as const).map((k) => (
+                        <td key={k} className="py-0.5 pr-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="input w-24"
+                            value={p[k]}
+                            aria-label={`${m} ${k}`}
+                            onChange={(e) => saveSettings({ priceOverrides: { ...s.priceOverrides, [m]: { ...p, [k]: num(e.target.value) } } })}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <AddPrice onAdd={(m) => saveSettings({ priceOverrides: { ...s.priceOverrides, [m]: { input: 1, output: 4 } } })} />
+            </details>
+          </section>
+
+          <section className="space-y-2 rounded-lg border border-red-200 p-3 dark:border-red-900">
+            <h2>Hapus semua data</h2>
+            <p className="muted text-sm">Menghapus set, bank soal, riwayat, pengaturan, dan API key dari browser ini. Tidak bisa dibatalkan.</p>
+            <button
+              className="btn btn-danger"
+              onClick={async () => {
+                if (!confirm('Hapus SEMUA data? Unduh cadangan dulu bila perlu.')) return;
+                await db.delete();
+                location.reload();
+              }}
+            >
+              Hapus semua data
+            </button>
+          </section>
         </div>
       </details>
     </div>
@@ -394,14 +418,12 @@ function AutoBackupPanel() {
     <div className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
       <h3 className="text-sm font-semibold">Simpan otomatis ke berkas</h3>
       {!isAutoBackupSupported() ? (
-        <p className="muted text-sm">
-          Hanya tersedia di Chrome atau Edge versi desktop. Di browser ini, unduh cadangan secara berkala; aplikasi akan mengingatkan di Beranda.
-        </p>
+        <p className="muted text-sm">Hanya tersedia di Chrome atau Edge versi desktop. Di browser ini, unduh cadangan secara berkala; aplikasi akan mengingatkan di Beranda.</p>
       ) : !auto ? (
         <>
           <p className="muted text-sm">
-            Pilih satu berkas sekali saja. Setelah itu setiap perubahan (set baru, hasil ujian, catatan Buku Kesalahan, pengaturan) ditulis ke berkas itu
-            beberapa detik kemudian, tanpa klik lagi.
+            Pilih satu berkas sekali saja. Setelah itu setiap perubahan (set baru, hasil ujian, catatan Buku Kesalahan, pengaturan) ditulis ke berkas itu beberapa detik kemudian,
+            tanpa klik lagi.
           </p>
           <button className="btn" disabled={busy} onClick={act(chooseBackupFile)}>
             Pilih berkas…
@@ -413,9 +435,7 @@ function AutoBackupPanel() {
             Aktif: menulis ke <b>{auto.fileName}</b>
             {auto.lastWriteAt ? <> · terakhir {fmtAgo(auto.lastWriteAt, now)}</> : null}
           </p>
-          {auto.error && (
-            <p className="rounded-md bg-amber-50 px-2 py-1 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">{auto.error.message}</p>
-          )}
+          {auto.error && <p className="rounded-md bg-amber-50 px-2 py-1 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">{auto.error.message}</p>}
           <div className="flex flex-wrap gap-2">
             {auto.error?.kind === 'missing' ? (
               <button className="btn btn-primary" disabled={busy} onClick={act(chooseBackupFile)}>
@@ -436,8 +456,7 @@ function AutoBackupPanel() {
             </button>
           </div>
           <p className="muted text-xs">
-            Browser bisa meminta izin lagi setelah aplikasi ditutup. Bila muncul pilihan untuk selalu mengizinkan situs ini, pilih itu agar tidak perlu klik
-            ulang.
+            Browser bisa meminta izin lagi setelah aplikasi ditutup. Bila muncul pilihan untuk selalu mengizinkan situs ini, pilih itu agar tidak perlu klik ulang.
           </p>
         </>
       )}
@@ -452,8 +471,8 @@ function ErrorLogSection() {
   return (
     <>
       <p className="muted text-sm">
-        Galat yang terjadi di aplikasi dicatat di perangkat ini (paling banyak 200 terakhir) supaya bisa dilampirkan saat melaporkan masalah. Tidak ada yang
-        dikirim ke mana pun. Isinya sudah disaring: tanpa API key, isi soal, atau prompt.
+        Galat yang terjadi di aplikasi dicatat di perangkat ini (paling banyak 200 terakhir) supaya bisa dilampirkan saat melaporkan masalah. Tidak ada yang dikirim ke mana pun.
+        Isinya sudah disaring: tanpa API key, isi soal, atau prompt.
       </p>
       <p className="text-sm">{count ? `${count} galat tercatat.` : 'Belum ada galat yang tercatat.'}</p>
       <div className="flex flex-wrap gap-2">

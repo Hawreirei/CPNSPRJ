@@ -228,17 +228,15 @@ export default function Simulation() {
           {attempt.setName} {catMode && <Badge>Mode CAT</Badge>}
         </h1>
         {catMode && fullscreenSupported() && (
-          <button
-            className="btn btn-sm"
-            onClick={() => (fullscreen ? exitFullscreen() : void document.documentElement.requestFullscreen().catch(() => {}))}
-          >
+          <button className="btn btn-sm" onClick={() => (fullscreen ? exitFullscreen() : void document.documentElement.requestFullscreen().catch(() => {}))}>
             {fullscreen ? 'Keluar layar penuh' : 'Layar penuh'}
           </button>
         )}
         <div
           role="timer"
           aria-label={`Sisa waktu ${mm} menit ${ss} detik`}
-          className={`rounded-lg px-3 py-1 font-mono text-lg font-bold tabular-nums ${remaining < 5 * 60000 ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-slate-100 dark:bg-slate-800'}`}>
+          className={`rounded-lg px-3 py-1 font-mono text-lg font-bold tabular-nums ${remaining < 5 * 60000 ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-slate-100 dark:bg-slate-800'}`}
+        >
           {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
         </div>
         <button className="btn btn-sm lg:hidden" onClick={() => setGridOpen(true)}>
@@ -275,7 +273,9 @@ export default function Simulation() {
                     sel ? 'border-brand-500 bg-brand-50 dark:bg-slate-800' : 'border-slate-200 hover:border-slate-400 dark:border-slate-700'
                   }`}
                 >
-                  <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${sel ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-400'}`}>
+                  <span
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${sel ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-400'}`}
+                  >
                     {o.label}
                   </span>
                   <span className="flex-1 pt-0.5">{o.figure ? <CellView cell={o.figure} /> : <RichText text={o.text} />}</span>

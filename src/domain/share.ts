@@ -74,7 +74,10 @@ const questionSchema = z.object({
       unit: text(40),
       category: text(60),
       labels: z.array(text(60)).min(1).max(12),
-      series: z.array(z.object({ name: text(60), values: z.array(finite).max(12) })).min(1).max(4),
+      series: z
+        .array(z.object({ name: text(60), values: z.array(finite).max(12) }))
+        .min(1)
+        .max(4),
     })
     .optional(),
   passage: z.object({ id: text(80), title: text(200).optional(), text: text(8000).min(1), questionIds: z.array(text(80)).max(10).optional() }).optional(),
@@ -82,14 +85,30 @@ const questionSchema = z.object({
   image: z
     .object({ src: z.string().refine(isImageSrc, 'gambar soal tidak valid'), alt: text(300), width: z.number().int().min(1).max(4000), height: z.number().int().min(1).max(4000) })
     .optional(),
-  notes: z.array(z.object({ text: text(4000), at: finite })).max(20).optional(),
-  flags: z.array(z.object({ kind: z.string(), message: text(500), severity: z.enum(['info', 'warn']) })).max(20).default([]),
+  notes: z
+    .array(z.object({ text: text(4000), at: finite }))
+    .max(20)
+    .optional(),
+  flags: z
+    .array(z.object({ kind: z.string(), message: text(500), severity: z.enum(['info', 'warn']) }))
+    .max(20)
+    .default([]),
   hash: text(80).optional(),
   source: z.enum(['ai', 'procedural', 'manual', 'import']),
 });
 
 const blueprintSchema = z.object({
-  sections: z.array(z.object({ subtest, count: z.number().int().min(0).max(500), topics: z.array(text(80)).max(60), difficulty: z.enum(['mudah', 'sedang', 'sulit', 'campuran']), weights: z.record(z.string(), finite).optional() })).max(10),
+  sections: z
+    .array(
+      z.object({
+        subtest,
+        count: z.number().int().min(0).max(500),
+        topics: z.array(text(80)).max(60),
+        difficulty: z.enum(['mudah', 'sedang', 'sulit', 'campuran']),
+        weights: z.record(z.string(), finite).optional(),
+      }),
+    )
+    .max(10),
   durationMinutes: z.number().int().min(1).max(600),
   // SKD sets carry all three pass marks; other packages may have none (decided by ranking).
   passing: z.record(subtest, finite),
@@ -161,7 +180,11 @@ export function toShared(name: string, blueprint: Blueprint, questions: Question
 export function parseShared(raw: unknown): SharedSet {
   const kind = (raw as { kind?: unknown } | null)?.kind;
   if (!raw || typeof raw !== 'object' || (raw as { app?: unknown }).app !== 'cpns-skd-builder' || kind !== 'set') {
-    throw new Error(kind === undefined && (raw as { sets?: unknown } | null)?.sets ? 'Ini berkas cadangan, bukan set bersama. Pulihkan lewat Pengaturan.' : 'Berkas bukan set bersama CPNS SKD Set Builder.');
+    throw new Error(
+      kind === undefined && (raw as { sets?: unknown } | null)?.sets
+        ? 'Ini berkas cadangan, bukan set bersama. Pulihkan lewat Pengaturan.'
+        : 'Berkas bukan set bersama CPNS SKD Set Builder.',
+    );
   }
   const version = (raw as { version?: unknown }).version;
   if (typeof version === 'number' && version > SHARE_VERSION_PACKAGES) throw new Error('Set ini dibuat oleh versi aplikasi yang lebih baru. Perbarui aplikasi lalu coba lagi.');
