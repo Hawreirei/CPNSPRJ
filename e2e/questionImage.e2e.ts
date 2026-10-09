@@ -40,6 +40,8 @@ test('a picture cut from the page goes with its question: review, bank, exam and
 
   // A set of them: the picture in the exam and in the PDF.
   await page.goto('#/bank');
+  // The bank lists its questions after reading them; .all() would take whatever is there yet.
+  await expect(page.getByRole('checkbox', { name: 'Pilih soal' })).toHaveCount(3);
   for (const box of await page.getByRole('checkbox', { name: 'Pilih soal' }).all()) await box.check();
   page.once('dialog', (d) => void d.accept('Set bergambar'));
   await page.getByRole('button', { name: 'Jadikan set baru' }).click();

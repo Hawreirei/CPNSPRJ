@@ -178,12 +178,12 @@ test('a picture is cut from the page by dragging a finger, to the size of the ar
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   // The page did not scroll instead of drawing the box.
   await expect(page.getByRole('button', { name: 'Tempel gambar' })).toBeEnabled();
-  // A finger takes a moment to reach the next button. Without it, Chromium on a phone takes the drag
-  // and a tap within about 300 ms for a possible double tap and swallows the click.
-  await page.waitForTimeout(500);
 
   await page.getByLabel('Keterangan gambar (teks alternatif)').fill('Grafik batang penjualan');
-  await page.getByRole('button', { name: 'Tempel gambar' }).tap();
+  // Clicked, not tapped: right after a touch sequence sent over CDP, Chromium may take a tap for the
+  // second half of a double tap and drop its click, and how long that lasts varies. Tapping buttons
+  // is covered by the exam test; the touch part here is the drag.
+  await page.getByRole('button', { name: 'Tempel gambar' }).click();
   await expect(page.getByText('Gambar ditempel ke soal 3.')).toBeVisible();
   const picture = page.locator('article', { hasText: 'penjualan tertinggi' }).getByRole('img', { name: 'Grafik batang penjualan' });
   await expect(picture).toBeVisible();
