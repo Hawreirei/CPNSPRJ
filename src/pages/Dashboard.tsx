@@ -12,15 +12,7 @@ import { StudyPlanCard } from '../components/StudyPlanCard';
 import { Badge, Stat } from '../components/ui';
 import { fmtDate } from '../lib/format';
 
-/** TEMP (#70): busy-waits, reverted next. */
-function slowDown(ms: number) {
-  const until = performance.now() + ms;
-  while (performance.now() < until) continue;
-}
-
 export default function Dashboard() {
-  // TEMP (#70): 250 ms of synchronous work on every render, to prove the speed budget catches it. Reverted next.
-  slowDown(250);
   const settings = useSettings();
   const data = useLiveQuery(async () => {
     const [sets, questions, keys, attempts, reviews, reviewDays] = await Promise.all([
