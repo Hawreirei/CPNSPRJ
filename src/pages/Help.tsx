@@ -19,6 +19,15 @@ export default function Help() {
             dibintangi, dipindah, dihapus, atau dijadikan dasar "Serupa+".
           </li>
           <li>
+            <b>Tanya AI</b>: tombol di kartu soal yang menampilkan pembahasan (Detail Set, Bank Soal, Latihan, Laporan Skor, Buku Kesalahan), tidak saat ujian. Tutor menjelaskan soal dengan cara lain, mengapa jawaban Anda salah, atau trik cepatnya, menjawab
+            pertanyaan Anda sendiri, dan bisa membuat 2 soal serupa yang lebih mudah. Tutor menjelaskan dari kunci dan pembahasan yang ada dan berterus terang bila
+            kuncinya tampak keliru. Jawabannya bisa disimpan sebagai catatan soal. Setiap pertanyaan memakai satu permintaan AI dengan key Anda.
+          </li>
+          <li>
+            <b>Nilai atau laporkan soal</b>: beri bintang 1–5, atau laporkan soal yang kuncinya salah, ambigu, usang, atau salah ketik. Soal yang dilaporkan
+            ditandai "perlu dicek" dan tidak diambil untuk set baru kecuali Anda memilihnya; laporan bisa ditarik kembali.
+          </li>
+          <li>
             <b>Simulasi CAT</b>: timer, grid nomor, ragu-ragu, kirim otomatis. Laporan menampilkan skor per sub-tes terhadap ambang batas dan topik lemah. Bila
             set yang sama sudah pernah diujikan, laporan membandingkannya dengan ujian sebelumnya: soal yang membaik, memburuk, dan tetap salah, lalu yang
             memburuk atau tetap salah bisa langsung dilatih ulang.
@@ -74,6 +83,14 @@ export default function Help() {
             Anda memilihnya.
           </li>
           <li>
+            <b>Bagikan set</b>: di halaman set, klik Bagikan untuk mendapatkan berkas, tautan, atau kode QR. Penerima mengimpornya tanpa akun. API key, riwayat
+            ujian, Buku Kesalahan, nilai, dan laporan tidak ikut; catatan dan soal hasil impor foto/PDF hanya ikut bila Anda memilihnya.
+          </li>
+          <li>
+            <b>Profil kisi-kisi</b>: di Pengaturan, atur topik per sub-tes SKD (dengan bobot bila perlu), jumlah soal, durasi, dan ambang batas sebagai profil.
+            Profil bisa diimpor dan diekspor, jadi bila kisi-kisi resmi berubah Anda tidak perlu menunggu aplikasi diperbarui.
+          </li>
+          <li>
             <b>Unduh PDF / Word</b>: di halaman set atau Bank Soal, klik Unduh, pilih format (PDF atau Word) dan isinya (soal saja, soal + kunci, atau
             lengkap dengan pembahasan).
           </li>
@@ -90,6 +107,10 @@ export default function Help() {
           <li>
             <b>TIU figural</b>: deret dan analogi gambar dibuat oleh aplikasi sendiri dari aturan pasti (rotasi, jumlah, arsiran, bentuk), jadi kuncinya selalu benar
             dan gratis.
+          </li>
+          <li>
+            <b>TIU analisis data</b>: tabel dan grafik dibuat aplikasi dari angka acak dengan konteks rekaan (bukan statistik sungguhan), dan kuncinya dihitung dari
+            angka itu, jadi gratis dan selalu benar.
           </li>
           <li>
             <b>TKP</b>: setiap opsi wajib berskor 1–5, tidak boleh ada dua opsi berbagi skor tertinggi.
@@ -127,7 +148,10 @@ export default function Help() {
         <h2>Data & privasi</h2>
         <ul className="list-disc space-y-1 pl-5">
           <li>Tidak ada server dan tidak ada login. Set, bank soal, riwayat, dan key hanya tersimpan di browser ini (IndexedDB).</li>
-          <li>Teks soal yang Anda minta dikirim langsung ke penyedia AI pilihan Anda dan tunduk pada kebijakan privasi penyedia tersebut.</li>
+          <li>
+            Teks soal yang Anda minta, dan gambar halaman yang Anda kirim saat impor dari foto/PDF, dikirim langsung ke penyedia AI pilihan Anda dan tunduk pada
+            kebijakan privasi penyedia tersebut. Gambar halaman itu tidak disimpan. Riwayat, Buku Kesalahan, dan catatan Anda tidak pernah dikirim.
+          </li>
           <li>
             Ekstensi browser yang diizinkan membaca halaman bisa melihat API key Anda, juga key yang hanya untuk sesi; aplikasi tidak bisa mendeteksinya. Pakai
             profil browser tanpa ekstensi yang tidak Anda percayai, dan batasi key di dasbor penyedia (misalnya batas pengeluaran, atau hanya untuk Gemini API).
