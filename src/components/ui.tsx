@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import type { Flag, Subtest } from '../domain/types';
 
 const SUBTEST_STYLE: Record<Subtest, string> = {
@@ -60,6 +60,8 @@ export function Stat({ label, value, hint }: { label: string; value: ReactNode; 
 
 export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
+  // The title names the dialog, so a screen reader says "Nomor soal, dialog" and not just "dialog" (#69).
+  const titleId = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -69,13 +71,14 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
   return (
     <dialog
       ref={ref}
+      aria-labelledby={titleId}
       onClose={onClose}
       className={`m-auto w-[calc(100%-2rem)] rounded-xl border border-slate-200 bg-white p-0 text-slate-900 shadow-xl backdrop:bg-black/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${wide ? 'max-w-3xl' : 'max-w-lg'}`}
     >
       {open && (
         <div className="max-h-[85vh] overflow-y-auto p-5">
           <div className="mb-4 flex items-center justify-between gap-4">
-            <h2>{title}</h2>
+            <h2 id={titleId}>{title}</h2>
             <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Tutup">
               ✕
             </button>

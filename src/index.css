@@ -29,6 +29,11 @@
   h3 {
     @apply font-semibold;
   }
+  /* The browser's file picker is about 380 px wide and does not shrink; on a 360 px phone it made
+     the page scroll sideways (#69). */
+  input[type='file'] {
+    max-width: 100%;
+  }
   /* One visible focus style for keyboard users everywhere; inputs keep their own ring. */
   :focus-visible {
     outline: 2px solid var(--color-brand-500);

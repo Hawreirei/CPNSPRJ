@@ -45,7 +45,7 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 | Cadangan | Ekspor/impor JSON antar perangkat (API key tidak ikut). Beranda mengingatkan bila cadangan terakhir lebih dari 7 hari atau sudah ada 3 set baru. Di Chrome/Edge desktop, cadangan bisa disimpan otomatis ke satu berkas pilihan setiap ada perubahan |
 | Penyimpanan | Pengaturan → Penyimpanan menunjukkan ruang yang dipakai (termasuk gambar soal) dan bisa menghapus data lama; Beranda memperingatkan bila ruang browser hampir penuh |
 | Keamanan API key | Halaman API Key memperingatkan bahwa ekstensi browser yang bisa membaca halaman dapat melihat key, disertai panduan membatasi key per penyedia. Lihat juga [Penyedia AI](#penyedia-ai) |
-| Aksesibilitas | Bisa dipakai penuh dengan keyboard (fokus pindah ke judul soal, status tiap nomor dibacakan), cincin fokus jelas, kontras teks memenuhi WCAG AA di tema terang dan gelap, tombol nomor soal 44px di ponsel, menghormati "kurangi gerakan" sistem, dan pilihan ukuran teks (Normal/Besar/Sangat besar). Diperiksa otomatis dengan axe di uji e2e |
+| Aksesibilitas | Bisa dipakai penuh dengan keyboard (fokus pindah ke judul soal, status tiap nomor dibacakan), cincin fokus jelas, kontras teks memenuhi WCAG AA di tema terang dan gelap, tombol nomor soal dan pilihan jawaban setinggi minimal 44px di ponsel, menghormati "kurangi gerakan" sistem, dan pilihan ukuran teks (Normal/Besar/Sangat besar). Diperiksa otomatis dengan axe di uji e2e |
 | PWA | Bisa dipasang; set tersimpan dan simulasi berjalan offline |
 
 ## Penyedia AI
@@ -119,6 +119,8 @@ npm run preview
 - Waktu tidak ditunggu sungguhan: timer ujian, jeda cadangan otomatis, dan "besok" di Buku Kesalahan dimajukan dengan `page.clock`.
 - Simpan otomatis ke berkas memakai berkas asli di origin-private file system karena dialog pilih berkas tidak bisa tampil di browser headless.
 - Bila gagal, trace dan screenshot ada di `test-results/` (`npx playwright show-trace <trace.zip>`). Di CI (`.github/workflows/e2e.yml`) keduanya diunggah sebagai artefak.
+
+Proyek Playwright kedua, `mobile`, menjalankan berkas `*.mobile.e2e.ts` di layar ponsel sentuh (Pixel 7, selebar 360 px). Uji di sana mengerjakan ujian, latihan, dan Buku Kesalahan dengan ketukan, memotong gambar soal dengan seret jari, serta memeriksa setiap halaman utama: tidak ada gulir ke samping, target sentuh minimal 44 px, dan axe di tema terang maupun gelap.
 
 Aksesibilitas diperiksa dengan axe (`@axe-core/playwright`) di semua halaman utama dan dialog, tema terang dan gelap; tes gagal bila ada pelanggaran WCAG A/AA tingkat serius atau kritis.
 

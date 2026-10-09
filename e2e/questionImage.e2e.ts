@@ -1,40 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import { crc32, deflateSync } from 'node:zlib';
-import type { Page } from '@playwright/test';
-import { addGeminiKey, expect, seriousViolations, test } from './fixtures';
-
-/** A page with a dark block where its "chart" is, so a cut picture has something in it. */
-function png(width: number, height: number): Buffer {
-  const chunk = (type: string, data: Buffer) => {
-    const body = Buffer.concat([Buffer.from(type, 'latin1'), data]);
-    const out = Buffer.alloc(body.length + 8);
-    out.writeUInt32BE(data.length, 0);
-    body.copy(out, 4);
-    out.writeUInt32BE(crc32(body), body.length + 4);
-    return out;
-  };
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
-  ihdr.set([8, 2, 0, 0, 0], 8);
-  const rows = Array.from({ length: height }, (_, y) =>
-    Buffer.concat([
-      Buffer.from([0]),
-      Buffer.from(Array.from({ length: width }, (_, x) => (x > width * 0.2 && x < width * 0.6 && y > height * 0.2 && y < height * 0.4 ? [40, 80, 160] : [250, 250, 250])).flat()),
-    ]),
-  );
-  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(Buffer.concat(rows))), chunk('IEND', Buffer.alloc(0))]);
-}
-
-/** Import a 600 × 850 page whose third question shows the chart; the review screen is left open. */
-async function importChartPage(page: Page) {
-  await addGeminiKey(page);
-  await page.goto('#/bank/import');
-  await page.getByLabel('Materi yang saya impor milik saya sendiri').check();
-  await page.getByLabel('Atau pilih gambar/PDF').setInputFiles({ name: 'grafik.png', mimeType: 'image/png', buffer: png(600, 850) });
-  await page.getByRole('button', { name: 'Kirim halaman ini' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'grafik.png: 3 soal disalin, 1 dilewati.' })).toBeVisible();
-}
+import { importChartPage } from './chartPage';
+import { expect, seriousViolations, test } from './fixtures';
 
 test('a picture cut from the page goes with its question: review, bank, exam and the PDF', async ({ page }) => {
   test.setTimeout(90_000);
@@ -74,6 +40,8 @@ test('a picture cut from the page goes with its question: review, bank, exam and
 
   // A set of them: the picture in the exam and in the PDF.
   await page.goto('#/bank');
+  // The bank lists its questions after reading them; .all() would take whatever is there yet.
+  await expect(page.getByRole('checkbox', { name: 'Pilih soal' })).toHaveCount(3);
   for (const box of await page.getByRole('checkbox', { name: 'Pilih soal' }).all()) await box.check();
   page.once('dialog', (d) => void d.accept('Set bergambar'));
   await page.getByRole('button', { name: 'Jadikan set baru' }).click();

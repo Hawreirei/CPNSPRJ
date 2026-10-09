@@ -262,6 +262,7 @@ export default function Simulation() {
             <RichText text={q.stem} />
           </div>
           <StemMedia q={q} />
+          {/* min-h-11: each option is at least 44 px tall, big enough to tap on a phone (#69). */}
           <div className="mt-4 space-y-2">
             {q.options.map((o) => {
               const sel = attempt.answers[q.id] === o.label;
@@ -269,7 +270,7 @@ export default function Simulation() {
                 <button
                   key={o.label}
                   onClick={() => answer(o.label)}
-                  className={`flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm transition ${
+                  className={`flex min-h-11 w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm transition ${
                     sel ? 'border-brand-500 bg-brand-50 dark:bg-slate-800' : 'border-slate-200 hover:border-slate-400 dark:border-slate-700'
                   }`}
                 >

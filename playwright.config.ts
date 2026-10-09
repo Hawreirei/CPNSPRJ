@@ -24,7 +24,12 @@ export default defineConfig({
     locale: 'id-ID',
     timezoneId: 'Asia/Jakarta',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: '**/*.mobile.e2e.ts' },
+    // A phone with a touch screen (#69): Pixel 7, at 360 px wide like many cheaper Android phones.
+    // Only the *.mobile.e2e.ts files run here, so CI time does not double.
+    { name: 'mobile', use: { ...devices['Pixel 7'], viewport: { width: 360, height: 740 } }, testMatch: '**/*.mobile.e2e.ts' },
+  ],
   webServer: {
     command: `npx vite preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/`,
