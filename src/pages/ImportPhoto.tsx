@@ -246,7 +246,7 @@ export default function ImportPhoto() {
               }}
             />
           </label>
-          <div>
+          <div className="min-w-0">
             <label className="label" htmlFor="imp-file">
               Atau pilih gambar/PDF
             </label>

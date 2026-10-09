@@ -28,13 +28,14 @@ export function AnswerOptions({ q, chosen, revealed, onAnswer }: { q: Question; 
                 ? 'border-sky-500 bg-sky-50 dark:bg-sky-950'
                 : 'border-red-500 bg-red-50 dark:bg-red-950'
               : 'border-slate-200 opacity-70 dark:border-slate-700';
+        // min-h-11: each option is at least 44 px tall, big enough to tap on a phone (#69).
         return (
           <button
             key={o.label}
             onClick={() => onAnswer(o.label)}
             disabled={revealed}
             aria-pressed={sel}
-            className={`flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm transition disabled:cursor-default ${tone}`}
+            className={`flex min-h-11 w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm transition disabled:cursor-default ${tone}`}
           >
             <span
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${sel ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-400'}`}
