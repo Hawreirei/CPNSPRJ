@@ -5,6 +5,7 @@ import { parseCrossCheck } from '../domain/schemas';
 import type { CrossCheckSettings, Flag, FlagKind, OptionLabel, PlanBatch, Question, Subtest } from '../domain/types';
 import { QuotaExhaustedError } from './quota';
 import { callModel, openSession, type ModelSession } from './session';
+import { CROSS_CHECK_KINDS } from '../domain/quality';
 import { isGraded, isTopOption, subtestsIn, topOptions } from '../domain/examPackage';
 
 /**
@@ -19,8 +20,6 @@ export const CROSS_CHECK_BATCH = 15;
 const IN_PER_Q = 260;
 const OUT_PER_Q = 70;
 const IN_PER_REQ = 200;
-
-export const CROSS_CHECK_KINDS = new Set<FlagKind>(['cross-check-mismatch', 'cross-checked', 'cross-check-pending']);
 
 /**
  * Worth a second opinion: AI-written, and not already verified another way. Numeric TIU is

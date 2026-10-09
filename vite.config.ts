@@ -99,9 +99,14 @@ export default defineConfig({
           const lib = Object.keys(LAZY_LIBS).find((l) => chunk.moduleIds.some((id) => id.includes(`node_modules/${l}/`)));
           return `assets/${lib ? LAZY_LIBS[lib] : '[name]'}-[hash].js`;
         },
-        // App code shared by several pages goes in one chunk, not a dozen tiny ones: each file is a round trip.
+        // App code shared by several pages goes in a few chunks, not a dozen tiny ones: each file is a round trip.
+        // What the first screen imports ($initial) is kept apart from what only other pages share, so the
+        // dashboard does not download the generator, zod or the share and export code it never runs (#57).
         codeSplitting: {
-          groups: [{ name: 'shared', test: /[\\/]src[\\/]/, minShareCount: 2 }],
+          groups: [
+            { name: 'shared', tags: ['$initial'] },
+            { name: 'pages', test: /[\\/]src[\\/]/, minShareCount: 2 },
+          ],
         },
       },
     },

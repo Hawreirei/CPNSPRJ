@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
 // 211 KB when mathjs, KaTeX and the SDK went lazy (#21); 192 KB once the generators and every page but the
-// dashboard did too (with shared app code kept in one chunk). Budget: that plus about 10%.
+// dashboard did too (with shared app code kept in one chunk). Budget: that plus about 10%. It had crept back
+// to 205 KB by Phase 5; 148 KB once code only the other pages share left the startup chunk (#57).
 const BUDGET_KB = 210;
 const LAZY = /^assets\/(mathjs|katex|anthropic|pdfjs)-/;
 
