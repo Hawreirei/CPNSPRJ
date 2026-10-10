@@ -12,6 +12,41 @@ Semua fitur di bawah sudah ada di aplikasi (README dan kode, versi 1.3.0).
 
 ---
 
+## Versi singkat untuk halaman Lynk (teks biasa, tanpa format khusus)
+
+**Judul:** Skorin Studio: Aplikasi Latihan SKD yang Bikin Soalnya Sendiri
+
+```text
+Latihan SKD yang bisa kamu atur sendiri. Pilih topik, jumlah, dan tingkat kesulitan, lalu aplikasi membuatkan soalnya dengan AI. Kerjakan dalam simulasi CAT, lihat di mana skormu bocor, dan ulangi soal yang salah sampai hafal.
+
+YANG KAMU DAPAT
+• Pembuat soal TWK, TIU, TKP dengan AI (memakai API key milikmu)
+• Simulasi CAT: timer, grid nomor, tanda ragu-ragu
+• Laporan Skor dan saran latihan berikutnya
+• Buku Kesalahan: soal yang salah diulang terjadwal
+• Kartu Hafalan TWK (UUD 1945) dan Kamus Rumus TIU
+• Paket SKD CPNS, PPPK 2024, dan profil Sekolah Kedinasan 2026
+• Unduh PDF atau Word, bisa dipasang dan dipakai offline
+• Tanpa daftar akun, tanpa langganan. Data tersimpan di perangkatmu
+• Bonus: 1 set PDF SKD 110 soal   [HAPUS JIKA TIDAK DIBERIKAN]
+• Grup pembeli untuk dukungan   [HAPUS JIKA TIDAK ADA]
+
+PERLU DIKETAHUI
+• Tidak berisi soal bawaan. Soal dibuat dengan API key AI milikmu; biaya dibayar ke penyedia sesuai pemakaian (ada penyedia dengan kuota gratis).
+• Soal buatan AI tidak selalu benar. Periksa soal penting, terutama TWK, ke sumber resmi.
+• Lisensi pribadi: dilarang dibagikan atau dijual ulang.
+
+Mau langsung punya soal? Lihat Skorin Starter dan Skorin Lengkap.
+
+Bukan produk resmi BKN. Bantuan: [KONTAK WA / IG]
+```
+
+**Dua kalimat untuk caption TikTok atau Instagram**
+
+> Bosan soal tryout yang itu-itu saja? Skorin Studio membuat soal SKD sesuai topik lemahmu, mengoreksi kuncinya, dan mengulang soal yang salah sampai hafal. Link di bio.
+
+---
+
 ## Versi lengkap
 
 ### Skorin Studio: Aplikasi Latihan SKD yang Membuat Soalnya Sendiri
