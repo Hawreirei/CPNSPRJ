@@ -147,17 +147,15 @@ Commit yang hanya memformat ulang kode tercatat di `.git-blame-ignore-revs`, sup
 
 Setiap PR menjalankan typecheck, lint (`--deny-warnings`), pemeriksaan format (Prettier), unit test, e2e, dan `npm run check:bundle`, yang gagal bila JavaScript dan CSS yang diunduh saat aplikasi pertama dibuka melebihi 210 KB (gzip) atau memuat library yang seharusnya dimuat saat dipakai.
 
-Hasil build adalah situs statis (router berbasis hash, `base: './'`), sehingga bisa di-host di Netlify, Cloudflare Pages, GitHub Pages, dan sejenisnya tanpa konfigurasi rewrite.
+Hasil build adalah situs statis (router berbasis hash, `base: './'`), sehingga bisa di-host di Cloudflare, Netlify, GitHub Pages, dan sejenisnya tanpa konfigurasi rewrite.
 
-### Deploy ke GitHub Pages
+### Deploy ke Cloudflare
 
-Workflow `.github/workflows/deploy-pages.yml` menjalankan test, membangun aplikasi, lalu men-deploy folder `dist/` setiap ada push ke `main`.
+Hosting dilakukan lewat Cloudflare, dengan domain sendiri. Cloudflare menarik kode dari repo ini, menjalankan `npm run build`, lalu menayangkan folder `dist/`. Setiap push ke `main` memperbarui situs, dan setiap cabang atau PR mendapat alamat pratinjau sendiri.
 
-1. Buka **Settings → Pages** di repo.
-2. Pada **Build and deployment → Source**, pilih **GitHub Actions** (bukan "Deploy from a branch").
-3. Push ke `main`, atau jalankan workflow secara manual di tab **Actions**.
+Langkah lengkapnya ada di [docs/pindah-ke-cloudflare.md](docs/pindah-ke-cloudflare.md). Ringkasnya: pengaturan build `npm run build`, output `dist`, dan variabel `NODE_VERSION` = `22`.
 
-Situs akan tersedia di `https://<username>.github.io/<nama-repo>/`. Mode "Deploy from a branch" tidak bisa dipakai, karena mode itu menyajikan kode sumber yang belum di-build sehingga halaman tampil kosong.
+Data pengguna (set, Bank Soal, riwayat) tersimpan di browser per alamat situs, jadi pindah alamat berarti data lama harus diekspor lewat Pengaturan → Cadangan lalu diimpor di alamat baru.
 
 ### Stack
 

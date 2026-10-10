@@ -81,7 +81,7 @@ HTTPS aktif, versi benar, impor bundel berhasil, aplikasi bisa dipasang, dan bis
 ## Langkah 8: Matikan GitHub Pages (setelah yakin)
 
 1. Selama masa uji biarkan keduanya berjalan.
-2. Setelah domain baru stabil, hapus berkas `.github/workflows/deploy-pages.yml` (saya bisa membuatkan PR-nya) dan matikan Pages di **Settings → Pages**.
+2. Setelah domain baru stabil, gabungkan PR yang menghapus `.github/workflows/deploy-pages.yml`, lalu matikan Pages di **Settings → Pages**. Jangan menggabungkannya sebelum situs di Cloudflare terbukti berjalan.
 3. Alamat lama `hawreirei.github.io/CPNSPRJ` lalu berhenti diperbarui. Pastikan tidak ada pengguna yang masih menyimpan data di sana (lihat bagian "Baca dulu").
 
 ## Langkah 9: Perbarui semua tautan
