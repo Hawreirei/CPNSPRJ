@@ -4,7 +4,7 @@ test('Kartu Hafalan TWK: learn Pancasila from the official text with the keyboar
   await page.goto('#/');
   await page.getByRole('link', { name: 'Kartu Hafalan TWK' }).first().click();
   await expect(page.getByRole('heading', { name: 'Kartu Hafalan TWK', level: 1 })).toBeVisible();
-  await expect(page.getByText('Pilih materi di bawah untuk mulai menghafal.')).toBeVisible();
+  await expect(page.getByText('Pilih materi di daftar Pancasila dan UUD 1945 atau Lembaga negara untuk mulai menghafal.')).toBeVisible();
   await expect(
     page.getByText(/Sumber: Undang-Undang Dasar Negara Republik Indonesia Tahun 1945 Dalam Satu Naskah, Sekretariat Jenderal Majelis Permusyawaratan Rakyat/),
   ).toBeVisible();
@@ -44,6 +44,11 @@ test('Kartu Hafalan TWK: learn Pancasila from the official text with the keyboar
   await expect(article).toContainText('Perubahan Kedua');
   await page.goto('#/kartu?pasal=99');
   await expect(page.getByText('Pasal 99 tidak ada di UUD 1945.')).toBeVisible();
+  // Or typed into the box at the top of the page.
+  await page.getByRole('searchbox', { name: 'Buka pasal UUD 1945' }).fill('Pasal 28I');
+  await page.getByRole('button', { name: 'Buka', exact: true }).click();
+  await expect(page).toHaveURL(/#\/kartu\?pasal=28I$/);
+  await expect(article.locator('li')).toHaveCount(5);
 
   // Stopping removes the schedule.
   await page.goto('#/kartu');

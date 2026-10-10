@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.6.0',
+    date: '2026-10-10',
+    items: [
+      'Progres Belajar: pilih "5 terakhir" untuk melihat grafik, angka, dan tren dari lima ujian terakhir saja; tombol 1, 2, dan 3 menampilkan TWK, TIU, atau TKP sebagai grafik utama; Unduh CSV menyimpan riwayat skor untuk dibuka di Excel atau Google Sheets.',
+      'Kartu Hafalan TWK: buka pasal UUD 1945 langsung dari kolom di atas halaman, misalnya "28I"; ulangan hari ini dan daftar materi kini berdampingan.',
+      'Kamus Rumus TIU: pencarian di atas halaman, daftar topik tetap terlihat di samping, dan rumus tampil dua kolom di layar lebar.',
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-10-10',
     items: [

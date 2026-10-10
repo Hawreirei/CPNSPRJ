@@ -7,7 +7,7 @@ import { LEMBAGA_NEGARA } from '../data/lembagaNegara';
 import { babLabel, buildDecks, buildLembagaDecks, cardQueue, findPasal, originOf, pasalLabel, type Card, type Deck, type UudData } from '../domain/cards';
 import { GRADES, type Grade } from '../domain/types';
 import { gradeCard, startCards, stopCards } from '../engine/cards';
-import { Badge } from '../components/ui';
+import { Badge, PageHeader } from '../components/ui';
 
 const uud = uudJson as UudData;
 const UUD_DECKS = buildDecks(uud);
@@ -119,8 +119,9 @@ function Session({ queue, onDone }: { queue: Card[]; onDone: () => void }) {
 
 /** Kartu Hafalan TWK (#47): the 1945 Constitution and Pancasila from the official text, learned with spaced repetition. */
 export default function Kartu() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const pasal = params.get('pasal');
+  const [pasalQuery, setPasalQuery] = useState('');
   const states = useLiveQuery(() => db.cards.toArray(), []);
   const [session, setSession] = useState<Card[] | null>(null);
   const [done, setDone] = useState(false);
@@ -134,63 +135,90 @@ export default function Kartu() {
     .filter((c): c is Card => !!c);
 
   return (
-    <div className="max-w-3xl space-y-4">
-      <div>
-        <h1>Kartu Hafalan TWK</h1>
-        <p className="muted mt-1">
-          Hafalkan Pancasila, Pembukaan, pasal-pasal UUD 1945, dan lembaga negara dari teks resminya, dengan jadwal ulangan seperti Buku Kesalahan: kartu yang mudah diingat makin
-          jarang muncul, yang terlupa muncul lagi besok.
-        </p>
-      </div>
-
-      {pasal && <PasalView id={pasal} />}
-
-      {session ? (
-        <Session
-          queue={session}
-          onDone={() => {
-            setSession(null);
-            setDone(true);
-          }}
-        />
-      ) : (
-        <section className="card space-y-2" aria-labelledby="today-title">
-          <h2 id="today-title">Ulangan hari ini</h2>
-          {queue.length ? (
-            <>
-              <p className="text-sm">{queue.length} kartu menunggu: yang jatuh tempo, lalu kartu baru (paling banyak 20 kartu baru per hari).</p>
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  setDone(false);
-                  setSession(queue);
-                }}
-              >
-                Mulai ulangan ({queue.length} kartu)
-              </button>
-            </>
-          ) : (
-            <p className="text-sm">
-              {done ? 'Selesai untuk hari ini. ' : ''}
-              {learning.size ? 'Tidak ada kartu yang jatuh tempo. Kembali besok.' : 'Pilih materi di bawah untuk mulai menghafal.'}
-            </p>
-          )}
-        </section>
-      )}
-
-      <DeckList id="decks-title" title="Pancasila dan UUD 1945" decks={UUD_DECKS} learning={learning} />
-      <DeckList
-        id="lembaga-title"
-        title="Lembaga negara"
-        note="Kedudukan, tugas, dan wewenang lembaga negara, dikutip apa adanya dari pasal UUD 1945. Setiap kartu menyebut pasal dan ayatnya."
-        decks={LEMBAGA_DECKS}
-        learning={learning}
+    <div className="space-y-4">
+      <PageHeader
+        title="Kartu Hafalan TWK"
+        description="Hafalkan Pancasila, Pembukaan, pasal-pasal UUD 1945, dan lembaga negara dari teks resminya, dengan jadwal ulangan seperti Buku Kesalahan: kartu yang mudah diingat makin jarang muncul, yang terlupa muncul lagi besok."
+        actions={
+          // Look up one article of the Constitution, e.g. "28I" or "Pasal 33".
+          <form
+            role="search"
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const id = pasalQuery.replace(/^\s*pasal\s*/i, '').trim();
+              if (id) setParams({ pasal: id });
+            }}
+          >
+            <input
+              className="input w-44"
+              type="search"
+              aria-label="Buka pasal UUD 1945"
+              placeholder="Pasal, mis. 28I"
+              value={pasalQuery}
+              onChange={(e) => setPasalQuery(e.target.value)}
+            />
+            <button className="btn" type="submit">
+              Buka
+            </button>
+          </form>
+        }
       />
 
-      <p className="muted text-xs">
-        Sumber: {uud.source.title}, {uud.source.publisher} (berkas {uud.source.fileDate}). Teks disalin apa adanya, termasuk ejaannya; setiap kartu pasal menyebut perubahan UUD
-        yang merumuskannya. Rumusan Pancasila diambil dari alinea keempat Pembukaan. Bukan materi resmi BKN.
-      </p>
+      <div className="grid items-start gap-4 lg:grid-cols-12">
+        <div className="min-w-0 space-y-4 lg:col-span-7">
+          {pasal && <PasalView id={pasal} />}
+
+          {session ? (
+            <Session
+              queue={session}
+              onDone={() => {
+                setSession(null);
+                setDone(true);
+              }}
+            />
+          ) : (
+            <section className="card card-focus space-y-2" aria-labelledby="today-title">
+              <h2 id="today-title">Ulangan hari ini</h2>
+              {queue.length ? (
+                <>
+                  <p className="text-sm">{queue.length} kartu menunggu: yang jatuh tempo, lalu kartu baru (paling banyak 20 kartu baru per hari).</p>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      setDone(false);
+                      setSession(queue);
+                    }}
+                  >
+                    Mulai ulangan ({queue.length} kartu)
+                  </button>
+                </>
+              ) : (
+                <p className="text-sm">
+                  {done ? 'Selesai untuk hari ini. ' : ''}
+                  {learning.size ? 'Tidak ada kartu yang jatuh tempo. Kembali besok.' : 'Pilih materi di daftar Pancasila dan UUD 1945 atau Lembaga negara untuk mulai menghafal.'}
+                </p>
+              )}
+            </section>
+          )}
+
+          <p className="muted text-xs">
+            Sumber: {uud.source.title}, {uud.source.publisher} (berkas {uud.source.fileDate}). Teks disalin apa adanya, termasuk ejaannya; setiap kartu pasal menyebut perubahan UUD
+            yang merumuskannya. Rumusan Pancasila diambil dari alinea keempat Pembukaan. Bukan materi resmi BKN.
+          </p>
+        </div>
+
+        <div className="min-w-0 space-y-4 lg:col-span-5">
+          <DeckList id="decks-title" title="Pancasila dan UUD 1945" decks={UUD_DECKS} learning={learning} />
+          <DeckList
+            id="lembaga-title"
+            title="Lembaga negara"
+            note="Kedudukan, tugas, dan wewenang lembaga negara, dikutip apa adanya dari pasal UUD 1945. Setiap kartu menyebut pasal dan ayatnya."
+            decks={LEMBAGA_DECKS}
+            learning={learning}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -198,14 +226,16 @@ export default function Kartu() {
 /** Decks to start or stop learning, one row each. */
 function DeckList({ id, title, note, decks, learning }: { id: string; title: string; note?: string; decks: Deck[]; learning: Set<string> }) {
   return (
-    <section className="space-y-2" aria-labelledby={id}>
-      <h2 id={id}>{title}</h2>
-      {note && <p className="muted text-sm">{note}</p>}
-      <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+    <section className="card space-y-2" aria-labelledby={id}>
+      <h2 id={id} className="text-[15px]">
+        {title}
+      </h2>
+      {note && <p className="muted text-xs">{note}</p>}
+      <ul className="-mx-4 divide-y divide-slate-100 border-t border-slate-100 dark:divide-slate-800 dark:border-slate-800">
         {decks.map((d) => {
           const on = d.cards.filter((c) => learning.has(c.id)).length;
           return (
-            <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+            <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
               <span>
                 {d.title}{' '}
                 <span className="muted text-xs">
