@@ -2,10 +2,12 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../db';
 import { dayWindowStart, keyUsage, markDayExhausted, QuotaExhaustedError, releaseRequest, reserveRequest } from '../engine/quota';
-import { balancedSizes, estimatePlan, isProcedural, planBatches } from '../engine/plan';
-import { finishBatch } from '../engine/generator';
+import { balancedSizes, estimatePlan, groupBatches, isProcedural, planBatches } from '../engine/plan';
+import { finishBatch, slotFor } from '../engine/generator';
 import { quotaInfo } from '../providers/http';
 import { parseAiQuestions, salvageQuestions } from '../domain/schemas';
+import { buildMultiPrompt } from '../domain/prompts';
+import { geminiThinking } from '../providers';
 import { buildPreset, DEFAULT_SETTINGS } from '../domain/blueprint';
 import type { PlanBatch } from '../domain/types';
 
@@ -111,8 +113,77 @@ describe('request-saving batching', () => {
     const mini = planBatches(buildPreset('mini', DEFAULT_SETTINGS), DEFAULT_SETTINGS.questionsPerRequest);
     expect(full.filter((b) => !isProcedural(b)).length).toBeLessThanOrEqual(8);
     expect(mini.filter((b) => !isProcedural(b)).length).toBe(3);
-    const est = estimatePlan(full, 'gemini-flash-latest', DEFAULT_SETTINGS, { rpm: 5, tpm: 250_000, rpd: 20 });
-    expect(est.requests).toBeLessThanOrEqual(8);
+    const free = { rpm: 5, tpm: 250_000, rpd: 20 };
+    // Reading passages need a request of their own: TWK | TIU | wacana | TKP | TKP.
+    expect(estimatePlan(full, 'gemini-flash-latest', DEFAULT_SETTINGS, free).requests).toBeLessThanOrEqual(5);
+    // A practice set is a single request on a free key: all sub-tests travel together.
+    expect(estimatePlan(mini, 'gemini-flash-latest', DEFAULT_SETTINGS, free).requests).toBe(1);
+    // Paid keys keep one request per batch so they can run in parallel.
+    expect(estimatePlan(mini, 'gemini-flash-latest', DEFAULT_SETTINGS).requests).toBe(3);
+  });
+
+  it('groups batches across sub-tests up to the per-request cap', () => {
+    const mk = (id: string, subtest: PlanBatch['subtest'], count: number, extra: Partial<PlanBatch> = {}): PlanBatch => ({
+      id,
+      subtest,
+      items: Array.from({ length: count }, () => ({ topic: 'Pancasila', difficulty: 'sedang' as const })),
+      count,
+      status: 'pending',
+      ...extra,
+    });
+    const groups = groupBatches([mk('a', 'TWK', 10), mk('b', 'TIU', 15), mk('c', 'TKP', 10), mk('d', 'TWK', 3, { basedOn: ['x', 'y', 'z'] })], 30);
+    expect(groups.map((g) => g.map((b) => b.id))).toEqual([['a', 'b'], ['c'], ['d']]);
+    expect(groupBatches([mk('a', 'TWK', 10), mk('b', 'TIU', 10)], 0)).toHaveLength(2);
+  });
+
+  it('puts each streamed question in its sub-test, batch and planned slot', () => {
+    const mk = (id: string, subtest: PlanBatch['subtest'], topics: string[]): PlanBatch => ({
+      id,
+      subtest,
+      items: topics.map((topic) => ({ topic, difficulty: 'sedang' as const })),
+      count: topics.length,
+      status: 'pending',
+    });
+    const group = [mk('twk', 'TWK', ['Pancasila']), mk('tkp1', 'TKP', ['Pelayanan Publik']), mk('tkp2', 'TKP', ['Jejaring Kerja'])];
+    const taken = new Map<PlanBatch['subtest'], number>();
+    const take = (named?: string) => {
+      const slot = slotFor(group, taken, named);
+      if (slot) taken.set(slot.subtest, (taken.get(slot.subtest) ?? 0) + 1);
+      return slot && `${slot.batch.id}:${slot.item.topic}`;
+    };
+    expect(take('TKP')).toBe('tkp1:Pelayanan Publik');
+    expect(take('twk')).toBe('twk:Pancasila');
+    // A question that names no sub-test fills the first one still short.
+    expect(take(undefined)).toBe('tkp2:Jejaring Kerja');
+    // Every slot is filled: extra questions are left out.
+    expect(take('TKP')).toBeNull();
+    expect(take(undefined)).toBeNull();
+    const prompt = buildMultiPrompt([
+      { subtest: 'TWK', items: group[0].items },
+      { subtest: 'TKP', items: [...group[1].items, ...group[2].items] },
+    ]);
+    expect(prompt).toContain('Sub-tes: TWK');
+    expect(prompt).toContain('Sub-tes: TKP');
+    expect(prompt).toContain('total 3 soal');
+  });
+
+  it('finds the finished questions in a reply that is still being written', () => {
+    const q = (i: number) => JSON.stringify({ stem: `Soal nomor ${i}`, options: [{ text: 'a' }], answer: 'A', explanation: 'x' });
+    const full = `{"questions": [${q(1)}, ${q(2)}, ${q(3)}]}`;
+    const cut = full.slice(0, full.indexOf('Soal nomor 3'));
+    expect(salvageQuestions(cut)).toHaveLength(2);
+    expect(salvageQuestions(full)).toHaveLength(3);
+  });
+
+  it('keeps Gemini thinking short', () => {
+    expect(geminiThinking('gemini-3.8-flash')).toEqual({ thinkingLevel: 'low' });
+    expect(geminiThinking('gemini-3-pro')).toEqual({ thinkingLevel: 'low' });
+    expect(geminiThinking('gemini-flash-latest')).toEqual({ thinkingLevel: 'low' });
+    expect(geminiThinking('gemini-2.5-flash')).toEqual({ thinkingBudget: 0 });
+    expect(geminiThinking('gemini-2.5-flash-lite')).toEqual({ thinkingBudget: 0 });
+    expect(geminiThinking('gemini-2.5-pro')).toEqual({ thinkingBudget: 128 });
+    expect(geminiThinking('gemini-2.0-flash')).toBeUndefined();
+    expect(geminiThinking('gemma-3-27b-it')).toBeUndefined();
   });
 
   it('re-queues only the missing items when the model returns fewer questions', () => {

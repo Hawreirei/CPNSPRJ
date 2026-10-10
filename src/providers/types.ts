@@ -20,6 +20,12 @@ export interface LlmRequest {
   images?: LlmImage[];
   signal?: AbortSignal;
   maxTokens?: number;
+  /**
+   * Called with the reply received so far while it is being written (Gemini streams it), so
+   * finished questions can be shown before the whole reply is in. Other providers call it once
+   * with the complete reply.
+   */
+  onText?: (textSoFar: string) => void;
 }
 
 export interface LlmResponse {

@@ -113,6 +113,49 @@ export function buildPrompt(opts: { subtest: Subtest; items: BatchItem[]; avoid?
 }
 
 /**
+ * One request covering several sub-tests (used on rationed free-tier keys).
+ * Every question carries its "subtest" so the reply can be split again.
+ */
+export function buildMultiPrompt(parts: { subtest: Subtest; items: BatchItem[]; avoid?: string[] }[]): string {
+  const total = parts.reduce((n, p) => n + p.items.length, 0);
+  const sections = parts.map((p, k) => {
+    const lines = [
+      `=== Bagian ${k + 1}: ${p.items.length} soal ${p.subtest} (isi "subtest": "${p.subtest}") ===`,
+      subtestGuide(p.subtest, [...new Set(p.items.map((i) => i.topic))]),
+      `Daftar soal ${p.subtest}, berurutan:\n` + p.items.map((it, i) => `${i + 1}. topik "${it.topic}", kesulitan ${DIFF_GUIDE[it.difficulty]}`).join('\n'),
+    ];
+    if (p.avoid?.length)
+      lines.push(
+        `Jangan mengulang soal ${p.subtest} yang mirip dengan ini:\n- ${p.avoid
+          .slice(0, 8)
+          .map((s) => s.slice(0, 100))
+          .join('\n- ')}`,
+      );
+    return lines.join('\n');
+  });
+  const example = parts
+    .map(
+      (p) =>
+        `    {"subtest": "${p.subtest}", "topic": "...", "stem": "...", "options": [{"label": "A", "text": "..."${p.subtest === 'TKP' ? ', "score": 3' : ''}}, ... 5 opsi A-E],${
+          p.subtest !== 'TKP' ? ' "answer": "C",' : ''
+        } "explanation": "...",${p.subtest === 'TWK' ? ' "reference": "...",' : ''}${p.subtest === 'TIU' ? ' "mathExpression": "hanya untuk soal numerik",' : ''} "confidence": "high"}`,
+    )
+    .join(',\n');
+  return `Buat total ${total} soal yang berbeda satu sama lain dari ${parts.length} sub-tes berikut. Ikuti aturan tiap bagian.
+Setiap soal WAJIB punya field "subtest". Urutkan soal per bagian sesuai urutan di bawah.
+
+${sections.join('\n\n')}
+
+Format JSON (satu daftar berisi semua ${total} soal):
+{
+  "questions": [
+${example},
+    ...
+  ]
+}`;
+}
+
+/**
  * Reading passages, each with several questions about it. The lines "Wacana N: K soal" say how many
  * questions each passage needs; a reply with other counts is rejected as a whole.
  */

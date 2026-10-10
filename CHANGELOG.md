@@ -2,6 +2,13 @@
 
 Perubahan yang terasa bagi pengguna, per versi. Berkas ini dibuat dari `src/data/changelog.ts` dengan `npm run changelog`; jangan diedit langsung.
 
+## 1.7.0 (2026-10-10)
+
+- Jauh lebih hemat kuota API key gratis: Latihan Singkat kini cukup 1 permintaan AI (sebelumnya 3) dan SKD Lengkap sekitar 5 (sebelumnya 8), karena soal TWK, TIU, dan TKP diminta sekaligus. Satu key Gemini gratis kini cukup untuk sekitar 20 latihan singkat sehari.
+- Pembuatan soal dengan Gemini lebih cepat dan lebih jarang terpotong: mode "berpikir" Gemini dibatasi, sehingga tidak menghabiskan token.
+- Soal muncul satu per satu begitu selesai ditulis AI, dan angka progres ikut naik per nomor. Bila sambungan terputus di tengah jalan, soal yang sudah jadi tetap tersimpan dan hanya soal yang kurang yang diminta lagi.
+- Tombol Uji koneksi di halaman API Key tidak lagi memakai kuota.
+
 ## 1.6.0 (2026-10-10)
 
 - Progres Belajar: pilih "5 terakhir" untuk melihat grafik, angka, dan tren dari lima ujian terakhir saja; tombol 1, 2, dan 3 menampilkan TWK, TIU, atau TKP sebagai grafik utama; Unduh CSV menyimpan riwayat skor untuk dibuka di Excel atau Google Sheets.

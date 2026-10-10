@@ -44,7 +44,10 @@ export const db = new AppDB();
 
 export async function getSettings(): Promise<Settings> {
   const row = await db.meta.get('settings');
-  const settings = { ...DEFAULT_SETTINGS, ...((row?.value as Partial<Settings>) ?? {}) };
+  const saved = { ...((row?.value as Partial<Settings>) ?? {}) };
+  // 20 per request was the old default; more per request saves free-tier quota.
+  if (saved.questionsPerRequest === 20 && !saved.perRequestV) delete saved.questionsPerRequest;
+  const settings: Settings = { ...DEFAULT_SETTINGS, ...saved, perRequestV: 2 };
   // Scoring reads sub-test rules synchronously, so imported packages are registered on every read.
   setCustomPackages(settings.examPackages);
   return settings;

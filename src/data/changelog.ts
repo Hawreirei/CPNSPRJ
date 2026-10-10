@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.7.0',
+    date: '2026-10-10',
+    items: [
+      'Jauh lebih hemat kuota API key gratis: Latihan Singkat kini cukup 1 permintaan AI (sebelumnya 3) dan SKD Lengkap sekitar 5 (sebelumnya 8), karena soal TWK, TIU, dan TKP diminta sekaligus. Satu key Gemini gratis kini cukup untuk sekitar 20 latihan singkat sehari.',
+      'Pembuatan soal dengan Gemini lebih cepat dan lebih jarang terpotong: mode "berpikir" Gemini dibatasi, sehingga tidak menghabiskan token.',
+      'Soal muncul satu per satu begitu selesai ditulis AI, dan angka progres ikut naik per nomor. Bila sambungan terputus di tengah jalan, soal yang sudah jadi tetap tersimpan dan hanya soal yang kurang yang diminta lagi.',
+      'Tombol Uji koneksi di halaman API Key tidak lagi memakai kuota.',
+    ],
+  },
+  {
     version: '1.6.0',
     date: '2026-10-10',
     items: [

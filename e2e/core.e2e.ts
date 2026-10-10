@@ -4,7 +4,11 @@ test('API key, generate a set, take the exam, and see the report and progress', 
   await keyAndSet(page);
 
   // Mini set: TWK + non-figural TIU + TKP come from the fake AI; figural TIU is drawn by the app.
-  expect(gemini.generateCalls).toBeGreaterThan(0);
+  // On a free-tier key all three sub-tests travel in one request, with Gemini's thinking kept low.
+  expect(gemini.generateCalls).toBe(1);
+  // Streamed, so each question is stored and shown as soon as it is written.
+  expect(gemini.streamCalls).toBe(1);
+  expect(gemini.thinking).toEqual([{ thinkingLevel: 'low' }]);
   expect(gemini.served.TWK).toBe(10);
   expect(gemini.served.TKP).toBe(10);
   expect(gemini.served.TIU).toBeGreaterThan(0);

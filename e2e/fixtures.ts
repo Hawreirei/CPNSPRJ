@@ -20,6 +20,10 @@ const LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
 export interface GeminiMock {
   /** generateContent calls received for writing questions. */
   generateCalls: number;
+  /** How many of those were streamed (questions shown one by one as they are written). */
+  streamCalls: number;
+  /** The thinking setting each of those calls carried (Gemini 3 thinks at length unless told otherwise). */
+  thinking: unknown[];
   /** Questions returned, per sub-test. */
   served: Record<string, number>;
   /** generateContent calls received from the cross-checker. */
@@ -94,6 +98,21 @@ export function fakeQuestions(prompt: string) {
   return { subtest, questions };
 }
 
+/**
+ * Questions for a prompt that covers several sub-tests in one request ("=== Bagian N: K soal X"),
+ * as free-tier keys send them: each part is answered on its own and every question names its sub-test.
+ */
+export function fakeMultiQuestions(prompt: string) {
+  if (!/^=== Bagian \d+: /m.test(prompt)) return null;
+  return prompt
+    .split(/^=== Bagian \d+: .*$/m)
+    .slice(1)
+    .map((part) => {
+      const { subtest, questions } = fakeQuestions(part);
+      return { subtest, questions: questions.map((q) => ({ subtest, ...q })) };
+    });
+}
+
 /** Reading passages for a passage prompt ("Wacana N: K soal"), or null for an ordinary prompt. */
 export function fakePassages(prompt: string) {
   const plan = [...prompt.matchAll(/^Wacana \d+: (\d+) soal/gm)].map((m) => Number(m[1]));
@@ -116,7 +135,16 @@ export function fakePassages(prompt: string) {
 }
 
 export async function mockGemini(page: Page): Promise<GeminiMock> {
-  const stats: GeminiMock = { generateCalls: 0, served: { TWK: 0, TIU: 0, TKP: 0 }, checkCalls: 0, tutorPrompts: [], pageImages: [], checkAnswer: () => 'A' };
+  const stats: GeminiMock = {
+    generateCalls: 0,
+    streamCalls: 0,
+    thinking: [],
+    served: { TWK: 0, TIU: 0, TKP: 0 },
+    checkCalls: 0,
+    tutorPrompts: [],
+    pageImages: [],
+    checkAnswer: () => 'A',
+  };
   await page.route(`https://${GEMINI_HOST}/**`, async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -130,10 +158,13 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
         },
       });
     }
-    if (req.method() === 'POST' && url.pathname.endsWith(':generateContent')) {
+    // Question generation streams its reply (streamGenerateContent, server-sent events); the rest don't.
+    const streamed = url.pathname.endsWith(':streamGenerateContent');
+    if (req.method() === 'POST' && (url.pathname.endsWith(':generateContent') || streamed)) {
       const body = req.postDataJSON() as {
         systemInstruction: { parts: { text: string }[] };
         contents: { parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] }[];
+        generationConfig?: { thinkingConfig?: unknown };
       };
       const image = body.contents[0].parts.find((p) => p.inlineData)?.inlineData;
       if (image) {
@@ -219,16 +250,28 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
         });
       }
       stats.generateCalls++;
+      if (streamed) stats.streamCalls++;
+      stats.thinking.push(body.generationConfig?.thinkingConfig);
       const reading = fakePassages(prompt);
-      const reply = reading
-        ? { subtest: 'TIU' as const, body: { passages: reading.passages }, count: reading.count }
-        : (({ subtest, questions }) => ({ subtest, body: { questions }, count: questions.length }))(fakeQuestions(prompt));
-      stats.served[reply.subtest] = (stats.served[reply.subtest] ?? 0) + reply.count;
+      const parts = reading
+        ? [{ subtest: 'TIU', count: reading.count }]
+        : (fakeMultiQuestions(prompt) ?? [fakeQuestions(prompt)]).map((p) => ({ ...p, count: p.questions.length }));
+      for (const p of parts) stats.served[p.subtest] = (stats.served[p.subtest] ?? 0) + p.count;
+      const reply = reading ? { passages: reading.passages } : { questions: parts.flatMap((p) => ('questions' in p ? p.questions : [])) };
+      const count = parts.reduce((n, p) => n + p.count, 0);
+      const usageMetadata = { promptTokenCount: 1200, candidatesTokenCount: 300 * count };
+      if (streamed) {
+        // The reply in pieces of 500 characters, as Gemini sends it, with the totals on the last one.
+        const text = JSON.stringify(reply);
+        const pieces = Array.from({ length: Math.ceil(text.length / 500) }, (_, i) => text.slice(i * 500, (i + 1) * 500));
+        const events = pieces.map((piece, i) => ({
+          candidates: [{ content: { parts: [{ text: piece }] }, ...(i === pieces.length - 1 ? { finishReason: 'STOP' } : {}) }],
+          ...(i === pieces.length - 1 ? { usageMetadata } : {}),
+        }));
+        return route.fulfill({ contentType: 'text/event-stream', body: events.map((e) => `data: ${JSON.stringify(e)}\r\n\r\n`).join('') });
+      }
       return route.fulfill({
-        json: {
-          candidates: [{ content: { parts: [{ text: JSON.stringify(reply.body) }] }, finishReason: 'STOP' }],
-          usageMetadata: { promptTokenCount: 1200, candidatesTokenCount: 300 * reply.count },
-        },
+        json: { candidates: [{ content: { parts: [{ text: JSON.stringify(reply) }] }, finishReason: 'STOP' }], usageMetadata },
       });
     }
     return route.fulfill({ status: 404, json: { error: { message: `Not mocked: ${req.method()} ${url.pathname}` } } });

@@ -16,6 +16,48 @@ export async function postJson(url: string, body: unknown, headers: Record<strin
   return readResponse(res);
 }
 
+/**
+ * POST and read a server-sent-events reply (`data: {...}` lines), handing each event's JSON
+ * to `onEvent` as it arrives. An error status is read and thrown like `postJson` does.
+ */
+export async function postStream(url: string, body: unknown, headers: Record<string, string>, signal: AbortSignal | undefined, onEvent: (data: unknown) => void) {
+  let res: Response;
+  try {
+    res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body), signal });
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') throw e;
+    throw new ProviderError('Tidak dapat menghubungi server AI. Periksa koneksi internet, atau endpoint mungkin menolak akses dari browser (CORS).', { retryable: true });
+  }
+  if (!res.ok || !res.body) {
+    await readResponse(res);
+    return;
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const flush = (line: string) => {
+    if (!line.startsWith('data:')) return;
+    const json = line.slice(5).trim();
+    if (json && json !== '[DONE]') onEvent(JSON.parse(json));
+  };
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let nl;
+      while ((nl = buffer.indexOf('\n')) >= 0) {
+        flush(buffer.slice(0, nl).replace(/\r$/, ''));
+        buffer = buffer.slice(nl + 1);
+      }
+    }
+    flush(buffer.trim());
+  } catch (e) {
+    if ((e as Error).name === 'AbortError' || e instanceof ProviderError) throw e;
+    throw new ProviderError('Sambungan ke server AI terputus di tengah jawaban.', { retryable: true });
+  }
+}
+
 export async function getJson(url: string, headers: Record<string, string>, signal?: AbortSignal) {
   let res: Response;
   try {

@@ -50,7 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
   passing: { TWK: 65, TIU: 80, TKP: 166 },
   counts: { TWK: 30, TIU: 35, TKP: 45 },
   durationMinutes: 100,
-  questionsPerRequest: 20,
+  questionsPerRequest: 30,
   concurrency: 1,
   reviewDailyLimit: 20,
   brandName: '',

@@ -66,7 +66,11 @@ Gemini, OpenAI, Anthropic Claude, dan endpoint OpenAI-compatible (misal OpenRout
 
 **Hemat kuota free tier.** Free tier sangat terbatas (Gemini misalnya 5 request/menit dan 20 request/hari), jadi aplikasi:
 
-- Meminta **20 soal per request** secara default, dibagi rata. SKD lengkap (110 soal) cukup sekitar 7 request dan Mini SKD 3 request, sehingga satu key gratis bisa membuat sekitar 2 set lengkap per hari. Nilainya bisa diubah di Pengaturan.
+- Meminta **30 soal per request** secara default, dan pada key free tier **menggabungkan TWK, TIU, dan TKP dalam satu request** selama muat. Latihan Singkat (30 soal) cukup 1 request dan SKD lengkap (110 soal) sekitar 5 request (soal wacana selalu diminta tersendiri), sehingga satu key gratis bisa membuat sekitar 4 set lengkap atau 20 latihan singkat per hari. Nilainya bisa diubah di Pengaturan.
+- Membatasi mode *thinking* Gemini (`thinkingLevel: low`, atau `thinkingBudget` 0 di Gemini 2.5 Flash). Tanpa ini, Gemini 3 berpikir panjang secara default: token pikirannya ikut dihitung, memperlambat pembuatan, dan bisa membuat jawaban terpotong lalu diminta ulang.
+- Membaca jawaban Gemini sambil ditulis (*streaming*): setiap soal disimpan dan tampil begitu objek JSON-nya lengkap, dan progres naik per nomor. Bila sambungan putus di tengah jawaban, soal yang sudah jadi tetap disimpan dan permintaan berikutnya hanya meminta soal yang kurang.
+- Soal bergambar (figural dan Analisis Data) digambar oleh aplikasi sendiri, tidak memakai AI maupun kuota, sehingga tidak terpengaruh pengaturan *thinking*.
+- "Uji koneksi" memeriksa key lewat daftar model, sehingga tidak memakai kuota. Perbaikan otomatis soal yang kunci dan pembahasannya tidak cocok memakai paling banyak 1 request per set.
 - Menyimpan **batas kuota per key** (preset "Gemini free tier", "tanpa batas", atau kustom) dan menghitung pemakaian sendiri. Aplikasi menunggu bila batas per menit tercapai, dan berhenti rapi bila kuota harian habis; set bisa dilanjutkan setelah reset (Gemini: tengah malam waktu Pasifik).
 - Membaca waktu tunggu dan jenis kuota dari error 429. Request yang ditolak tidak dihitung, dan tidak ada percobaan ulang beruntun yang menghabiskan kuota.
 - Tidak membuang request: soal yang lengkap dari respons yang terpotong tetap disimpan, dan hanya soal yang kurang yang diminta ulang. Soal figural (gratis) dikerjakan lebih dulu.

@@ -62,8 +62,8 @@ async function swapModel(s: ModelSession, errorMessage = ''): Promise<boolean> {
  */
 export async function callModel<T>(
   session: ModelSession,
-  req: { system: string; prompt: string; images?: LlmImage[] },
-  parse: (text: string) => T,
+  req: { system: string; prompt: string; images?: LlmImage[]; onText?: (textSoFar: string) => void },
+  parse: (text: string) => T | Promise<T>,
   signal: AbortSignal,
   onUsage: (i: number, o: number) => Promise<void>,
 ): Promise<T> {
@@ -79,9 +79,9 @@ export async function callModel<T>(
     // Throws QuotaExhaustedError when today's quota is used up; waits for the minute window otherwise.
     const slot = await reserveRequest(session.key, est, { signal, onWait: session.onWait });
     try {
-      const res = await complete(session.cfg, { system: req.system, prompt: req.prompt, images: req.images, signal });
+      const res = await complete(session.cfg, { system: req.system, prompt: req.prompt, images: req.images, signal, onText: req.onText });
       await onUsage(res.inputTokens, res.outputTokens);
-      return parse(res.text);
+      return await parse(res.text);
     } catch (e) {
       if ((e as Error).name === 'AbortError') throw e;
       lastErr = e;
