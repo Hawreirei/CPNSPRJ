@@ -2,6 +2,10 @@
 
 Perubahan yang terasa bagi pengguna, per versi. Berkas ini dibuat dari `src/data/changelog.ts` dengan `npm run changelog`; jangan diedit langsung.
 
+## 1.9.0 (2026-10-11)
+
+- Kunci jawaban soal buatan AI kini tersebar acak dan merata di A sampai E, tanpa pola yang bisa ditebak dan tidak pernah sama tiga kali berturut-turut. Huruf yang disebut di pembahasan ikut menyesuaikan. Untuk TKP dan PPPK, posisi pilihan dengan skor tertinggi juga diacak.
+
 ## 1.8.0 (2026-10-11)
 
 - Tombol baru "🔧 Perbaiki semua" di halaman set: semua soal yang perlu dicek diperbaiki sekaligus. Yang bisa diselaraskan tanpa AI (kunci, skor, dan pembahasan yang sebenarnya sudah sepakat) diperbaiki dulu secara gratis; sisanya ditulis ulang oleh AI, 10 soal per permintaan.

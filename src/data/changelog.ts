@@ -17,6 +17,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.9.0',
+    date: '2026-10-11',
+    items: [
+      'Kunci jawaban soal buatan AI kini tersebar acak dan merata di A sampai E, tanpa pola yang bisa ditebak dan tidak pernah sama tiga kali berturut-turut. Huruf yang disebut di pembahasan ikut menyesuaikan. Untuk TKP dan PPPK, posisi pilihan dengan skor tertinggi juga diacak.',
+    ],
+  },
+  {
     version: '1.8.0',
     date: '2026-10-11',
     items: [

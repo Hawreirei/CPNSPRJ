@@ -20,6 +20,8 @@ const LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
 export interface GeminiMock {
   /** generateContent calls received for writing questions. */
   generateCalls: number;
+  /** Whether fake questions keep their key at A (see `pinned`); false lets the app move answers. */
+  pinKeys: boolean;
   /** Repair requests ("Perbaiki"): questions marked "perlu dicek" sent back to be rewritten. */
   repairCalls: number;
   /** How many of those were streamed (questions shown one by one as they are written). */
@@ -43,8 +45,18 @@ export interface GeminiMock {
 
 let serial = 0;
 
+/**
+ * The app moves each AI question's answer to a balanced random position (domain/shuffle), except
+ * when an option points at the others. By default every fake question ends with such an option,
+ * so its key stays at A and tests can answer with KEY; `pinKey: false` lets the app move it.
+ */
+const PINNED = 'Tidak ada pilihan di atas yang tepat';
+function pinned<T extends { options: { text: string }[] }>(q: T, pinKey: boolean): T {
+  return pinKey ? { ...q, options: q.options.map((o, i) => (i === q.options.length - 1 ? { ...o, text: PINNED } : o)) } : q;
+}
+
 /** Questions for one generation prompt, in the order and topics the prompt lists. */
-export function fakeQuestions(prompt: string) {
+export function fakeQuestions(prompt: string, pinKey = true) {
   const subtest = /Sub-tes: ([A-Z][A-Z0-9-]+)/.exec(prompt)?.[1];
   if (!subtest) throw new Error(`Unexpected prompt: ${prompt.slice(0, 200)}`);
   // Graded sub-tests of other exam packages say their range, e.g. '"score" 1 sampai 4'.
@@ -97,26 +109,26 @@ export function fakeQuestions(prompt: string) {
       confidence: 'high',
     };
   });
-  return { subtest, questions };
+  return { subtest, questions: questions.map((q) => pinned(q, pinKey)) };
 }
 
 /**
  * Questions for a prompt that covers several sub-tests in one request ("=== Bagian N: K soal X"),
  * as free-tier keys send them: each part is answered on its own and every question names its sub-test.
  */
-export function fakeMultiQuestions(prompt: string) {
+export function fakeMultiQuestions(prompt: string, pinKey = true) {
   if (!/^=== Bagian \d+: /m.test(prompt)) return null;
   return prompt
     .split(/^=== Bagian \d+: .*$/m)
     .slice(1)
     .map((part) => {
-      const { subtest, questions } = fakeQuestions(part);
+      const { subtest, questions } = fakeQuestions(part, pinKey);
       return { subtest, questions: questions.map((q) => ({ subtest, ...q })) };
     });
 }
 
 /** Reading passages for a passage prompt ("Wacana N: K soal"), or null for an ordinary prompt. */
-export function fakePassages(prompt: string) {
+export function fakePassages(prompt: string, pinKey = true) {
   const plan = [...prompt.matchAll(/^Wacana \d+: (\d+) soal/gm)].map((m) => Number(m[1]));
   if (!plan.length) return null;
   const passages = plan.map((count) => {
@@ -130,7 +142,7 @@ export function fakePassages(prompt: string) {
         answer: 'A',
         explanation: `Kalimat kedua wacana ${p} mendukung pernyataan A. Jawaban: A.`,
         confidence: 'high',
-      })),
+      })).map((q) => pinned(q, pinKey)),
     };
   });
   return { passages, count: plan.reduce((a, b) => a + b, 0) };
@@ -139,6 +151,7 @@ export function fakePassages(prompt: string) {
 export async function mockGemini(page: Page): Promise<GeminiMock> {
   const stats: GeminiMock = {
     generateCalls: 0,
+    pinKeys: true,
     repairCalls: 0,
     streamCalls: 0,
     thinking: [],
@@ -257,7 +270,7 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
         stats.repairCalls++;
         const count = [...prompt.matchAll(/^\d+\. Masalah:/gm)].length;
         const slots = Array.from({ length: count }, (_, i) => `${i + 1}. topik "Perbaikan", kesulitan sedang`).join('\n');
-        const { questions } = fakeQuestions(`${prompt}\n${slots}`);
+        const { questions } = fakeQuestions(`${prompt}\n${slots}`, stats.pinKeys);
         return route.fulfill({
           json: {
             candidates: [{ content: { parts: [{ text: JSON.stringify({ questions }) }] }, finishReason: 'STOP' }],
@@ -268,10 +281,10 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
       stats.generateCalls++;
       if (streamed) stats.streamCalls++;
       stats.thinking.push(body.generationConfig?.thinkingConfig);
-      const reading = fakePassages(prompt);
+      const reading = fakePassages(prompt, stats.pinKeys);
       const parts = reading
         ? [{ subtest: 'TIU', count: reading.count }]
-        : (fakeMultiQuestions(prompt) ?? [fakeQuestions(prompt)]).map((p) => ({ ...p, count: p.questions.length }));
+        : (fakeMultiQuestions(prompt, stats.pinKeys) ?? [fakeQuestions(prompt, stats.pinKeys)]).map((p) => ({ ...p, count: p.questions.length }));
       for (const p of parts) stats.served[p.subtest] = (stats.served[p.subtest] ?? 0) + p.count;
       const reply = reading ? { passages: reading.passages } : { questions: parts.flatMap((p) => ('questions' in p ? p.questions : [])) };
       const count = parts.reduce((n, p) => n + p.count, 0);
@@ -365,7 +378,7 @@ export async function keyAndSet(page: Page) {
   return createMiniSet(page);
 }
 
-/** Option A is the key of every AI question; procedural figural ones have their own key. */
+/** Option A is the key of every fake AI question while `gemini.pinKeys` is on (the default); procedural figural ones have their own key. */
 export const KEY = 'A';
 
 /**
