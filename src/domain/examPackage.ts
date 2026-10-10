@@ -35,9 +35,9 @@ export interface SubtestSpec {
 export interface ExamPackage {
   id: string;
   name: string;
-  /** Where the numbers come from, in a few words. */
+  /** Where the numbers come from, in a few words. Kept for the record and in package files; not shown in the app. */
   source: string;
-  /** The official document the numbers come from. Without it the package is shown as "bukan data resmi". */
+  /** The official document the numbers come from. Not shown in the app either. */
   official?: { title: string; date: string; url?: string };
   /** Length of the full exam (SKD: from Settings). */
   durationMinutes?: number;
@@ -49,7 +49,7 @@ export interface ExamPackage {
 /** SKD CPNS as the app has always scored it. Its numbers live in Settings and the syllabus profile. */
 export const SKD_CPNS: ExamPackage = {
   id: 'skd-cpns',
-  name: 'SKD CPNS',
+  name: 'CPNS',
   source: 'Bawaan aplikasi',
   subtests: [
     { id: 'TWK', name: 'Tes Wawasan Kebangsaan', scoring: { kind: 'keyed', correct: 5 } },
@@ -64,7 +64,7 @@ export const SKD_CPNS: ExamPackage = {
  */
 export const PPPK_2024: ExamPackage = {
   id: 'pppk-2024',
-  name: 'PPPK 2024',
+  name: 'PPPK',
   source: 'Keputusan MenPAN-RB Nomor 347 Tahun 2024',
   official: {
     title: 'Keputusan Menteri PANRB Nomor 347 Tahun 2024 tentang Mekanisme Seleksi PPPK Tahun Anggaran 2024',
@@ -74,11 +74,14 @@ export const PPPK_2024: ExamPackage = {
   // Diktum KETUJUH BELAS (120 minutes for the three competences) and KEDELAPAN BELAS (10 for the
   // interview), taken here as one sitting.
   durationMinutes: 130,
+  // Shown when the package is picked. Sources stay in the code: Diktum KETUJUH BELAS and KEDELAPAN
+  // BELAS (time), KEDUA PULUH and KEDUA PULUH SATU (blind applicants), KEDUA PULUH TUJUH and KEDUA
+  // PULUH DELAPAN (Pengelola Umum Operasional), KEDUA PULUH SEMBILAN (ranking).
   notes: [
-    'Waktu resmi: 120 menit untuk kompetensi teknis, manajerial, dan sosial kultural, ditambah 10 menit wawancara (Diktum KETUJUH BELAS dan KEDELAPAN BELAS). Di aplikasi digabung menjadi satu sesi 130 menit.',
-    'Pelamar disabilitas sensorik netra: 150 menit dan 15 menit (Diktum KEDUA PULUH dan KEDUA PULUH SATU).',
-    'Jabatan Pengelola Umum Operasional: kompetensi teknis 45 soal, nilai tertinggi 445 (Diktum KEDUA PULUH TUJUH dan KEDUA PULUH DELAPAN). Ubah jumlah soal teknis di "Sesuaikan lebih lanjut".',
-    'Tidak ada ambang batas: pelamar lulus bila berperingkat terbaik (Diktum KEDUA PULUH SEMBILAN).',
+    'Waktu: 120 menit untuk kompetensi teknis, manajerial, dan sosial kultural, ditambah 10 menit wawancara. Di aplikasi digabung menjadi satu sesi 130 menit.',
+    'Pelamar disabilitas sensorik netra: 150 menit dan 15 menit.',
+    'Jabatan Pengelola Umum Operasional: kompetensi teknis 45 soal, nilai tertinggi 445. Ubah jumlah soal teknis di "Sesuaikan lebih lanjut".',
+    'Tidak ada ambang batas: pelamar lulus bila berperingkat terbaik.',
   ],
   subtests: [
     {

@@ -39,8 +39,9 @@ describe('built-in profile', () => {
     expect(twk).toEqual(Array.from({ length: s.counts.TWK }, (_, i) => TOPICS.TWK[i % TOPICS.TWK.length]));
   });
 
-  it('is labelled as not official', () => {
-    expect(BUILTIN_PROFILE.source).toMatch(/bukan kisi-kisi resmi/);
+  it('carries no source to show', () => {
+    expect(BUILTIN_PROFILE.source).toBeUndefined();
+    expect(BUILTIN_PROFILE.date).toBeUndefined();
   });
 });
 

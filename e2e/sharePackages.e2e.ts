@@ -15,7 +15,7 @@ test('a PPPK set shared as a link imports into another browser and is scored by 
   test.setTimeout(90_000);
   await addGeminiKey(page);
   await page.goto('#/new');
-  await page.getByRole('radio', { name: 'PPPK 2024' }).click();
+  await page.getByRole('radio', { name: /^PPPK/ }).click();
   await page.getByLabel('Nama jabatan yang dilamar').fill('Arsiparis Ahli Pertama');
   await page.getByRole('button', { name: /Latihan Singkat/ }).click();
   await page.getByRole('button', { name: 'Buat Soal', exact: true }).first().click();

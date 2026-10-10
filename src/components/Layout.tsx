@@ -99,8 +99,8 @@ function Brand() {
     <div className="flex items-center gap-2">
       <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-7 w-7" />
       <div className="leading-tight">
-        <div className="text-sm font-bold">SKD Set Builder</div>
-        <div className="text-[11px] text-slate-500 dark:text-slate-400">Latihan CPNS</div>
+        <div className="text-sm font-bold">CASN Set Builder</div>
+        <div className="text-[11px] text-slate-500 dark:text-slate-400">Latihan CPNS dan PPPK</div>
       </div>
     </div>
   );

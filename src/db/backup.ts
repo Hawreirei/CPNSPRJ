@@ -41,7 +41,7 @@ export async function exportBackup(): Promise<Blob> {
 /** Merge a backup into the current data (existing IDs are overwritten). API keys are never included. */
 export async function importBackup(file: File): Promise<{ sets: number; questions: number; attempts: number; reviews: number }> {
   const data = JSON.parse(await file.text()) as Partial<BackupFile>;
-  if (data.app !== 'cpns-skd-builder') throw new Error('Berkas bukan cadangan CPNS SKD Set Builder.');
+  if (data.app !== 'cpns-skd-builder') throw new Error('Berkas bukan cadangan CASN Set Builder.');
   await db.transaction('rw', [db.sets, db.questions, db.attempts, db.reviews, db.cards, db.meta], async () => {
     if (data.questions?.length) await db.questions.bulkPut(data.questions);
     if (data.sets?.length) await db.sets.bulkPut(data.sets.map((s) => ({ ...s, status: s.status === 'generating' ? 'paused' : s.status })));

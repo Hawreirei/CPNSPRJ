@@ -22,8 +22,8 @@ export default function Help() {
             terbaru, dan otomatis pindah ke model pengganti bila model lama dihentikan penyedia.
           </li>
           <li>
-            <b>Buat Soal</b>: pilih paket (misalnya Latihan Singkat atau SKD Lengkap) dan tingkat kesulitan, lalu klik Buat Soal. Topik dan jumlah soal bisa diatur di "Sesuaikan
-            lebih lanjut".
+            <b>Buat Soal</b>: pilih seleksi, CPNS atau PPPK, lalu paket (misalnya Latihan Singkat atau SKD Lengkap) dan tingkat kesulitan, lalu klik Buat Soal. Topik dan jumlah
+            soal bisa diatur di "Sesuaikan lebih lanjut".
           </li>
           <li>
             <b>Tinjau</b>: tab Soal, Kunci & Skor, Pembahasan. Soal bertanda "perlu dicek" sebaiknya diperiksa. Tiap soal bisa diedit, ditulis ulang, dikunci, dibintangi, dipindah,
@@ -45,9 +45,8 @@ export default function Help() {
             dilatih ulang.
           </li>
           <li>
-            <b>PPPK 2024 dan paket ujian lain</b>: di Buat Soal, pilih ujian "PPPK 2024" (bawaan, dari Keputusan MenPAN-RB Nomor 347 Tahun 2024: teknis, manajerial, sosial
-            kultural, dan wawancara, tanpa ambang batas) lalu isi nama jabatan Anda untuk soal kompetensi teknis. Ujian lain bisa ditambahkan di Pengaturan → Paket ujian dengan
-            mengimpor berkas paket. Angka di berkas paket harus dari dokumen resmi; paket tanpa rujukan dokumen resmi ditandai "bukan data resmi".
+            <b>PPPK dan paket ujian lain</b>: di Buat Soal, pilih seleksi "PPPK" (kompetensi teknis, manajerial, sosial kultural, dan wawancara, tanpa ambang batas) lalu isi nama
+            jabatan Anda untuk soal kompetensi teknis. Ujian lain bisa ditambahkan di Pengaturan → Paket ujian dengan mengimpor berkas paket.
           </li>
           <li>
             <b>Mode CAT</b>: centang saat memulai ujian. Ujian dibuka layar penuh bila perangkat mendukung (tombol "Keluar layar penuh" selalu ada), dan setiap kali Anda
@@ -98,8 +97,7 @@ export default function Help() {
           </li>
           <li>
             <b>Profil kisi-kisi</b>: di Pengaturan, atur topik per sub-tes SKD (dengan bobot bila perlu), jumlah soal, durasi, dan ambang batas sebagai profil. Profil bisa diimpor
-            dan diekspor, jadi bila kisi-kisi resmi berubah Anda tidak perlu menunggu aplikasi diperbarui. Profil bawaan "SKD Sekolah Kedinasan 2026" memakai topik, jumlah soal,
-            durasi, dan ambang batas dari Keputusan MenPAN-RB Nomor 406 Tahun 2026; angka itu khusus Sekolah Kedinasan, bukan CPNS.
+            dan diekspor, jadi bila kisi-kisi berubah Anda tidak perlu menunggu aplikasi diperbarui.
           </li>
           <li>
             <b>Unduh PDF / Word</b>: di halaman set atau Bank Soal, klik Unduh, pilih format (PDF atau Word) dan isinya (soal saja, soal + kunci, atau lengkap dengan pembahasan).

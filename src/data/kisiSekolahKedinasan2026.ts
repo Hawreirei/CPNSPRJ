@@ -6,6 +6,9 @@ import type { KisiProfile } from '../domain/types';
  * number cites its diktum. It is the same SKD as for CPNS, with its own pass marks: these numbers
  * are not CPNS ones.
  *
+ * Not in the app since 1.4.0: the product owner took it out (Sekolah Kedinasan is not CASN). Kept,
+ * with its test, for when it is wanted again; see docs/paket-ujian.md.
+ *
  * Topics are the decree's sub-materials (Diktum KEDUA). Where the app already has a topic for one
  * (TIU's numeric and figural ones in particular), that name is used, so the app's own checks and
  * drawings still apply: "berhitung" is Aritmetika, figural "ketidaksamaan" is Figural Berbeda and

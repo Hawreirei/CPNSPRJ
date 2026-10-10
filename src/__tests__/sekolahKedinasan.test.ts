@@ -1,16 +1,17 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { SEKOLAH_KEDINASAN_2026 } from '../data/kisiSekolahKedinasan2026';
-import { db, getSettings } from '../db';
-import { activeProfile, allProfiles, BUILTIN_ID, DEFAULT_SETTINGS, isBuiltinProfile, NUMERIC_TOPICS, PROCEDURAL_TOPICS, TOPICS, topicsFor } from '../domain/blueprint';
+import { db, getSettings, saveSettings } from '../db';
+import { activeProfile, allProfiles, BUILTIN_ID, DEFAULT_SETTINGS, isBuiltinProfile, NUMERIC_TOPICS, PROCEDURAL_TOPICS, TOPICS } from '../domain/blueprint';
 import { hasKamus } from '../domain/kamus';
 import { parseProfile, profileFile } from '../domain/kisi';
 import type { Settings } from '../domain/types';
-import { activateProfile, deleteProfile, importProfile, saveProfile } from '../engine/kisi';
+import { importProfile } from '../engine/kisi';
+import { retireRemovedProfiles } from '../lib/retiredProfiles';
 
 const P = SEKOLAH_KEDINASAN_2026;
 
-describe('SKD Sekolah Kedinasan 2026 (Keputusan MenPAN-RB Nomor 406 Tahun 2026)', () => {
+describe('SKD Sekolah Kedinasan 2026 data (Keputusan MenPAN-RB Nomor 406 Tahun 2026), kept outside the app', () => {
   it('carries the decree’s numbers, source and date', () => {
     expect(P.source).toBe('Keputusan MenPAN-RB Nomor 406 Tahun 2026');
     expect(P.date).toBe('2026-07-27');
@@ -52,39 +53,43 @@ describe('SKD Sekolah Kedinasan 2026 (Keputusan MenPAN-RB Nomor 406 Tahun 2026)'
   });
 });
 
-describe('built-in profiles from official documents', () => {
+describe('taken out of the app (1.4.0)', () => {
   beforeEach(async () => {
     await db.meta.clear();
   });
 
-  it('are offered after the app’s own topics, before the learner’s', () => {
-    const s: Settings = { ...DEFAULT_SETTINGS, kisi: { activeId: BUILTIN_ID, custom: [{ ...P, id: 'mine', name: 'Punyaku' }] } };
-    expect(allProfiles(s).map((p) => p.id)).toEqual([BUILTIN_ID, P.id, 'mine']);
-    expect(isBuiltinProfile(P.id)).toBe(true);
-    expect(isBuiltinProfile('mine')).toBe(false);
+  it('is no longer offered', () => {
+    const s: Settings = { ...DEFAULT_SETTINGS };
+    expect(allProfiles(s).map((p) => p.id)).toEqual([BUILTIN_ID]);
+    expect(isBuiltinProfile(P.id)).toBe(false);
   });
 
-  it('apply their numbers and topics when chosen, and cannot be edited or removed', async () => {
-    await activateProfile(P.id);
+  it('sends a learner still using it back to the app’s own profile, numbers included', async () => {
+    // As 1.2.0 left it: the profile in use, its pass marks in Settings.
+    await saveSettings({ kisi: { activeId: P.id, custom: [] }, ...P.exam });
+    expect(activeProfile(await getSettings()).id).toBe(BUILTIN_ID);
+    await retireRemovedProfiles();
     const s = await getSettings();
-    expect(activeProfile(s).id).toBe(P.id);
-    expect({ counts: s.counts, passing: s.passing, durationMinutes: s.durationMinutes }).toEqual(P.exam);
-    expect(topicsFor(s, 'TKP')).toContain('Anti Radikalisme');
-
-    await expect(saveProfile({ ...P, name: 'Diubah' })).rejects.toThrow(/tidak bisa diubah/);
-    await expect(deleteProfile(P.id)).rejects.toThrow(/tidak bisa dihapus/);
-    expect(activeProfile(await getSettings()).name).toBe('SKD Sekolah Kedinasan 2026');
-
-    // Back to the app's own profile: its numbers come back too.
-    await activateProfile(BUILTIN_ID);
-    expect((await getSettings()).passing).toEqual(DEFAULT_SETTINGS.passing);
+    expect(s.kisi?.activeId).toBe(BUILTIN_ID);
+    expect({ counts: s.counts, passing: s.passing, durationMinutes: s.durationMinutes }).toEqual({
+      counts: DEFAULT_SETTINGS.counts,
+      passing: DEFAULT_SETTINGS.passing,
+      durationMinutes: DEFAULT_SETTINGS.durationMinutes,
+    });
   });
 
-  it('imported, become the learner’s own copy under a new id', async () => {
+  it('leaves everyone else alone', async () => {
+    await saveSettings({ kisi: { activeId: 'mine', custom: [{ ...P, id: 'mine', name: 'Punyaku' }] }, ...P.exam });
+    await retireRemovedProfiles();
+    const s = await getSettings();
+    expect(s.kisi?.activeId).toBe('mine');
+    expect(s.passing).toEqual(P.exam!.passing);
+  });
+
+  it('can still be imported as a learner’s own profile, with its notes', async () => {
     const copy = await importProfile(profileFile(P));
     expect(copy.id).not.toBe(P.id);
     expect(copy.notes).toEqual(P.notes);
-    expect(isBuiltinProfile(copy.id)).toBe(false);
   });
 });
 

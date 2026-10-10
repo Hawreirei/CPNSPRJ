@@ -40,7 +40,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1>Beranda</h1>
-        <p className="muted mt-1">Buat soal latihan SKD dengan AI, unduh sebagai PDF/Word, atau latihan langsung seperti ujian CAT.</p>
+        <p className="muted mt-1">Buat soal latihan CPNS dan PPPK dengan AI, unduh sebagai PDF/Word, atau latihan langsung seperti ujian CAT.</p>
       </div>
 
       <WhatsNewCard />

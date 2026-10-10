@@ -141,7 +141,7 @@ export default function ImportSet() {
           )}
           {newPackages.map((p) => (
             <p key={p.name} className="text-sm">
-              Paket ujian <b>{p.name}</b> ikut ditambahkan ke Pengaturan → Paket ujian{p.official ? '' : ' (bukan data resmi)'}, agar soalnya dinilai dengan aturannya.
+              Paket ujian <b>{p.name}</b> ikut ditambahkan ke Pengaturan → Paket ujian, agar soalnya dinilai dengan aturannya.
             </p>
           ))}
           <p className="muted text-sm">

@@ -121,7 +121,7 @@ export async function exportPdf(meta: ExportMeta, questions: Question[], pack: P
   }
 
   const doc: TDocumentDefinitions = {
-    info: { title: `${PACK_TITLES[pack]} - ${meta.name}`, creator: settings.brandName || 'CPNS SKD Set Builder' },
+    info: { title: `${PACK_TITLES[pack]} - ${meta.name}`, creator: settings.brandName || 'CASN Set Builder' },
     pageSize: 'A4',
     pageMargins: [40, 40, 40, 50],
     defaultStyle: { fontSize: 10.5, lineHeight: 1.2 },

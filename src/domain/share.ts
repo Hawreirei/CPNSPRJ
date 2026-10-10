@@ -183,7 +183,7 @@ export function parseShared(raw: unknown): SharedSet {
     throw new Error(
       kind === undefined && (raw as { sets?: unknown } | null)?.sets
         ? 'Ini berkas cadangan, bukan set bersama. Pulihkan lewat Pengaturan.'
-        : 'Berkas bukan set bersama CPNS SKD Set Builder.',
+        : 'Berkas bukan set bersama CASN Set Builder.',
     );
   }
   const version = (raw as { version?: unknown }).version;

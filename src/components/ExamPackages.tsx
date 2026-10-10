@@ -31,10 +31,7 @@ export function ExamPackages({ settings }: { settings: Settings }) {
 
   return (
     <div className="space-y-3">
-      <p className="muted text-sm">
-        SKD CPNS dan PPPK 2024 sudah bawaan. Ujian lain ditambahkan dari berkas paket: sub-tes, cara penilaian, jumlah soal, waktu, dan ambang batas. Angka di berkas harus diambil
-        dari dokumen resmi; paket tanpa rujukan dokumen resmi ditandai "bukan data resmi".
-      </p>
+      <p className="muted text-sm">CPNS dan PPPK sudah bawaan. Ujian lain ditambahkan dari berkas paket: sub-tes, cara penilaian, jumlah soal, waktu, dan ambang batas.</p>
 
       {list.map((p) => (
         <div key={p.id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
@@ -44,7 +41,7 @@ export function ExamPackages({ settings }: { settings: Settings }) {
                 {p.name} {isBuiltIn(p) && <span className="muted text-xs font-normal">(bawaan)</span>}
               </div>
               <div className="muted text-xs">
-                {p.official ? `Sumber: ${p.official.title} (${p.official.date})` : `${p.source} · bukan data resmi`} · {p.durationMinutes} menit
+                {p.subtests.length} sub-tes{p.durationMinutes ? ` · ${p.durationMinutes} menit` : ''}
               </div>
               {!isBuiltIn(p) && !active.has(p.id) && <div className="text-xs text-red-600 dark:text-red-400">Tidak aktif: id sub-tesnya sama dengan paket lain.</div>}
             </div>

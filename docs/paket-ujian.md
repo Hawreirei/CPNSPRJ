@@ -104,9 +104,23 @@ Keputusan ini khusus tahun anggaran 2024. Bila aturan tahun berikutnya berbeda, 
 - **Kompetensi teknis dari nama jabatan** (diputuskan pemilik produk, 8 Oktober 2026). Pengguna menulis nama jabatannya; soal teknis dibuat AI dari nama itu dan ditandai "bukan kisi-kisi resmi".
 - **Wawancara** dilaksanakan berbasis komputer dengan CAT BKN (Diktum KEEMPAT BELAS dan KEENAM BELAS) dan dinilai 1–4 per jawaban, jadi di aplikasi dibuat sebagai sub-tes pilihan ganda bertingkat.
 
-## SKD Sekolah Kedinasan 2026 (profil kisi-kisi bawaan)
+## Sumber tidak ditampilkan di aplikasi
 
-Seleksi Sekolah Kedinasan memakai SKD yang sama dengan CPNS, yaitu TWK, TIU, dan TKP dengan penilaian yang sama. Karena itu, keputusan ini masuk ke aplikasi sebagai **profil kisi-kisi bawaan**, bukan paket ujian baru. Profil dipilih di Pengaturan → Profil kisi-kisi. Saat dipilih, jumlah soal, durasi, dan ambang batasnya mengganti angka di Pengaturan.
+Keputusan pemilik produk (10 Oktober 2026):
+- Pengguna hanya melihat nama seleksi, yaitu "CPNS" dan "PPPK", tanpa nomor keputusan, diktum, atau tahun.
+- Label "bukan data resmi" juga tidak ditampilkan lagi.
+- Sumber setiap angka tetap dicatat di kode (field `source` dan `official`, serta komentar per diktum) dan di dokumen ini. Pemilik produk memperbaruinya secara berkala.
+- Unit test `src/__tests__/examPackage.test.ts` memastikan nama, catatan, dan nama sub-tes paket bawaan tidak memuat tahun, "Keputusan", "Diktum", atau "MenPAN".
+
+Nama aplikasi menjadi **CASN Set Builder** dengan dua seleksi, CPNS dan PPPK. Id internal tidak berubah, supaya data, cadangan, dan berkas bersama lama tetap terbaca. Contohnya `skd-cpns`, `pppk-2024`, nama database `cpns-skd-builder`, dan `app: 'cpns-skd-builder'` di berkas.
+
+## SKD Sekolah Kedinasan 2026 (dikeluarkan dari aplikasi di 1.4.0)
+
+Profil ini sempat menjadi profil kisi-kisi bawaan di versi 1.2.0 dan 1.3.0. Di versi 1.4.0 profil ini dikeluarkan atas keputusan pemilik produk, karena Sekolah Kedinasan bukan seleksi CASN.
+- Datanya tetap disimpan di `src/data/kisiSekolahKedinasan2026.ts` beserta unit test angkanya, untuk dipakai lagi bila diperlukan.
+- Pengguna yang masih memakai profil ini dikembalikan ke profil bawaan saat aplikasi dibuka, termasuk jumlah soal, durasi, dan ambang batasnya (`src/lib/retiredProfiles.ts`).
+
+Seleksi Sekolah Kedinasan memakai SKD yang sama dengan CPNS: TWK, TIU, dan TKP dengan penilaian yang sama. Karena itu, keputusan ini dulu dimasukkan sebagai **profil kisi-kisi bawaan**, bukan paket ujian baru.
 
 | | |
 |---|---|
@@ -137,6 +151,6 @@ Topik diambil dari sub-materi Diktum KEDUA. Bila aplikasi sudah punya nama topik
 | TIU figural | analogi, ketidaksamaan, serial | Analogi Figural, Figural Berbeda, Deret Figural |
 | TKP | pelayanan publik, jejaring kerja, sosial budaya, teknologi informasi dan komunikasi, profesionalisme, anti radikalisme | Pelayanan Publik, Jejaring Kerja, Sosial Budaya, Teknologi Informasi & Komunikasi, Profesionalisme, Anti Radikalisme |
 
-- **Bukan angka CPNS.** Ambang batas TKP 156 hanya berlaku untuk Sekolah Kedinasan 2026. Angka bawaan aplikasi untuk SKD CPNS tidak berubah dan tetap ditandai bukan kisi-kisi resmi.
-- **Tidak bisa diubah atau dihapus.** Profil bawaan dari dokumen resmi hanya bisa dipilih atau diduplikat. Salinannya menjadi profil milik pengguna dan tetap membawa sumber serta catatannya.
+- **Bukan angka CPNS.** Ambang batas TKP 156 hanya berlaku untuk Sekolah Kedinasan 2026. Angka bawaan aplikasi untuk SKD CPNS tidak berubah.
+- **Salinan milik pengguna tetap berlaku.** Saat masih bawaan, profil ini tidak bisa diubah atau dihapus, hanya diduplikat. Salinan yang sempat dibuat pengguna adalah profil milik pengguna, jadi tidak ikut dihapus.
 - **Field `notes` di berkas profil.** Ini field opsional dan aditif: paling banyak 5 catatan, masing-masing paling panjang 400 karakter. Berkas lama tanpa field ini tetap terbaca, dan aplikasi versi lama mengabaikannya.

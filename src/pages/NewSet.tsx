@@ -209,32 +209,27 @@ export default function NewSet() {
         <div className="min-w-0 space-y-7">
           {pkgList.length > 1 && (
             <section className="space-y-2">
-              <h2>Ujian</h2>
-              <div role="radiogroup" aria-label="Ujian" className="flex flex-wrap gap-2">
+              <h2>Pilih seleksi</h2>
+              <div role="radiogroup" aria-label="Seleksi" className="grid gap-2 sm:grid-cols-2">
                 {pkgList.map((p) => (
                   <button
                     key={p.id}
                     role="radio"
                     aria-checked={p.id === pkg.id}
                     onClick={() => pickPackage(p.id)}
-                    className={`rounded-lg border px-3 py-2 text-left text-sm ${p.id === pkg.id ? 'border-brand-500 bg-brand-50 font-medium dark:bg-slate-800' : 'border-slate-300 dark:border-slate-700'}`}
+                    className={`rounded-lg border px-3 py-2 text-left ${p.id === pkg.id ? 'border-brand-500 bg-brand-50 dark:bg-slate-800' : 'border-slate-300 dark:border-slate-700'}`}
                   >
-                    {p.name}
-                    {!isSkd(p) && !p.official && <span className="muted block text-xs font-normal">bukan data resmi</span>}
+                    <span className="block font-semibold">{p.name}</span>
+                    <span className="muted block text-xs">{p.subtests.map((s) => s.name).join(', ')}</span>
                   </button>
                 ))}
               </div>
-              {!skd && (
-                <div className="muted space-y-1 text-xs">
-                  <p>Sumber angka: {pkg.official ? `${pkg.official.title} (${pkg.official.date})` : `${pkg.source}. Bukan data resmi; cek ketentuan di dokumen resmi.`}</p>
-                  {!!pkg.notes?.length && (
-                    <ul className="list-disc space-y-0.5 pl-4">
-                      {pkg.notes.map((n) => (
-                        <li key={n}>{n}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+              {!skd && !!pkg.notes?.length && (
+                <ul className="muted list-disc space-y-0.5 pl-4 text-xs">
+                  {pkg.notes.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
               )}
             </section>
           )}
@@ -245,9 +240,7 @@ export default function NewSet() {
                 Nama jabatan yang dilamar
               </label>
               <input id="ns-job" className="input" placeholder="misalnya Pranata Komputer Ahli Pertama" value={jobTitle} onChange={(e) => changeJobTitle(e.target.value)} />
-              <p className="muted text-xs">
-                Soal kompetensi teknis dibuat AI dari nama jabatan ini. Topiknya bukan kisi-kisi resmi; cocokkan dengan standar kompetensi jabatan Anda.
-              </p>
+              <p className="muted text-xs">Soal kompetensi teknis dibuat AI dari nama jabatan ini. Cocokkan dengan standar kompetensi jabatan Anda.</p>
             </section>
           )}
 

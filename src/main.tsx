@@ -11,6 +11,7 @@ import { setupPwa } from './lib/pwa';
 import { applyTextSize, applyTheme, watchSystemTheme } from './lib/theme';
 import { setupErrorLog } from './lib/errorLog';
 import { noteFirstVersion } from './lib/whatsNew';
+import { retireRemovedProfiles } from './lib/retiredProfiles';
 
 applyTheme();
 applyTextSize();
@@ -32,7 +33,7 @@ function whenIdle(fn: () => void) {
 
 // Imported exam packages are registered when Settings are read; do that before anything is scored.
 // A new learner's first version is noted before they can add data (#71).
-void Promise.all([getSettings().catch(() => undefined), noteFirstVersion()]).finally(() =>
+void Promise.all([getSettings().catch(() => undefined), noteFirstVersion(), retireRemovedProfiles()]).finally(() =>
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />
