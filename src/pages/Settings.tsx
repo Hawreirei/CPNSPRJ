@@ -158,10 +158,10 @@ export default function SettingsPage() {
               <input
                 type="number"
                 min={3}
-                max={25}
+                max={40}
                 className="input w-28"
                 value={s.questionsPerRequest}
-                onChange={(e) => saveSettings({ questionsPerRequest: Math.min(25, num(e.target.value, 3)) })}
+                onChange={(e) => saveSettings({ questionsPerRequest: Math.min(40, num(e.target.value, 3)) })}
               />
             </div>
             <div>
@@ -170,8 +170,8 @@ export default function SettingsPage() {
             </div>
           </div>
           <p className="muted text-xs">
-            Makin banyak soal per request, makin sedikit request yang dipakai. Ini penting untuk free tier: dengan 20 soal per request, SKD lengkap butuh sekitar 7
-            request. Bila respons sering terpotong, turunkan ke 10–15. Untuk key dengan batas per menit, permintaan selalu dijalankan satu per satu.
+            Makin banyak soal per request, makin sedikit kuota yang dipakai. Pada key free tier, soal TWK, TIU, dan TKP digabung dalam satu request selama
+            muat: dengan 30 soal per request, Latihan Singkat cukup 1 request dan SKD lengkap sekitar 4 request. Bila respons sering terpotong, turunkan ke 15–20.
           </p>
           <details>
             <summary className="cursor-pointer text-sm font-medium">Harga model untuk perkiraan biaya (USD per 1 juta token)</summary>

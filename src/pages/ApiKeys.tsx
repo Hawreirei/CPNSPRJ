@@ -205,6 +205,7 @@ function KeyCard({ k, single }: { k: ApiKeyRecord; single: boolean }) {
 
   const test = () =>
     act(async () => {
+      if (k.provider !== 'compat') return checkFree();
       const slot = await reserveRequest(k, 200);
       try {
         return await testConnection(await providerConfig(k.id));
@@ -226,6 +227,18 @@ function KeyCard({ k, single }: { k: ApiKeyRecord; single: boolean }) {
       }
     });
 
+  /** Reading the model list proves the key works and doesn't count against the daily quota. */
+  async function checkFree(): Promise<string> {
+    const t = Date.now();
+    const models = await listModelInfo(await providerConfig(k.id));
+    await db.keys.update(k.id, { models, modelsFetchedAt: Date.now() });
+    const secs = ((Date.now() - t) / 1000).toFixed(1);
+    if (!models.length || models.some((m) => m.id === k.model)) return `Koneksi berhasil (${k.model}, ${secs} detik). Tidak memakai kuota.`;
+    if (!auto) throw new Error(`Model ${k.model} tidak ada lagi untuk key ini. Pilih model lain di atas.`);
+    const r = await refreshKeyModel(k.id, { exclude: k.model });
+    return r.changed ? `Koneksi berhasil. Model ${k.model} sudah tidak tersedia, diganti ke ${r.model}.` : `Koneksi berhasil (${secs} detik).`;
+  }
+
   const blocked = !!usage?.blockedUntil;
   const used = usage?.today ?? 0;
   const nearlyOut = blocked || used >= limits.rpd * 0.75;
@@ -237,7 +250,7 @@ function KeyCard({ k, single }: { k: ApiKeyRecord; single: boolean }) {
           {k.label}
           {k.isDefault && !single && <Badge tone="blue">utama</Badge>}
         </h2>
-        <button className="btn btn-sm" disabled={busy} onClick={test} title="Memakai 1 request dari kuota">
+        <button className="btn btn-sm" disabled={busy} onClick={test} title={k.provider === 'compat' ? 'Memakai 1 request dari kuota' : 'Tidak memakai kuota'}>
           {busy ? 'Memproses…' : 'Uji koneksi'}
         </button>
       </div>

@@ -213,6 +213,8 @@ export interface Settings {
   durationMinutes: number;
   /** Questions requested per AI call. Larger = fewer requests (better for free tiers). */
   questionsPerRequest: number;
+  /** Set once the old default of 20 per request has been migrated. */
+  perRequestV?: number;
   concurrency: number;
   brandName: string;
   brandLogo?: string;

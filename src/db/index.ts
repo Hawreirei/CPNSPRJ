@@ -34,7 +34,10 @@ export const db = new AppDB();
 
 export async function getSettings(): Promise<Settings> {
   const row = await db.meta.get('settings');
-  return { ...DEFAULT_SETTINGS, ...((row?.value as Partial<Settings>) ?? {}) };
+  const saved = { ...((row?.value as Partial<Settings>) ?? {}) };
+  // 20 per request was the old default; more per request saves free-tier quota.
+  if (saved.questionsPerRequest === 20 && !saved.perRequestV) delete saved.questionsPerRequest;
+  return { ...DEFAULT_SETTINGS, ...saved, perRequestV: 2 };
 }
 
 export async function saveSettings(patch: Partial<Settings>): Promise<void> {

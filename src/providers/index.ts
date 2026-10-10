@@ -9,17 +9,48 @@ const OPENAI_BASE = 'https://api.openai.com/v1';
 
 const trimSlash = (s: string) => s.replace(/\/+$/, '');
 
+/**
+ * Keep Gemini's hidden "thinking" short. Gemini 3 thinks at length by default;
+ * those tokens are billed and rate-limited like output, slow every request down,
+ * and can use up the whole output budget so the reply comes back cut off (and is
+ * then requested again). Writing practice questions doesn't need deep thinking:
+ * the answers are checked afterwards anyway.
+ */
+export function geminiThinking(model: string): Record<string, unknown> | undefined {
+  if (/^gemini-(flash|flash-lite|pro)-latest$/.test(model)) return { thinkingLevel: 'low' };
+  const m = model.match(/^gemini-(\d+(?:\.\d+)?)-(flash-lite|flash|pro)/);
+  if (!m) return undefined;
+  const v = Number(m[1]);
+  if (v >= 3) return { thinkingLevel: 'low' };
+  if (v >= 2.5) return { thinkingBudget: m[2] === 'pro' ? 128 : 0 };
+  return undefined;
+}
+
+/** Models that rejected the thinking setting; they are called without it from then on. */
+const noThinking = new Set<string>();
+
 async function completeGemini(cfg: ProviderConfig, req: LlmRequest): Promise<LlmResponse> {
-  const data = await postJson(
-    `${GEMINI_BASE}/models/${encodeURIComponent(cfg.model)}:generateContent`,
-    {
-      systemInstruction: { parts: [{ text: req.system }] },
-      contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
-      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: req.maxTokens ?? 32768 },
-    },
-    { 'x-goog-api-key': cfg.apiKey },
-    req.signal,
-  );
+  const thinking = noThinking.has(cfg.model) ? undefined : geminiThinking(cfg.model);
+  const call = (thinkingConfig?: Record<string, unknown>) =>
+    postJson(
+      `${GEMINI_BASE}/models/${encodeURIComponent(cfg.model)}:generateContent`,
+      {
+        systemInstruction: { parts: [{ text: req.system }] },
+        contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
+        generationConfig: { responseMimeType: 'application/json', maxOutputTokens: req.maxTokens ?? 32768, ...(thinkingConfig ? { thinkingConfig } : {}) },
+      },
+      { 'x-goog-api-key': cfg.apiKey },
+      req.signal,
+    );
+  let data;
+  try {
+    data = await call(thinking);
+  } catch (e) {
+    // An invalid argument is rejected before any work is done: retry once without the setting.
+    if (!(thinking && e instanceof ProviderError && e.status === 400 && /think/i.test(e.message))) throw e;
+    noThinking.add(cfg.model);
+    data = await call();
+  }
   type GeminiResp = {
     candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
     usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };

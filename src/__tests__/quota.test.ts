@@ -2,10 +2,12 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../db';
 import { dayWindowStart, keyUsage, markDayExhausted, QuotaExhaustedError, releaseRequest, reserveRequest } from '../engine/quota';
-import { balancedSizes, estimatePlan, isProcedural, planBatches } from '../engine/plan';
+import { balancedSizes, estimatePlan, groupBatches, isProcedural, planBatches } from '../engine/plan';
 import { finishBatch } from '../engine/generator';
 import { quotaInfo } from '../providers/http';
-import { parseAiQuestions, salvageQuestions } from '../domain/schemas';
+import { parseAiQuestions, parseMultiQuestions, salvageQuestions } from '../domain/schemas';
+import { buildMultiPrompt } from '../domain/prompts';
+import { geminiThinking } from '../providers';
 import { buildPreset, DEFAULT_SETTINGS } from '../domain/blueprint';
 import type { PlanBatch } from '../domain/types';
 
@@ -111,8 +113,62 @@ describe('request-saving batching', () => {
     const mini = planBatches(buildPreset('mini', DEFAULT_SETTINGS), DEFAULT_SETTINGS.questionsPerRequest);
     expect(full.filter((b) => !isProcedural(b)).length).toBeLessThanOrEqual(8);
     expect(mini.filter((b) => !isProcedural(b)).length).toBe(3);
-    const est = estimatePlan(full, 'gemini-flash-latest', DEFAULT_SETTINGS, { rpm: 5, tpm: 250_000, rpd: 20 });
-    expect(est.requests).toBeLessThanOrEqual(8);
+    const free = { rpm: 5, tpm: 250_000, rpd: 20 };
+    expect(estimatePlan(full, 'gemini-flash-latest', DEFAULT_SETTINGS, free).requests).toBeLessThanOrEqual(4);
+    // A practice set is a single request on a free key: all sub-tests travel together.
+    expect(estimatePlan(mini, 'gemini-flash-latest', DEFAULT_SETTINGS, free).requests).toBe(1);
+    // Paid keys keep one request per batch so they can run in parallel.
+    expect(estimatePlan(mini, 'gemini-flash-latest', DEFAULT_SETTINGS).requests).toBe(3);
+  });
+
+  it('groups batches across sub-tests up to the per-request cap', () => {
+    const mk = (id: string, subtest: PlanBatch['subtest'], count: number, extra: Partial<PlanBatch> = {}): PlanBatch => ({
+      id,
+      subtest,
+      items: Array.from({ length: count }, () => ({ topic: 'Pancasila', difficulty: 'sedang' as const })),
+      count,
+      status: 'pending',
+      ...extra,
+    });
+    const groups = groupBatches([mk('a', 'TWK', 10), mk('b', 'TIU', 15), mk('c', 'TKP', 10), mk('d', 'TWK', 3, { basedOn: ['x', 'y', 'z'] })], 30);
+    expect(groups.map((g) => g.map((b) => b.id))).toEqual([['a', 'b'], ['c'], ['d']]);
+    expect(groupBatches([mk('a', 'TWK', 10), mk('b', 'TIU', 10)], 0)).toHaveLength(2);
+  });
+
+  it('splits a multi sub-test reply by each question\'s sub-test', () => {
+    const q = (subtest: string | undefined, i: number) => ({
+      subtest,
+      stem: `Soal nomor ${i} yang cukup panjang`,
+      options: [1, 2, 3, 4, 5].map((n) => ({ text: `Opsi ${n}`, score: n })),
+      answer: 'B',
+      explanation: 'Jawaban: B.',
+    });
+    const parts = [
+      { subtest: 'TWK' as const, items: [{ topic: 'Pancasila', difficulty: 'sedang' as const }] },
+      { subtest: 'TKP' as const, items: [{ topic: 'Pelayanan Publik', difficulty: 'sedang' as const }, { topic: 'Jejaring Kerja', difficulty: 'mudah' as const }] },
+    ];
+    const text = JSON.stringify({ questions: [q('TKP', 1), q('twk', 2), q(undefined, 3)] });
+    const out = parseMultiQuestions(text, parts);
+    expect(out.get('TWK')).toHaveLength(1);
+    expect(out.get('TKP')).toHaveLength(2);
+    expect(out.get('TKP')![0].options.map((o) => o.score)).toEqual([1, 2, 3, 4, 5]);
+    expect(out.get('TKP')![1].topic).toBe('Jejaring Kerja');
+    expect(() => parseMultiQuestions('{"questions": []}', parts)).toThrow();
+    const prompt = buildMultiPrompt(parts);
+    expect(prompt).toContain('Sub-tes: TWK');
+    expect(prompt).toContain('Sub-tes: TKP');
+    expect(prompt).toContain('total 3 soal');
+  });
+
+  it('keeps Gemini thinking short', () => {
+    expect(geminiThinking('gemini-3.8-flash')).toEqual({ thinkingLevel: 'low' });
+    expect(geminiThinking('gemini-3-pro')).toEqual({ thinkingLevel: 'low' });
+    expect(geminiThinking('gemini-flash-latest')).toEqual({ thinkingLevel: 'low' });
+    expect(geminiThinking('gemini-2.5-flash')).toEqual({ thinkingBudget: 0 });
+    expect(geminiThinking('gemini-2.5-flash-lite')).toEqual({ thinkingBudget: 0 });
+    expect(geminiThinking('gemini-2.5-pro')).toEqual({ thinkingBudget: 128 });
+    expect(geminiThinking('gemini-2.0-flash')).toBeUndefined();
+    expect(geminiThinking('gemma-3-27b-it')).toBeUndefined();
   });
 
   it('re-queues only the missing items when the model returns fewer questions', () => {
