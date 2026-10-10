@@ -1,0 +1,33 @@
+// Fails when the JavaScript and CSS a first visit downloads grows past the budget, or when a library
+// meant to load on demand (mathjs, KaTeX, the Anthropic SDK, pdf.js) ends up in it. Run after `npm run build`.
+import { readFileSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
+
+// 211 KB when mathjs, KaTeX and the SDK went lazy (#21); 192 KB once the generators and every page but the
+// dashboard did too (with shared app code kept in one chunk). Budget: that plus about 10%. It had crept back
+// to 205 KB by Phase 5; 148 KB once code only the other pages share left the startup chunk (#57).
+const BUDGET_KB = 210;
+const LAZY = /^assets\/(mathjs|katex|anthropic|pdfjs)-/;
+
+const html = readFileSync('dist/index.html', 'utf8');
+// Vite lists every startup file in index.html: the entry script, its modulepreloads and the stylesheet.
+const files = [...new Set([...html.matchAll(/(?:src|href)="\.\/(assets\/[^"]+\.(?:js|css))"/g)].map((m) => m[1]))];
+if (!files.length) throw new Error('No startup assets found in dist/index.html. Build first.');
+
+let total = 0;
+for (const f of files) {
+  const kb = gzipSync(readFileSync(`dist/${f}`)).length / 1024;
+  total += kb;
+  console.log(`${kb.toFixed(1).padStart(7)} KB  ${f}`);
+}
+console.log(`${total.toFixed(1).padStart(7)} KB  total gzipped at startup (budget ${BUDGET_KB} KB)`);
+
+const eager = files.filter((f) => LAZY.test(f));
+if (eager.length) {
+  console.error(`On-demand libraries are in the startup bundle: ${eager.join(', ')}`);
+  process.exit(1);
+}
+if (total > BUDGET_KB) {
+  console.error(`Startup bundle is ${total.toFixed(1)} KB, over the ${BUDGET_KB} KB budget.`);
+  process.exit(1);
+}

@@ -1,9 +1,12 @@
 import { getSettings } from '../db';
-import { SUBTEST_NAMES } from '../domain/blueprint';
-import { SUBTESTS } from '../domain/types';
-import type { Question } from '../domain/types';
-import { toPlain } from '../components/RichText';
-import { cellSvg, figureSvg, svgToPng } from './figureSvg';
+import { fmtNum } from '../domain/describe';
+import type { DataFigure, Question } from '../domain/types';
+import { dataChartSvg } from './dataSvg';
+import { opensGroup, passageLabel } from '../domain/groups';
+import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
+import { isImageSrc, printSize } from '../domain/questionImage';
+import { isGraded, scoringRulesText, specOf, subtestsIn } from '../domain/examPackage';
+import { toPlain } from './richText';
 
 export type PackKind = 'soal' | 'soal-kunci' | 'lengkap' | 'kunci' | 'pembahasan';
 
@@ -25,14 +28,14 @@ export interface ExportMeta {
 export const hasStudentHeader = (p: PackKind) => p === 'soal' || p === 'soal-kunci' || p === 'lengkap';
 
 export function keyText(q: Question): string {
-  return q.subtest === 'TKP' ? q.options.map((o) => `${o.label}=${o.score}`).join('  ') : (q.answer ?? '-');
+  return isGraded(q.subtest) ? q.options.map((o) => `${o.label}=${o.score}`).join('  ') : (q.answer ?? '-');
 }
 
 export async function exportDocx(meta: ExportMeta, questions: Question[], pack: PackKind): Promise<Blob> {
   const d = await import('docx');
-  const { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, Footer, PageBreak } = d;
+  const { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, Footer, PageBreak, Table, TableRow, TableCell } = d;
   const settings = await getSettings();
-  type Child = InstanceType<typeof Paragraph>;
+  type Child = InstanceType<typeof Paragraph> | InstanceType<typeof Table>;
 
   const text = (s: string, opts: { bold?: boolean; size?: number; italics?: boolean; color?: string } = {}) =>
     toPlain(s)
@@ -74,25 +77,66 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
     return out;
   }
 
+  /** A data question's numbers: a real table, or the chart as an image under its title. */
+  async function dataBlock(data: DataFigure): Promise<Child[]> {
+    const title = new Paragraph({ keepNext: true, spacing: { before: 80 }, children: [new TextRun({ text: data.title, bold: true, size: 20 })] });
+    if (data.kind !== 'table') return [title, new Paragraph({ keepNext: true, children: [await image(dataChartSvg(data, '#111', '#fff'))] })];
+    const cell = (text: string, opts: { bold?: boolean; right?: boolean } = {}) =>
+      new TableCell({
+        children: [new Paragraph({ alignment: opts.right ? AlignmentType.RIGHT : AlignmentType.LEFT, children: [new TextRun({ text, bold: opts.bold, size: 20 })] })],
+      });
+    const rows = [
+      new TableRow({ tableHeader: true, children: [cell(data.category, { bold: true }), ...data.series.map((s) => cell(s.name, { bold: true, right: true }))] }),
+      ...data.labels.map((l, i) => new TableRow({ children: [cell(l), ...data.series.map((s) => cell(fmtNum(s.values[i]), { right: true }))] })),
+    ];
+    return [title, new Table({ rows })];
+  }
+
   async function questionBlock(q: Question, n: number, withKey: boolean): Promise<Child[]> {
     const out: Child[] = [];
+    // A reading passage is printed once, above the first question of its group.
+    if (q.passage && opensGroup(questions, q)) {
+      out.push(
+        new Paragraph({
+          spacing: { before: 240 },
+          keepNext: true,
+          children: [new TextRun({ text: `${passageLabel(questions, q)}${q.passage.title ? `: ${q.passage.title}` : ''}`, bold: true })],
+        }),
+      );
+      out.push(new Paragraph({ keepNext: true, alignment: AlignmentType.JUSTIFIED, children: text(q.passage.text) }));
+    }
     out.push(new Paragraph({ spacing: { before: 200 }, keepNext: true, children: [new TextRun({ text: `${n}. `, bold: true }), ...text(q.stem)] }));
-    if (q.figure) out.push(new Paragraph({ keepNext: true, children: [await image(figureSvg(q.figure, 72, '#111'))] }));
+    if (hasStemFigure(q.figure)) out.push(new Paragraph({ keepNext: true, children: [await image(figureSvg(q.figure, 72, '#111'))] }));
+    if (q.data) out.push(...(await dataBlock(q.data)));
+    if (q.image && isImageSrc(q.image.src)) {
+      const [head, b64] = q.image.src.split(',');
+      const data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const size = printSize(q.image);
+      // docx sizes images in pixels at 96 dpi; the PDF sizes are points (72 dpi).
+      const picture = new ImageRun({
+        type: head.includes('png') ? 'png' : 'jpg',
+        data,
+        transformation: { width: (size.width * 4) / 3, height: (size.height * 4) / 3 },
+        altText: { name: 'Gambar soal', description: q.image.alt, title: q.image.alt },
+      });
+      out.push(new Paragraph({ keepNext: true, children: [picture] }));
+    }
     for (const o of q.options) {
       const runs = o.figure ? [await image(cellSvg(o.figure, 56, '#111'))] : text(o.text);
-      const suffix = withKey && q.subtest === 'TKP' ? [new TextRun({ text: `  (skor ${o.score})`, italics: true, color: '555555' })] : [];
-      const isKey = withKey && q.subtest !== 'TKP' && o.label === q.answer;
+      const suffix = withKey && isGraded(q.subtest) ? [new TextRun({ text: `  (skor ${o.score})`, italics: true, color: '555555' })] : [];
+      const isKey = withKey && !isGraded(q.subtest) && o.label === q.answer;
       out.push(new Paragraph({ indent: { left: 360 }, keepNext: true, children: [new TextRun({ text: `${o.label}. `, bold: isKey }), ...runs, ...suffix] }));
+      if (withKey && o.rationale) out.push(new Paragraph({ indent: { left: 720 }, keepNext: true, children: text(o.rationale, { italics: true, size: 18, color: '444444' }) }));
     }
     return out;
   }
 
   function subtestHeading(s: string) {
-    return new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 300 }, children: [new TextRun({ text: `${s} — ${SUBTEST_NAMES[s as keyof typeof SUBTEST_NAMES]}` })] });
+    return new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 300 }, children: [new TextRun({ text: `${s} — ${specOf(s).name}` })] });
   }
 
   const numbered = questions.map((q, i) => ({ q, n: i + 1 }));
-  const groups = SUBTESTS.map((s) => ({ s, items: numbered.filter((x) => x.q.subtest === s) })).filter((g) => g.items.length);
+  const groups = subtestsIn(numbered.map((x) => x.q)).map((s) => ({ s, items: numbered.filter((x) => x.q.subtest === s) }));
 
   async function soalSection(): Promise<Child[]> {
     const out: Child[] = [];
@@ -105,7 +149,7 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
 
   function kunciSection(): Child[] {
     const out: Child[] = [new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: 'Kunci Jawaban & Skor' })] })];
-    out.push(new Paragraph({ children: text('TWK & TIU: jawaban benar bernilai 5, salah atau kosong 0. TKP: setiap opsi bernilai 1–5.', { size: 18, italics: true }) }));
+    out.push(new Paragraph({ children: text(scoringRulesText(groups.map((g) => g.s)), { size: 18, italics: true }) }));
     for (const g of groups) {
       out.push(subtestHeading(g.s));
       for (const { q, n } of g.items) out.push(new Paragraph({ children: [new TextRun({ text: `${n}. `, bold: true }), new TextRun({ text: keyText(q) })] }));
@@ -119,7 +163,7 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
       out.push(subtestHeading(g.s));
       for (const { q, n } of g.items) {
         out.push(...(await questionBlock(q, n, true)));
-        if (q.subtest !== 'TKP') out.push(new Paragraph({ children: [new TextRun({ text: `Jawaban: ${q.answer ?? '-'}`, bold: true })] }));
+        if (!isGraded(q.subtest)) out.push(new Paragraph({ children: [new TextRun({ text: `Jawaban: ${q.answer ?? '-'}`, bold: true })] }));
         out.push(new Paragraph({ children: [new TextRun({ text: 'Pembahasan: ', bold: true }), ...text(q.explanation || '-')] }));
         if (q.reference) out.push(new Paragraph({ children: [new TextRun({ text: 'Rujukan: ', italics: true }), ...text(q.reference, { italics: true })] }));
       }
@@ -143,7 +187,7 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
   }
 
   const doc = new Document({
-    creator: settings.brandName || 'CPNS SKD Set Builder',
+    creator: settings.brandName || 'CASN Set Builder',
     title: `${PACK_TITLES[pack]} - ${meta.name}`,
     styles: { default: { document: { run: { font: 'Calibri', size: 22 } } } },
     sections: [
@@ -153,7 +197,13 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: 'Materi latihan buatan AI, bukan produk resmi BKN. Periksa materi TWK ke sumber resmi; skor TKP adalah rasional, bukan kunci resmi.', size: 14, color: '777777' })],
+                children: [
+                  new TextRun({
+                    text: 'Materi latihan buatan AI, bukan produk resmi BKN. Periksa materi TWK ke sumber resmi; skor TKP adalah rasional, bukan kunci resmi.',
+                    size: 14,
+                    color: '777777',
+                  }),
+                ],
               }),
             ],
           }),

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import type { Flag, Subtest } from '../domain/types';
 
 const SUBTEST_STYLE: Record<Subtest, string> = {
@@ -8,7 +8,7 @@ const SUBTEST_STYLE: Record<Subtest, string> = {
 };
 
 export function SubtestBadge({ subtest }: { subtest: Subtest }) {
-  return <span className={`badge ${SUBTEST_STYLE[subtest]}`}>{subtest}</span>;
+  return <span className={`badge ${SUBTEST_STYLE[subtest] ?? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'}`}>{subtest}</span>;
 }
 
 export function Badge({ children, tone = 'slate' }: { children: ReactNode; tone?: 'slate' | 'amber' | 'green' | 'red' | 'blue' }) {
@@ -48,18 +48,64 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
   );
 }
 
-export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
+export function Stat({ label, value, hint, tone }: { label: string; value: ReactNode; hint?: ReactNode; tone?: 'green' | 'amber' | 'red' }) {
+  const hintTone = { green: 'text-green-700 dark:text-green-400', amber: 'text-amber-700 dark:text-amber-300', red: 'text-red-600 dark:text-red-400' };
   return (
-    <div className="card">
+    <div className="card px-4 py-3">
       <div className="muted text-xs">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
-      {hint && <div className="muted mt-1 text-xs">{hint}</div>}
+      <div className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums">{value}</div>
+      {hint && <div className={`mt-0.5 text-xs font-medium ${tone ? hintTone[tone] : 'muted'}`}>{hint}</div>}
+    </div>
+  );
+}
+
+/** Title and one-line description on the left, the page's actions on the right. */
+export function PageHeader({ title, description, actions }: { title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+      <div className="min-w-0">
+        <h1>{title}</h1>
+        {description && <p className="muted mt-0.5">{description}</p>}
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/** Underlined tabs. The caller renders the panel for `value`; arrow keys move between tabs. */
+export function Tabs<T extends string>({ tabs, value, onChange, label }: { tabs: readonly (readonly [T, string])[]; value: T; onChange: (v: T) => void; label: string }) {
+  const move = (i: number) => {
+    const next = tabs[(i + tabs.length) % tabs.length][0];
+    onChange(next);
+    document.getElementById(`tab-${next}`)?.focus();
+  };
+  return (
+    <div role="tablist" aria-label={label} className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
+      {tabs.map(([id, text], i) => (
+        <button
+          key={id}
+          id={`tab-${id}`}
+          role="tab"
+          aria-selected={value === id}
+          tabIndex={value === id ? 0 : -1}
+          onClick={() => onChange(id)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowRight') move(i + 1);
+            if (e.key === 'ArrowLeft') move(i - 1);
+          }}
+          className={`tab ${value === id ? 'tab-active' : ''}`}
+        >
+          {text}
+        </button>
+      ))}
     </div>
   );
 }
 
 export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
+  // The title names the dialog, so a screen reader says "Nomor soal, dialog" and not just "dialog" (#69).
+  const titleId = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -69,13 +115,14 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
   return (
     <dialog
       ref={ref}
+      aria-labelledby={titleId}
       onClose={onClose}
       className={`m-auto w-[calc(100%-2rem)] rounded-xl border border-slate-200 bg-white p-0 text-slate-900 shadow-xl backdrop:bg-black/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${wide ? 'max-w-3xl' : 'max-w-lg'}`}
     >
       {open && (
         <div className="max-h-[85vh] overflow-y-auto p-5">
           <div className="mb-4 flex items-center justify-between gap-4">
-            <h2>{title}</h2>
+            <h2 id={titleId}>{title}</h2>
             <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Tutup">
               ✕
             </button>
@@ -96,15 +143,3 @@ export function ProgressBar({ value, max, tone = 'brand' }: { value: number; max
     </div>
   );
 }
-
-export function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
-
-export const fmtDate = (t: number) => new Date(t).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-export const fmtUsd = (n: number) => (n < 0.01 ? `< $0.01` : `$${n.toFixed(n < 1 ? 3 : 2)}`);

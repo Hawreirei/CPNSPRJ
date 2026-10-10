@@ -3,32 +3,65 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { db } from '../db';
 import { isCorrect, scoreQuestion, weakTopics } from '../domain/scoring';
-import { SUBTEST_NAMES } from '../domain/blueprint';
+import { attemptMode } from '../domain/practice';
+import type { Question } from '../domain/types';
+import { mistakesInAttempt } from '../engine/srs';
 import { attemptQuestions } from '../engine/attempts';
 import { startGeneration } from '../engine/generator';
 import { createRemedialSet } from '../engine/sets';
+import { Recommendations, TimingCard, TkpCard, UnsureCard } from '../components/Analysis';
+import { CompareCard } from '../components/CompareCard';
+import { earlierExams } from '../domain/compare';
+import { fmtSec } from '../engine/analytics';
 import { QuestionCard } from '../components/QuestionCard';
-import { Badge, Empty, fmtDate, ProgressBar, SubtestBadge } from '../components/ui';
+import { opensGroup, passageLabel } from '../domain/groups';
+import { FeedbackDialog } from '../components/FeedbackDialog';
+import { Badge, Empty, ProgressBar, SubtestBadge } from '../components/ui';
+import { tabAwaySummary } from '../domain/catMode';
+import type { TabAway } from '../domain/types';
+import { isGraded, maxPerQuestion, specOf } from '../domain/examPackage';
+import { fmtDate } from '../lib/format';
 
-const fmtSec = (ms: number) => (ms >= 60000 ? `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}d` : `${Math.round(ms / 1000)}d`);
+/** What Mode CAT recorded. Shown, never scored. */
+function CatModeCard({ aways, lockedOrder }: { aways?: TabAway[]; lockedOrder: boolean }) {
+  const t = tabAwaySummary(aways);
+  return (
+    <section className="card space-y-1 text-sm" aria-labelledby="cat-mode-title">
+      <h2 id="cat-mode-title">Mode CAT</h2>
+      <p>
+        {t.count === 0
+          ? 'Tidak pernah meninggalkan halaman ujian.'
+          : `Meninggalkan halaman ujian ${t.count} kali, total ${fmtSec(t.totalMs)}${t.count > 1 ? ` (terlama ${fmtSec(t.longestMs)})` : ''}.`}
+      </p>
+      {lockedOrder && <p className="muted">Urutan sub-tes dikunci.</p>}
+      <p className="muted text-xs">Hanya catatan untuk Anda; nilai tidak dikurangi.</p>
+    </section>
+  );
+}
 
 export default function ScoreReport() {
   const { attemptId = '' } = useParams();
   const nav = useNavigate();
   const data = useLiveQuery(async () => {
     const a = await db.attempts.get(attemptId);
-    return a ? { a, questions: await attemptQuestions(a) } : null;
+    if (!a) return null;
+    const questions = await attemptQuestions(a);
+    // Counted from the notebook itself, so attempts finished before it existed show nothing.
+    const inNotebook = (await db.reviews.bulkGet(mistakesInAttempt(questions, a.answers, a.flagged))).filter(Boolean).length;
+    const earlier = earlierExams(a, await db.attempts.where('setId').equals(a.setId).toArray());
+    return { a, questions, inNotebook, earlier };
   }, [attemptId]);
   const [review, setReview] = useState<'none' | 'wrong' | 'all'>('none');
   const [busy, setBusy] = useState(false);
+  const [feedbackFor, setFeedbackFor] = useState<Question | null>(null);
 
   if (data === undefined) return null;
   if (!data?.a.result) return <Empty title="Hasil tidak ditemukan" />;
-  const { a, questions } = data;
+  const { a, questions, inNotebook, earlier } = data;
   const r = a.result!;
   const weak = weakTopics(r.topics);
   const durationMs = (a.finishedAt ?? a.endsAt) - a.startedAt;
-  const timed = questions.map((q) => ({ q, ms: a.timeSpent[q.id] ?? 0 })).sort((x, y) => y.ms - x.ms);
+  const practice = attemptMode(a) === 'practice';
 
   async function remedial() {
     setBusy(true);
@@ -37,21 +70,20 @@ export default function ScoreReport() {
     nav(`/sets/${set.id}`);
   }
 
-  const reviewList = questions
-    .map((q, i) => ({ q, i }))
-    .filter(({ q }) => review === 'all' || (review === 'wrong' && !isCorrect(q, a.answers[q.id])));
+  const reviewList = questions.map((q, i) => ({ q, i })).filter(({ q }) => review === 'all' || (review === 'wrong' && !isCorrect(q, a.answers[q.id])));
+  const shownQuestions = reviewList.map((x) => x.q);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1>Laporan Skor</h1>
+          <h1>Laporan Skor {practice && <Badge tone="blue">Latihan</Badge>}</h1>
           <p className="muted mt-1">
             {a.setName} · {fmtDate(a.startedAt)} · durasi {fmtSec(durationMs)}
           </p>
         </div>
         <div className="flex gap-2">
-          <Link className="btn" to={`/simulation?set=${a.setId}`}>
+          <Link className="btn" to={`/simulation?set=${a.setId}${practice ? '&mode=practice' : ''}`}>
             Ulangi
           </Link>
           <Link className="btn" to="/progress">
@@ -60,13 +92,32 @@ export default function ScoreReport() {
         </div>
       </div>
 
-      <div className={`card border-2 ${r.passedAll ? 'border-green-500' : 'border-red-400'}`}>
+      {a.catMode && <CatModeCard aways={a.tabAways} lockedOrder={!!a.lockedOrder} />}
+
+      <div className={`card ${practice || r.passedAll === undefined ? '' : `border-2 ${r.passedAll ? 'border-green-500' : 'border-red-400'}`}`}>
         <div className="flex flex-wrap items-center gap-4">
           <div className="text-4xl font-bold">{r.total}</div>
           <div className="muted">dari {r.maxTotal}</div>
-          <Badge tone={r.passedAll ? 'green' : 'red'}>{r.passedAll ? 'Memenuhi semua ambang batas' : 'Belum memenuhi ambang batas'}</Badge>
+          {!practice && r.passedAll !== undefined && (
+            <Badge tone={r.passedAll ? 'green' : 'red'}>{r.passedAll ? 'Memenuhi semua ambang batas' : 'Belum memenuhi ambang batas'}</Badge>
+          )}
         </div>
-        <p className="muted mt-2 text-xs">Kelulusan SKD mensyaratkan setiap sub-tes mencapai ambang batasnya masing-masing.</p>
+        <p className="muted mt-2 text-xs">
+          {practice
+            ? 'Hasil latihan: kunci tampil setiap selesai menjawab, jadi skor ini tidak masuk grafik skor ujian di Progres.'
+            : r.passedAll === undefined
+              ? 'Ujian ini tidak memakai ambang batas: kelulusan ditentukan peringkat nilai di antara peserta.'
+              : 'Kelulusan SKD mensyaratkan setiap sub-tes mencapai ambang batasnya masing-masing.'}
+        </p>
+        {inNotebook > 0 && (
+          <p className="mt-2 text-sm">
+            {inNotebook} soal yang salah, kosong, atau ragu-ragu masuk{' '}
+            <Link className="text-brand-600 dark:text-brand-300 underline" to="/review">
+              Buku Kesalahan
+            </Link>{' '}
+            untuk diulang terjadwal.
+          </p>
+        )}
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -74,20 +125,25 @@ export default function ScoreReport() {
           <div key={s.subtest} className="card space-y-2">
             <div className="flex items-center gap-2">
               <SubtestBadge subtest={s.subtest} />
-              <span className="text-sm font-medium">{SUBTEST_NAMES[s.subtest]}</span>
+              <span className="text-sm font-medium">{specOf(s.subtest).name}</span>
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-semibold">{s.score}</span>
               <span className="muted">/ {s.max}</span>
-              <Badge tone={s.passed ? 'green' : 'red'}>{s.passed ? 'lulus' : 'belum'}</Badge>
+              {s.passed !== undefined && <Badge tone={s.passed ? 'green' : 'red'}>{s.passed ? 'lulus' : 'belum'}</Badge>}
             </div>
-            <ProgressBar value={s.score} max={s.max} tone={s.passed ? 'green' : 'red'} />
+            <ProgressBar value={s.score} max={s.max} tone={s.passed === undefined ? 'brand' : s.passed ? 'green' : 'red'} />
             <div className="muted text-xs">
-              Ambang {s.passing} · {s.subtest === 'TKP' ? `${s.correct} opsi skor 5` : `${s.correct} benar`} · {s.answered}/{s.total} dijawab
+              {s.passing !== undefined && `Ambang ${s.passing} · `}
+              {isGraded(s.subtest) ? `${s.correct} opsi skor ${maxPerQuestion(s.subtest)}` : `${s.correct} benar`} · {s.answered}/{s.total} dijawab
             </div>
           </div>
         ))}
       </div>
+
+      {!practice && earlier.length > 0 && <CompareCard a={a} earlier={earlier} questions={questions} />}
+
+      <Recommendations a={a} questions={questions} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="card">
@@ -109,28 +165,26 @@ export default function ScoreReport() {
                   </li>
                 ))}
               </ul>
-              <button className="btn btn-primary mt-3" disabled={busy} onClick={remedial}>
-                Buat set latihan topik lemah
-              </button>
-              <p className="muted mt-1 text-xs">Diambil dari bank soal dulu; AI hanya dipakai bila bank kurang.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link className="btn" to={`/simulation?set=${a.setId}&mode=practice&topics=${encodeURIComponent(weak.map((t) => t.topic).join('|'))}`}>
+                  Latih ulang topik ini
+                </Link>
+                <button className="btn btn-primary" disabled={busy} onClick={remedial}>
+                  Buat set latihan topik lemah
+                </button>
+              </div>
+              <p className="muted mt-1 text-xs">
+                "Latih ulang" memakai soal set ini dengan pembahasan langsung. "Buat set" mengambil soal lain dari bank soal dulu; AI hanya dipakai bila bank kurang.
+              </p>
             </>
           )}
         </section>
-        <section className="card">
-          <h2>Waktu per soal</h2>
-          <p className="muted mt-1 text-sm">Rata-rata {fmtSec(durationMs / Math.max(1, questions.length))} per soal.</p>
-          <div className="mt-2 text-sm font-medium">Paling lama:</div>
-          <ul className="mt-1 space-y-1 text-sm">
-            {timed.slice(0, 5).map(({ q, ms }) => (
-              <li key={q.id} className="flex justify-between gap-2">
-                <span className="truncate">
-                  No. {questions.indexOf(q) + 1} · {q.topic}
-                </span>
-                <span className="shrink-0">{fmtSec(ms)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <TimingCard a={a} questions={questions} practice={practice} />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <UnsureCard a={a} questions={questions} />
+        <TkpCard a={a} questions={questions} />
       </div>
 
       <section className="space-y-3">
@@ -158,6 +212,10 @@ export default function ScoreReport() {
                 index={i}
                 mode="pembahasan"
                 showFlags={false}
+                passage={opensGroup(shownQuestions, q) ? 'open' : 'closed'}
+                passageLabel={passageLabel(questions, q)}
+                userAnswer={a.answers[q.id]}
+                onFeedback={() => setFeedbackFor(q)}
                 actions={
                   <Badge tone={isCorrect(q, ans) ? 'green' : 'red'}>
                     Jawaban Anda: {ans ?? '—'} · skor {scoreQuestion(q, ans)}
@@ -167,6 +225,7 @@ export default function ScoreReport() {
             );
           })}
       </section>
+      {feedbackFor && <FeedbackDialog q={feedbackFor} onClose={() => setFeedbackFor(null)} />}
     </div>
   );
 }

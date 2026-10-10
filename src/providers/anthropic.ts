@@ -30,7 +30,17 @@ export async function completeAnthropic(cfg: ProviderConfig, req: LlmRequest): P
         model: cfg.model,
         max_tokens: req.maxTokens ?? 16000,
         system: req.system,
-        messages: [{ role: 'user', content: req.prompt }],
+        messages: [
+          {
+            role: 'user',
+            content: req.images?.length
+              ? [
+                  ...req.images.map((i) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: i.mimeType, data: i.data } })),
+                  { type: 'text' as const, text: req.prompt },
+                ]
+              : req.prompt,
+          },
+        ],
         // Claude 5-generation Sonnet/Opus/Fable think adaptively; medium effort balances accuracy and cost.
         ...(/^claude-(sonnet|opus|fable)-([5-9]|\d{2})/.test(cfg.model) ? { output_config: { effort: 'medium' as const } } : {}),
       },

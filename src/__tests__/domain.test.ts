@@ -1,13 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { computeResult, scoreQuestion, weakTopics } from '../domain/scoring';
-import { parseNumeric, evaluateExpression } from '../domain/numeric';
+import { loadMath, parseNumeric, evaluateExpression } from '../domain/numeric';
 import { checkTkp, explainedOption, validateQuestion } from '../domain/validators';
 import { generateFigural, generateFiguralAnalogy, generateFiguralSeries } from '../domain/figural';
 import { extractJson, parseAiQuestions } from '../domain/schemas';
 import { buildPrompt } from '../domain/prompts';
 import { planBatches, estimatePlan, isProcedural } from '../engine/plan';
-import { buildPreset, DEFAULT_SETTINGS, scaledPassing } from '../domain/blueprint';
+import { buildPreset, DEFAULT_SETTINGS, fullExam, scaledPassing } from '../domain/blueprint';
 import type { OptionLabel, Question } from '../domain/types';
+
+// mathjs loads on demand in the app; validation needs it loaded first.
+beforeAll(() => loadMath());
 
 function mkQ(partial: Partial<Question>): Question {
   return {
@@ -77,8 +80,11 @@ describe('scoring', () => {
     expect(weakTopics(r.topics).map((t) => t.topic)).toEqual(['Aritmetika']);
   });
   it('scales passing threshold for partial sets', () => {
-    expect(scaledPassing('TWK', 30, DEFAULT_SETTINGS)).toBe(65);
-    expect(scaledPassing('TWK', 15, DEFAULT_SETTINGS)).toBe(33);
+    const twk = fullExam('TWK', DEFAULT_SETTINGS);
+    expect(twk).toEqual({ count: 30, passing: 65 });
+    expect(scaledPassing(twk.passing, 30, twk.count)).toBe(65);
+    expect(scaledPassing(twk.passing, 15, twk.count)).toBe(33);
+    expect(scaledPassing(undefined, 15, 30)).toBeUndefined();
   });
 });
 
@@ -207,7 +213,9 @@ describe('AI output parsing', () => {
     expect(q.reference).toBe('Sila ke-3 Pancasila');
 
     const tkp = JSON.stringify({
-      questions: [{ stem: 'Anda melihat rekan kerja menerima uang dari warga…', options: [1, 2, 3, 4, 5].map((s) => ({ text: `opsi ${s}`, score: String(6 - s) })), explanation: '' }],
+      questions: [
+        { stem: 'Anda melihat rekan kerja menerima uang dari warga…', options: [1, 2, 3, 4, 5].map((s) => ({ text: `opsi ${s}`, score: String(6 - s) })), explanation: '' },
+      ],
     });
     const [t] = parseAiQuestions(tkp, { subtest: 'TKP', items: [{ topic: 'Integritas Diri', difficulty: 'sedang' }] });
     expect(t.options.map((o) => o.score)).toEqual([5, 4, 3, 2, 1]);

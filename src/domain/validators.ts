@@ -1,9 +1,13 @@
 import { NUMERIC_TOPICS } from './blueprint';
 import { approxEqual, evaluateExpression, parseNumeric } from './numeric';
+import { reportFlag } from './quality';
 import type { Flag, OptionLabel, Question } from './types';
+import { isGraded, scoringOf } from './examPackage';
+
+export { loadMath } from './numeric';
 
 /**
- * Runs every reliability check and returns the question with an updated key
+ * Runs every reliability check (after `await loadMath()`) and returns the question with an updated key
  * (when the math engine can safely correct it) and a fresh list of flags.
  */
 export function validateQuestion(q: Question, knownHashes?: Set<string>): Question {
@@ -14,7 +18,7 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
     flags.push({ kind: 'structure', severity: 'warn', message: `Pilihan jawaban hanya ${next.options.length}, seharusnya 5.` });
   }
 
-  if (next.subtest === 'TKP') {
+  if (isGraded(next.subtest)) {
     flags.push(...checkTkp(next));
   } else {
     const fixed = checkChoice(next);
@@ -28,7 +32,7 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
     flags.push(...m.flags);
   }
 
-  if (next.subtest !== 'TKP' && next.answer) {
+  if (!isGraded(next.subtest) && next.answer) {
     const said = explainedOption(next);
     if (said && said !== next.answer) {
       flags.push({
@@ -45,11 +49,17 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
     }
   }
   if (next.confidence === 'low') {
-    flags.push({ kind: 'low-confidence', severity: 'warn', message: 'AI kurang yakin dengan soal ini. Sebaiknya diperiksa ulang.' });
+    flags.push(
+      next.source === 'import'
+        ? { kind: 'import-unchecked', severity: 'warn', message: 'Disalin AI dari foto atau PDF. Cocokkan soal, opsi, kunci, dan pembahasan dengan sumber aslinya.' }
+        : { kind: 'low-confidence', severity: 'warn', message: 'AI kurang yakin dengan soal ini. Sebaiknya diperiksa ulang.' },
+    );
   }
   if (knownHashes?.has(next.hash)) {
     flags.push({ kind: 'duplicate', severity: 'info', message: 'Soal yang mirip sudah ada di Bank Soal.' });
   }
+  // The learner's report outlives every re-check; only they can withdraw it.
+  if (next.report) flags.push(reportFlag(next.report));
 
   return { ...next, flags };
 }
@@ -67,21 +77,25 @@ function checkChoice(q: Question): { question: Question; flags: Flag[] } {
   return { question: { ...q, answer, options }, flags };
 }
 
+/** Graded options (TKP, and graded sub-tests of other packages): every score in range, one best option. */
 export function checkTkp(q: Question): Flag[] {
   const flags: Flag[] = [];
+  const rule = scoringOf(q.subtest);
+  const [lo, hi] = rule.kind === 'graded' ? [rule.min, rule.max] : [1, 5];
   const scores = q.options.map((o) => o.score);
-  if (scores.some((s) => !Number.isInteger(s) || s < 1 || s > 5)) {
-    flags.push({ kind: 'tkp-spread', severity: 'warn', message: 'Skor pilihan jawaban TKP tidak lengkap (harus 1 sampai 5).' });
+  if (scores.some((s) => !Number.isInteger(s) || s < lo || s > hi)) {
+    flags.push({ kind: 'tkp-spread', severity: 'warn', message: `Skor pilihan jawaban ${q.subtest} tidak lengkap (harus ${lo} sampai ${hi}).` });
     return flags;
   }
   const max = Math.max(...scores);
   if (scores.filter((s) => s === max).length > 1) {
     flags.push({ kind: 'tkp-spread', severity: 'warn', message: 'Ada lebih dari satu jawaban dengan skor tertinggi.' });
   }
-  if (max !== 5) {
-    flags.push({ kind: 'tkp-spread', severity: 'warn', message: 'Tidak ada jawaban dengan skor tertinggi (5).' });
+  if (max !== hi) {
+    flags.push({ kind: 'tkp-spread', severity: 'warn', message: `Tidak ada jawaban dengan skor tertinggi (${hi}).` });
   }
-  if (new Set(scores).size < scores.length && flags.length === 0) {
+  // With fewer score values than options, some options must share a score.
+  if (hi - lo + 1 >= scores.length && new Set(scores).size < scores.length && flags.length === 0) {
     flags.push({ kind: 'tkp-spread', severity: 'info', message: 'Beberapa jawaban punya skor sama.' });
   }
   return flags;
@@ -156,7 +170,10 @@ export function explainedOption(q: Question): OptionLabel | undefined {
   tail = tail.replace(/[$*_]/g, '').trim();
   const label = tail.match(/^(?:opsi|pilihan)?\s*\(?([A-E])\)?(?=$|[\s.,;:)])/);
   if (label) return q.options.some((o) => o.label === label[1]) ? (label[1] as OptionLabel) : undefined;
-  const token = tail.replace(/^rp\.?\s*/i, '').match(/^\S+/)?.[0].replace(/[.,;:)]+$/, '');
+  const token = tail
+    .replace(/^rp\.?\s*/i, '')
+    .match(/^\S+/)?.[0]
+    .replace(/[.,;:)]+$/, '');
   const value = token ? parseNumeric(token) : null;
   if (value === null) return undefined;
   const hits = q.options.filter((o) => {

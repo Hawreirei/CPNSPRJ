@@ -2,16 +2,24 @@ import { z } from 'zod';
 import { hashText, uid } from '../lib/id';
 import { OPTION_LABELS } from './types';
 import type { BatchItem, OptionLabel, Question, Subtest } from './types';
+import { isGraded, keyedScore } from './examPackage';
 
 const label = z
   .string()
-  .transform((s) => s.trim().toUpperCase().replace(/[^A-E]/g, '').slice(0, 1))
+  .transform((s) =>
+    s
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-E]/g, '')
+      .slice(0, 1),
+  )
   .pipe(z.enum(['A', 'B', 'C', 'D', 'E']));
 
 const aiOption = z.object({
   label: label.optional(),
   text: z.string().min(1),
   score: z.coerce.number().optional(),
+  rationale: z.string().optional().nullable(),
 });
 
 const aiQuestion = z.object({
@@ -25,7 +33,6 @@ const aiQuestion = z.object({
   confidence: z.string().optional().nullable(),
   mathExpression: z.string().optional().nullable(),
 });
-
 
 /** Pull the first JSON object out of a model reply (handles ```json fences and chatter). */
 export function extractJson(text: string): unknown {
@@ -108,11 +115,12 @@ export function parseAiQuestions(text: string, ctx: { subtest: Subtest; items: B
     const options = q.options.slice(0, 5).map((o, i) => ({
       label: OPTION_LABELS[i],
       text: o.text.trim(),
-      score: ctx.subtest === 'TKP' ? Math.round(o.score ?? 0) : 0,
+      score: isGraded(ctx.subtest) ? Math.round(o.score ?? 0) : 0,
+      ...(isGraded(ctx.subtest) && o.rationale?.trim() ? { rationale: o.rationale.trim() } : {}),
       origLabel: o.label,
     }));
     let answer: OptionLabel | undefined;
-    if (ctx.subtest !== 'TKP') {
+    if (!isGraded(ctx.subtest)) {
       // Map the model's label back to position in case it re-lettered options.
       const byOrig = options.find((o) => o.origLabel === q.answer);
       answer = byOrig?.label ?? (q.answer as OptionLabel | undefined);
@@ -124,7 +132,7 @@ export function parseAiQuestions(text: string, ctx: { subtest: Subtest; items: B
       topic: slot.topic,
       difficulty: slot.difficulty,
       stem: q.stem.trim(),
-      options: options.map(({ origLabel: _o, ...o }) => ({ ...o, score: ctx.subtest === 'TKP' ? o.score : o.label === answer ? 5 : 0 })),
+      options: options.map(({ origLabel: _o, ...o }) => ({ ...o, score: isGraded(ctx.subtest) ? o.score : keyedScore(ctx.subtest, o.label === answer) })),
       answer,
       explanation: q.explanation.trim(),
       reference: q.reference?.trim() || undefined,
@@ -175,5 +183,61 @@ export function parseMultiQuestions(text: string, parts: { subtest: Subtest; ite
     out.set(p.subtest, questions);
   }
   if (![...out.values()].some((q) => q.length)) throw new Error('Respons AI tidak berisi soal yang valid.');
+  return out;
+}
+
+const aiPassage = z.object({
+  title: z.string().optional().nullable(),
+  text: z.string().min(80, 'wacana terlalu pendek'),
+  questions: z.array(z.unknown()),
+});
+
+/**
+ * Parse reading passages and their questions. Unlike single questions, nothing is salvaged: each
+ * passage must come back with exactly the number of questions asked for, or the reply is refused
+ * and requested again, so a passage never reaches a set with questions missing or misplaced.
+ */
+export function parseAiPassages(text: string, ctx: { items: BatchItem[]; sizes: number[]; setId?: string }): Question[] {
+  let raw: unknown;
+  try {
+    raw = (extractJson(text) as { passages?: unknown }).passages;
+  } catch {
+    raw = undefined;
+  }
+  if (!Array.isArray(raw)) throw new Error('Respons AI tidak berisi wacana.');
+  if (raw.length !== ctx.sizes.length) throw new Error(`AI mengirim ${raw.length} wacana, diminta ${ctx.sizes.length}.`);
+  const out: Question[] = [];
+  let k = 0;
+  raw.forEach((p, i) => {
+    const r = aiPassage.safeParse(p);
+    if (!r.success) throw new Error(`Wacana ${i + 1} tidak valid: ${r.error.issues[0].message}.`);
+    const want = ctx.sizes[i];
+    const slots = ctx.items.slice(k, k + want);
+    const qs = parseAiQuestions(JSON.stringify({ questions: r.data.questions }), { subtest: 'TIU', items: slots, setId: ctx.setId });
+    if (r.data.questions.length !== want || qs.length !== want) throw new Error(`Wacana ${i + 1} berisi ${qs.length} soal valid, diminta ${want}.`);
+    const passage = { id: uid(), text: r.data.text.trim(), ...(r.data.title?.trim() ? { title: r.data.title.trim() } : {}), questionIds: qs.map((q) => q.id) };
+    // The same question can sensibly follow two different passages, so the passage is part of its identity.
+    out.push(...qs.map((q) => ({ ...q, passage, hash: hashText(passage.text + q.stem) })));
+    k += want;
+  });
+  return out;
+}
+
+const checkAnswer = z.object({
+  no: z.coerce.number().int().positive(),
+  answer: label,
+  reason: z.string().optional().nullable(),
+});
+
+/** A cross-check reply: answer and reason by question number (1-based). Invalid entries are dropped. */
+export function parseCrossCheck(text: string): Map<number, { answer: OptionLabel; reason: string }> {
+  const parsed = extractJson(text) as { answers?: unknown; questions?: unknown };
+  const list = Array.isArray(parsed.answers) ? parsed.answers : Array.isArray(parsed.questions) ? parsed.questions : [];
+  const out = new Map<number, { answer: OptionLabel; reason: string }>();
+  for (const raw of list) {
+    const r = checkAnswer.safeParse(raw);
+    if (r.success && !out.has(r.data.no)) out.set(r.data.no, { answer: r.data.answer as OptionLabel, reason: r.data.reason?.trim() ?? '' });
+  }
+  if (!out.size) throw new Error('Respons pemeriksa tidak berisi jawaban yang valid.');
   return out;
 }

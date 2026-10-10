@@ -1,30 +1,56 @@
 import { db, getSetQuestions } from '../db';
 import { computeResult } from '../domain/scoring';
-import { SUBTESTS } from '../domain/types';
-import type { Attempt, Question } from '../domain/types';
-import { shuffle, uid } from '../lib/id';
+import { filterQuestions, UNTIMED, type QuestionFilter } from '../domain/practice';
+import type { Attempt, AttemptMode, Question } from '../domain/types';
+import { uid } from '../lib/id';
+import { shuffleUnits } from '../domain/groups';
+import { recordMistakes } from './review';
 import { passingForSet } from './sets';
+import { inSubtestOrder, subtestsIn } from '../domain/examPackage';
 
-export async function startAttempt(setId: string, opts: { shuffleQuestions: boolean; durationMinutes: number }): Promise<Attempt> {
+export async function startAttempt(
+  setId: string,
+  opts: {
+    shuffleQuestions: boolean;
+    /** 0 = no time limit (practice only). */
+    durationMinutes: number;
+    mode?: AttemptMode;
+    filter?: QuestionFilter;
+    /** Exam only: full screen and tab-away log (see domain/catMode.ts). */
+    catMode?: boolean;
+    /** Exam in Mode CAT only: sub-tests one after another, no way back. */
+    lockedOrder?: boolean;
+  },
+): Promise<Attempt> {
   const set = await db.sets.get(setId);
   if (!set) throw new Error('Set tidak ditemukan');
+  const mode = opts.mode ?? 'exam';
   let questions = await getSetQuestions(set);
+  if (mode === 'practice') questions = filterQuestions(questions, opts.filter);
+  if (!questions.length) throw new Error('Tidak ada soal yang cocok dengan pilihan ini.');
   if (opts.shuffleQuestions) {
-    questions = SUBTESTS.flatMap((s) => shuffle(questions.filter((q) => q.subtest === s)));
+    // A reading passage's questions move as one block, in their own order.
+    questions = subtestsIn(questions).flatMap((s) => shuffleUnits(questions.filter((q) => q.subtest === s)));
   }
+  const catMode = mode === 'exam' && !!opts.catMode;
+  const lockedOrder = catMode && !!opts.lockedOrder;
+  // A locked order walks sub-test blocks, so each sub-test must be one block.
+  if (lockedOrder) questions = inSubtestOrder(questions);
   const now = Date.now();
   const attempt: Attempt = {
     id: uid(),
     setId,
     setName: set.name,
+    mode,
     questionIds: questions.map((q) => q.id),
     startedAt: now,
-    endsAt: now + opts.durationMinutes * 60_000,
+    endsAt: opts.durationMinutes > 0 ? now + opts.durationMinutes * 60_000 : UNTIMED,
     answers: {},
     flagged: [],
     timeSpent: {},
     currentIndex: 0,
     passing: await passingForSet(set, questions),
+    ...(catMode && { catMode, lockedOrder, tabAways: [] }),
   };
   await db.attempts.add(attempt);
   return attempt;
@@ -41,6 +67,11 @@ export async function finishAttempt(id: string): Promise<Attempt | undefined> {
   const questions = await attemptQuestions(a);
   const result = computeResult(questions, a.answers, a.passing);
   const finishedAt = Math.min(Date.now(), a.endsAt);
-  await db.attempts.update(id, { result, finishedAt });
+  // One transaction, so an attempt is never marked finished without its mistakes in the notebook.
+  // Runs once per attempt: the early return above skips attempts that already have a result.
+  await db.transaction('rw', [db.attempts, db.reviews], async () => {
+    await db.attempts.update(id, { result, finishedAt });
+    await recordMistakes(a, questions);
+  });
   return { ...a, result, finishedAt };
 }

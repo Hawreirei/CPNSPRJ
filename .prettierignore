@@ -1,0 +1,6 @@
+# Prettier also skips what .gitignore lists (dist, test reports).
+# Generated: npm and scripts/extract-uud.mjs write these.
+package-lock.json
+src/data/uud1945.json
+# Prose is wrapped by hand.
+*.md

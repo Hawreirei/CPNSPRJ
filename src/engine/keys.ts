@@ -5,17 +5,64 @@ import type { ApiKeyRecord, KeyLimits, ModelInfo, ProviderId } from '../domain/t
 import { listModelInfo, pickRecommendedModel } from '../providers';
 import type { ProviderConfig } from '../providers';
 
-export async function addKey(input: { provider: ProviderId; label: string; apiKey: string; model: string; baseUrl?: string; autoModel?: boolean; modelCheckedAt?: number; limits?: KeyLimits }) {
-  const { cipher, iv } = await encryptSecret(input.apiKey.trim());
+/**
+ * Session-only keys: the record (provider, model, limits) is stored like any other so quotas and
+ * model choice keep working, but the key itself is kept only in this tab's sessionStorage. It is
+ * never written to IndexedDB or a backup, and is gone when the tab or browser is closed.
+ */
+const SESSION_PREFIX = 'skd.sessionKey.';
+
+export function sessionSecret(id: string): string | null {
+  try {
+    return sessionStorage.getItem(SESSION_PREFIX + id);
+  } catch {
+    return null;
+  }
+}
+
+export function setSessionSecret(id: string, apiKey: string) {
+  sessionStorage.setItem(SESSION_PREFIX + id, apiKey.trim());
+}
+
+function dropSessionSecret(id: string) {
+  try {
+    sessionStorage.removeItem(SESSION_PREFIX + id);
+  } catch {
+    // Nothing stored.
+  }
+}
+
+/** A stored key always has its secret; a session key only until its tab is closed. */
+export const hasSecret = (k: Pick<ApiKeyRecord, 'id' | 'sessionOnly'>) => !k.sessionOnly || sessionSecret(k.id) !== null;
+
+export class SessionKeyMissingError extends Error {
+  constructor(label: string) {
+    super(`Key "${label}" hanya untuk sesi dan sudah hilang karena tab atau browser ditutup. Masukkan key itu lagi di halaman API Key, lalu lanjutkan.`);
+    this.name = 'SessionKeyMissingError';
+  }
+}
+
+export async function addKey(input: {
+  provider: ProviderId;
+  label: string;
+  apiKey: string;
+  model: string;
+  baseUrl?: string;
+  autoModel?: boolean;
+  modelCheckedAt?: number;
+  limits?: KeyLimits;
+  sessionOnly?: boolean;
+}) {
   const hasDefault = (await db.keys.count()) > 0;
+  const id = uid();
+  if (input.sessionOnly) setSessionSecret(id, input.apiKey);
   const rec: ApiKeyRecord = {
-    id: uid(),
+    id,
     provider: input.provider,
     label: input.label || input.provider,
     model: input.model,
     baseUrl: input.baseUrl?.trim() || undefined,
-    cipher,
-    iv,
+    ...(input.sessionOnly ? { sessionOnly: true } : await encryptSecret(input.apiKey.trim())),
     isDefault: !hasDefault,
     createdAt: Date.now(),
     autoModel: input.autoModel ?? true,
@@ -36,6 +83,7 @@ export async function setDefaultKey(id: string) {
 export async function deleteKey(id: string) {
   const rec = await db.keys.get(id);
   await db.keys.delete(id);
+  dropSessionSecret(id);
   if (rec?.isDefault) {
     const next = await db.keys.toCollection().first();
     if (next) await db.keys.update(next.id, { isDefault: true });
@@ -50,10 +98,19 @@ export async function resolveKey(keyId?: string): Promise<ApiKeyRecord | undefin
   return (await db.keys.filter((k) => k.isDefault).first()) ?? (await db.keys.toCollection().first());
 }
 
+async function secretOf(rec: ApiKeyRecord): Promise<string> {
+  if (rec.sessionOnly) {
+    const secret = sessionSecret(rec.id);
+    if (secret === null) throw new SessionKeyMissingError(rec.label);
+    return secret;
+  }
+  return decryptSecret(rec.cipher!, rec.iv!);
+}
+
 export async function providerConfig(keyId?: string): Promise<ProviderConfig> {
   const rec = await resolveKey(keyId);
   if (!rec) throw new Error('Belum ada API key. Tambahkan di halaman API Keys.');
-  return { provider: rec.provider, model: rec.model, baseUrl: rec.baseUrl, apiKey: await decryptSecret(rec.cipher, rec.iv) };
+  return { provider: rec.provider, model: rec.model, baseUrl: rec.baseUrl, apiKey: await secretOf(rec) };
 }
 
 const RECHECK_MS = 7 * 24 * 3600 * 1000;
@@ -81,10 +138,7 @@ export async function switchToAutoModel(keyId: string) {
  * Re-read the account's model list and switch to the newest stable recommended
  * model. Returns the (possibly unchanged) model id.
  */
-export async function refreshKeyModel(
-  keyId: string,
-  opts: { exclude?: string; hint?: string } = {},
-): Promise<{ model: string; changed: boolean }> {
+export async function refreshKeyModel(keyId: string, opts: { exclude?: string; hint?: string } = {}): Promise<{ model: string; changed: boolean }> {
   const rec = await db.keys.get(keyId);
   if (!rec) throw new Error('API key tidak ditemukan.');
   const cfg = await providerConfig(keyId);
@@ -121,10 +175,7 @@ export async function refreshStaleKeyModels(): Promise<void> {
 }
 
 /** Config for a generation run; refreshes an auto-managed model if it has not been checked recently. */
-export async function freshProviderConfig(
-  keyId?: string,
-  modelOverride?: string,
-): Promise<ProviderConfig & { keyId: string; autoModel: boolean }> {
+export async function freshProviderConfig(keyId?: string, modelOverride?: string): Promise<ProviderConfig & { keyId: string; autoModel: boolean }> {
   const rec = await resolveKey(keyId);
   if (!rec) throw new Error('Belum ada API key. Tambahkan di halaman API Keys.');
   // A model picked for this set is used as-is and never switched behind the user's back.

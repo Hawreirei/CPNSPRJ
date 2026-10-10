@@ -1,17 +1,21 @@
 import { useSyncExternalStore } from 'react';
 import { db, getSettings } from '../db';
-import { generateFigural } from '../domain/figural';
-import { buildMultiPrompt, buildPrompt, buildRepairPrompt, buildRewritePrompt, SYSTEM_PROMPT } from '../domain/prompts';
-import { parseAiQuestions, parseMultiQuestions } from '../domain/schemas';
-import { SUBTESTS } from '../domain/types';
-import { validateQuestion } from '../domain/validators';
-import { complete, isModelUnavailable, ProviderError, suggestedReplacement } from '../providers';
-import type { ProviderConfig } from '../providers';
-import type { ApiKeyRecord, FlagKind, PlanBatch, QSet, Question, Subtest } from '../domain/types';
+import { endOfGroup } from '../domain/groups';
+import { easier } from '../domain/blueprint';
+import { buildMultiPrompt, buildPassagePrompt, buildPrompt, buildRepairPrompt, buildRewritePrompt, SYSTEM_PROMPT } from '../domain/prompts';
+import { parseMultiQuestions } from '../domain/schemas';
+import { loadMath, validateQuestion } from '../domain/validators';
+import { ProviderError } from '../providers';
+import type { FlagKind, PlanBatch, QSet, Question, Subtest } from '../domain/types';
 import { uid } from '../lib/id';
-import { batchLabel, groupBatches, groupCap, isProcedural, takeGroup } from './plan';
-import { freshProviderConfig, providerConfig, refreshKeyModel, resolveKey } from './keys';
-import { isLimited, keyUsage, limitsOf, markDayExhausted, QuotaExhaustedError, releaseRequest, reserveRequest } from './quota';
+import { batchLabel, groupBatches, groupCap, isPassageBatch, isProcedural, passageSizes, takeGroup } from './plan';
+import { isLimited, keyUsage, limitsOf, QuotaExhaustedError } from './quota';
+import { isCrossCheckable, openCheckerSession, runCrossCheck } from './crosscheck';
+import { callAndParse, callAndParsePassages, callModel, openSession, type ModelSession } from './session';
+import { errorText, isQuotaError } from './storage';
+import { logError } from '../lib/errorLog';
+import { controllers } from './running';
+import { examRank, isGraded, subtestsIn } from '../domain/examPackage';
 
 export interface GenProgress {
   setId: string;
@@ -27,7 +31,6 @@ export interface GenProgress {
 
 // ---- tiny external store so progress survives page navigation ----
 const progress = new Map<string, GenProgress>();
-const controllers = new Map<string, AbortController>();
 const listeners = new Set<() => void>();
 let snapshot = new Map(progress);
 function emit() {
@@ -52,7 +55,7 @@ function log(setId: string, level: 'info' | 'error', message: string) {
   update(setId, { log: [...(cur?.log ?? []), { at: Date.now(), level, message }].slice(-50) });
 }
 
-const subtestOrder = (q: Question) => SUBTESTS.indexOf(q.subtest);
+const subtestOrder = (q: Question) => examRank(q.subtest);
 
 /** Append questions to a set, keeping TWK → TIU → TKP grouping. */
 export async function appendToSet(setId: string, questions: Question[], afterId?: string) {
@@ -62,11 +65,19 @@ export async function appendToSet(setId: string, questions: Question[], afterId?
     await db.questions.bulkPut(questions);
     let ids = [...set.questionIds];
     if (afterId && ids.includes(afterId)) {
-      ids.splice(ids.indexOf(afterId) + 1, 0, ...questions.map((q) => q.id));
+      // After a passage question means after its whole group, which must not be split.
+      const after = endOfGroup(
+        (await db.questions.bulkGet(ids)).filter((q): q is Question => !!q),
+        afterId,
+      );
+      ids.splice(ids.indexOf(after) + 1, 0, ...questions.map((q) => q.id));
     } else {
       ids.push(...questions.map((q) => q.id));
       const all = (await db.questions.bulkGet(ids)).filter((q): q is Question => !!q);
-      ids = all.map((q, i) => ({ q, i })).sort((a, b) => subtestOrder(a.q) - subtestOrder(b.q) || a.i - b.i).map((x) => x.q.id);
+      ids = all
+        .map((q, i) => ({ q, i }))
+        .sort((a, b) => subtestOrder(a.q) - subtestOrder(b.q) || a.i - b.i)
+        .map((x) => x.q.id);
     }
     await db.sets.update(setId, { questionIds: ids, updatedAt: Date.now() });
   });
@@ -82,7 +93,13 @@ async function recentStems(subtest: string, topics: string[]): Promise<string[]>
   const per = Math.max(2, Math.ceil(15 / topics.length));
   const out: string[] = [];
   for (const t of topics) {
-    const rows = await db.questions.where('topic').equals(t).filter((q) => q.subtest === subtest).reverse().limit(per).toArray();
+    const rows = await db.questions
+      .where('topic')
+      .equals(t)
+      .filter((q) => q.subtest === subtest)
+      .reverse()
+      .limit(per)
+      .toArray();
     out.push(...rows.map((q) => q.stem));
   }
   return out;
@@ -100,136 +117,28 @@ async function addUsage(setId: string, inputTokens: number, outputTokens: number
   });
 }
 
-/** Provider config shared by one run; swapped in place if the model is retired mid-run. */
-interface ModelSession {
-  cfg: ProviderConfig;
-  keyId: string;
-  autoModel: boolean;
-  key: Pick<ApiKeyRecord, 'id' | 'provider' | 'limits'>;
-  swapped?: Promise<void>;
-  onSwap?: (from: string, to: string) => void;
-  onWait?: (ms: number, reason: string) => void;
-}
-
-async function openSession(keyId?: string, modelOverride?: string): Promise<ModelSession> {
-  const { keyId: id, autoModel, ...cfg } = await freshProviderConfig(keyId, modelOverride);
-  const rec = (await resolveKey(id))!;
-  return { cfg, keyId: id, autoModel, key: { id: rec.id, provider: rec.provider, limits: rec.limits } };
-}
-
-/** Rough input-token count used for the per-minute token limit. */
-const estimateTokens = (text: string) => Math.ceil(text.length / 3.5);
-const MAX_RATE_WAITS = 6;
-
-/** Switch to the newest stable model once per session when the provider says the current one is gone. */
-async function swapModel(s: ModelSession, errorMessage = ''): Promise<boolean> {
-  if (!s.autoModel) return false;
-  if (!s.swapped) {
-    const from = s.cfg.model;
-    s.swapped = (async () => {
-      const { model } = await refreshKeyModel(s.keyId, { exclude: from, hint: suggestedReplacement(errorMessage) });
-      s.cfg = await providerConfig(s.keyId);
-      if (model !== from) s.onSwap?.(from, model);
-    })();
-    try {
-      await s.swapped;
-    } catch {
-      return false;
-    }
-    return s.cfg.model !== from;
-  }
-  await s.swapped.catch(() => undefined);
-  return true;
-}
-
-/** Call the model and parse; retries on parse or transient errors and recovers from a retired model. */
-async function callAndParse<T>(
-  session: ModelSession,
-  prompt: string,
-  parse: (text: string) => T,
-  signal: AbortSignal,
-  onUsage: (i: number, o: number) => Promise<void>,
-): Promise<T> {
-  let lastErr: unknown;
-  let triedSwap = false;
-  let rateWaits = 0;
-  // A limited daily quota makes every retry expensive: allow one retry instead of two.
-  const maxAttempts = limitsOf(session.key).rpd ? 2 : 3;
-  const est = estimateTokens(SYSTEM_PROMPT + prompt);
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-    const model = session.cfg.model;
-    // Throws QuotaExhaustedError when today's quota is used up; waits for the minute window otherwise.
-    const slot = await reserveRequest(session.key, est, { signal, onWait: session.onWait });
-    try {
-      const res = await complete(session.cfg, { system: SYSTEM_PROMPT, prompt, signal });
-      await onUsage(res.inputTokens, res.outputTokens);
-      return parse(res.text);
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') throw e;
-      lastErr = e;
-      if (e instanceof ProviderError && e.status === 429) {
-        // Rejected by a rate limit: the provider didn't count it, so neither do we.
-        await releaseRequest(slot);
-        if (e.quotaScope === 'day') {
-          throw new QuotaExhaustedError(await markDayExhausted(session.key));
-        }
-        if (rateWaits++ < MAX_RATE_WAITS) {
-          const wait = Math.min(Math.max(e.retryAfterMs ?? 60_000, 5_000), 5 * 60_000);
-          session.onWait?.(wait, 'server meminta menunggu (429)');
-          await sleep(wait, signal);
-          attempt--;
-          continue;
-        }
-        throw e;
-      }
-      if (e instanceof ProviderError && e.status === undefined) await releaseRequest(slot);
-      if (e instanceof ProviderError && !triedSwap && isModelUnavailable(e.status, e.message)) {
-        triedSwap = true;
-        // Another worker may already have swapped; otherwise refresh from the live list.
-        if (session.cfg.model !== model || (await swapModel(session, e.message))) {
-          attempt--;
-          continue;
-        }
-        if (!session.autoModel) {
-          // The user picked this model: don't switch it silently, explain instead.
-          const hint = suggestedReplacement(e.message);
-          throw new ProviderError(
-            `Model ${model} yang Anda pilih sudah tidak tersedia untuk key ini.${hint ? ` Penyedia menyarankan ${hint}.` : ''} Pilih model lain di halaman API Keys (atau "Otomatis"), lalu klik Lanjutkan.`,
-            { status: e.status },
-          );
-        }
-      }
-      const retryable = !(e instanceof ProviderError) || e.retryable;
-      if (!retryable) break;
-      await sleep(1500 * 2 ** attempt, signal);
-    }
-  }
-  throw lastErr;
-}
-
-function sleep(ms: number, signal: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
-    const t = setTimeout(resolve, ms);
-    signal.addEventListener('abort', () => {
-      clearTimeout(t);
-      reject(new DOMException('Aborted', 'AbortError'));
-    });
-  });
-}
+// The figural and data generators are only needed while questions are being made.
+const procedural = () => import('../domain/procedural');
 
 /**
- * Get the questions for a group of batches in one request (or from the figural
- * generator), handed back per batch in the group's order.
+ * Get the questions for a group of batches in one request (or from the procedural
+ * generators), handed back per batch in the group's order.
  */
 async function fetchGroup(set: QSet, group: PlanBatch[], session: ModelSession | null, signal: AbortSignal): Promise<Question[][]> {
-  if (group.length === 1 && isProcedural(group[0])) {
-    const b = group[0];
-    return [generateFigural(b.items[0].topic, b.items[0].difficulty, b.count)];
+  const onUsage = (i: number, o: number) => addUsage(set.id, i, o);
+  if (group.length === 1) {
+    const batch = group[0];
+    if (isProcedural(batch)) return [(await procedural()).generateProcedural(batch.items[0].topic, batch.items[0].difficulty, batch.count)];
+    if (!session) throw new Error('Belum ada API key.');
+    if (isPassageBatch(batch)) {
+      const sizes = passageSizes(batch.count);
+      const prompt = buildPassagePrompt({ items: batch.items, sizes, avoid: await recentStems(batch.subtest, [batch.items[0].topic]) });
+      return [await callAndParsePassages(session, prompt, { items: batch.items, sizes, setId: set.id }, signal, onUsage)];
+    }
   }
   if (!session) throw new Error('Belum ada API key.');
-  const onUsage = (i: number, o: number) => addUsage(set.id, i, o);
-  const subtests = SUBTESTS.filter((s) => group.some((b) => b.subtest === s));
+  // Sub-tests in the order they were planned; any exam package's sub-tests work.
+  const subtests = [...new Set(group.map((b) => b.subtest))];
   const itemsOf = (s: Subtest) => group.filter((b) => b.subtest === s).flatMap((b) => b.items);
   const avoidFor = (s: Subtest) => recentStems(s, [...new Set(itemsOf(s).map((i) => i.topic))]);
   let bySubtest: Map<Subtest, Question[]>;
@@ -239,11 +148,10 @@ async function fetchGroup(set: QSet, group: PlanBatch[], session: ModelSession |
     // Batches modelled on existing questions are always sent alone (see takeGroup).
     const basedOn = group[0].basedOn ? ((await db.questions.bulkGet(group[0].basedOn)).filter(Boolean) as Question[]) : undefined;
     const prompt = buildPrompt({ subtest, items, avoid: await avoidFor(subtest), basedOn });
-    const questions = await callAndParse(session, prompt, (t) => parseAiQuestions(t, { subtest, items, setId: set.id }), signal, onUsage);
-    bySubtest = new Map([[subtest, questions]]);
+    bySubtest = new Map([[subtest, await callAndParse(session, prompt, { subtest, items, setId: set.id }, signal, onUsage)]]);
   } else {
     const parts = await Promise.all(subtests.map(async (subtest) => ({ subtest, items: itemsOf(subtest), avoid: await avoidFor(subtest) })));
-    bySubtest = await callAndParse(session, buildMultiPrompt(parts), (t) => parseMultiQuestions(t, parts, set.id), signal, onUsage);
+    bySubtest = await callModel(session, { system: SYSTEM_PROMPT, prompt: buildMultiPrompt(parts) }, (t) => parseMultiQuestions(t, parts, set.id), signal, onUsage);
   }
   const taken = new Map<Subtest, number>();
   return group.map((b) => {
@@ -255,12 +163,14 @@ async function fetchGroup(set: QSet, group: PlanBatch[], session: ModelSession |
 
 /** Save a batch's questions and queue only what is still missing. */
 async function storeBatch(set: QSet, batch: PlanBatch, questions: Question[], hashes: Set<string>) {
+  await loadMath();
   const validated = questions.slice(0, batch.count).map((q) => {
     const v = validateQuestion({ ...q, originSetId: set.id }, hashes);
     hashes.add(v.hash);
     return v;
   });
   await appendToSet(set.id, validated);
+  // Keep what we got; queue only the missing items instead of redoing the whole batch.
   const leftover = finishBatch(batch, validated.length);
   await db.transaction('rw', db.sets, async () => {
     const cur = await db.sets.get(set.id);
@@ -292,16 +202,13 @@ async function setBatch(setId: string, batchId: string, patch: Partial<PlanBatch
 }
 
 const label = batchLabel;
-const groupLabel = (g: PlanBatch[]) =>
-  g.length === 1 ? label(g[0]) : `${[...new Set(g.map((b) => b.subtest))].join(' + ')} (${g.reduce((n, b) => n + b.count, 0)} soal)`;
+const groupLabel = (g: PlanBatch[]) => (g.length === 1 ? label(g[0]) : `${[...new Set(g.map((b) => b.subtest))].join(' + ')} (${g.reduce((n, b) => n + b.count, 0)} soal)`);
 
 const fmtWait = (ms: number) => (ms >= 60_000 ? `${Math.ceil(ms / 60_000)} menit` : `${Math.ceil(ms / 1000)} detik`);
 
 export function isRunning(setId: string) {
   return controllers.has(setId);
 }
-
-export const isAnyGenerationRunning = () => controllers.size > 0;
 
 /** Generate every pending or failed batch. Safe to call again to resume. */
 export async function startGeneration(setId: string): Promise<void> {
@@ -386,11 +293,12 @@ export async function startGeneration(setId: string): Promise<void> {
           break;
         }
         failures++;
-        const msg = (e as Error).message ?? String(e);
-        for (const batch of group) await setBatch(setId, batch.id, { status: 'failed', error: msg });
+        void logError('generation', e);
+        const msg = errorText(e);
+        for (const batch of group) await setBatch(setId, batch.id, { status: 'failed', error: msg }).catch(() => {});
         log(setId, 'error', `${name}: ${msg}`);
-        // Stop early on auth errors: every other batch would fail the same way.
-        if (e instanceof ProviderError && (e.status === 401 || e.status === 403)) ctrl.abort();
+        // Stop early on auth errors and a full disk: every other batch would fail the same way.
+        if ((e instanceof ProviderError && (e.status === 401 || e.status === 403)) || isQuotaError(e)) ctrl.abort();
       } finally {
         update(setId, { current: (progress.get(setId)?.current ?? []).filter((c) => c !== name) });
       }
@@ -416,13 +324,41 @@ export async function startGeneration(setId: string): Promise<void> {
     }
   }
 
+  // Optional second opinion on the new questions, after any repair, from another model.
+  const cc = settings.crossCheck;
+  if (cc?.enabled && session && !quotaStop && !ctrl.signal.aborted) {
+    const candidates = ((await db.questions.bulkGet(producedIds)).filter(Boolean) as Question[]).filter(isCrossCheckable);
+    if (candidates.length) {
+      update(setId, { current: ['Memeriksa silang'] });
+      try {
+        const checker = await openCheckerSession(cc, set.keyId);
+        checker.onWait = session.onWait;
+        log(setId, 'info', `Memeriksa silang ${candidates.length} soal dengan ${checker.cfg.model}…`);
+        const r = await runCrossCheck(checker, candidates, ctrl.signal, (i, o) => addUsage(setId, i, o));
+        log(
+          setId,
+          'info',
+          `Pemeriksa silang: ${r.checked} soal diperiksa, ${r.mismatched} berbeda jawaban (ditandai "perlu dicek").` +
+            (r.pending ? ` ${r.pending} soal belum diperiksa karena kuota habis; periksa nanti dari halaman set.` : ''),
+        );
+      } catch (e) {
+        if ((e as Error).name !== 'AbortError') log(setId, 'info', `Pemeriksa silang dilewati: ${(e as Error).message}`);
+      }
+    }
+  }
+
   controllers.delete(setId);
   const final = await db.sets.get(setId);
   const allDone = final?.batches.every((b) => b.status === 'done');
   await db.sets.update(setId, { status: allDone ? 'ready' : 'paused', updatedAt: Date.now() });
   update(setId, { running: false, current: [], waitUntil: undefined, waitReason: undefined });
   if (quotaStop) log(setId, 'error', `${(quotaStop as QuotaExhaustedError).message} Soal yang sudah jadi tetap tersimpan.`);
-  else log(setId, failures ? 'error' : 'info', allDone ? 'Selesai.' : ctrl.signal.aborted ? 'Dihentikan. Klik Lanjutkan untuk meneruskan.' : `${failures} batch gagal. Klik Lanjutkan untuk mencoba lagi.`);
+  else
+    log(
+      setId,
+      failures ? 'error' : 'info',
+      allDone ? 'Selesai.' : ctrl.signal.aborted ? 'Dihentikan. Klik Lanjutkan untuk meneruskan.' : `${failures} batch gagal. Klik Lanjutkan untuk mencoba lagi.`,
+    );
 }
 
 export async function stopGeneration(setId: string) {
@@ -433,10 +369,17 @@ export async function stopGeneration(setId: string) {
 export async function rewriteQuestion(q: Question, instruction: string, keyId?: string): Promise<Question> {
   const session = await openSession(keyId);
   const ctrl = new AbortController();
-  const ctx = { subtest: q.subtest, items: [{ topic: q.topic, difficulty: q.difficulty }], setId: q.originSetId };
-  const [nq] = await callAndParse(session, buildRewritePrompt(q, instruction), (t) => parseAiQuestions(t, ctx), ctrl.signal, async () => {});
+  const [nq] = await callAndParse(
+    session,
+    buildRewritePrompt(q, instruction),
+    { subtest: q.subtest, items: [{ topic: q.topic, difficulty: q.difficulty }], setId: q.originSetId },
+    ctrl.signal,
+    async () => {},
+  );
   if (!nq) throw new Error('AI tidak mengembalikan soal.');
-  const updated = validateQuestion({ ...nq, id: q.id, starred: q.starred, locked: q.locked, createdAt: q.createdAt, updatedAt: Date.now() });
+  await loadMath();
+  // A report stays until the learner withdraws it, also through a rewrite; the old rating no longer applies.
+  const updated = validateQuestion({ ...nq, id: q.id, starred: q.starred, locked: q.locked, report: q.report, passage: q.passage, createdAt: q.createdAt, updatedAt: Date.now() });
   await db.questions.put(updated);
   return updated;
 }
@@ -444,26 +387,36 @@ export async function rewriteQuestion(q: Question, instruction: string, keyId?: 
 const REPAIRABLE = new Set<FlagKind>(['math-mismatch', 'explanation-mismatch']);
 
 /** A question whose key, explanation and calculation disagree, and that the AI may rewrite. */
-export const needsRepair = (q: Question) =>
-  q.source === 'ai' && !q.locked && q.subtest !== 'TKP' && q.flags.some((f) => f.severity === 'warn' && REPAIRABLE.has(f.kind));
+export const needsRepair = (q: Question) => q.source === 'ai' && !q.locked && !isGraded(q.subtest) && q.flags.some((f) => f.severity === 'warn' && REPAIRABLE.has(f.kind));
 
-/** Ask the model to fix the given questions (one request per sub-test); returns how many were fixed. */
+/** Ask the model to fix the given questions (one request at most); returns how many were fixed. */
 async function repairWith(session: ModelSession, questions: Question[], signal: AbortSignal, onUsage: (i: number, o: number) => Promise<void>): Promise<number> {
   let fixed = 0;
   // A single request: the sub-test with the most broken questions, at most 10 of them.
-  const groups = SUBTESTS.map((s) => questions.filter((q) => q.subtest === s).slice(0, 10))
+  const groups = subtestsIn(questions)
+    .map((s) => questions.filter((q) => q.subtest === s).slice(0, 10))
     .filter((g) => g.length)
     .sort((a, b) => b.length - a.length)
     .slice(0, 1);
   for (const group of groups) {
     const subtest = group[0].subtest;
     const items = group.map((q) => ({ topic: q.topic, difficulty: q.difficulty }));
-    const ctx = { subtest, items, setId: group[0].originSetId };
-    const out = await callAndParse(session, buildRepairPrompt(subtest, group), (t) => parseAiQuestions(t, ctx), signal, onUsage);
+    const out = await callAndParse(session, buildRepairPrompt(subtest, group), { subtest, items, setId: group[0].originSetId }, signal, onUsage);
     // Answers are matched to questions by position, so a partial reply can't be trusted.
     if (out.length !== group.length) continue;
+    await loadMath();
     for (const [i, old] of group.entries()) {
-      const v = validateQuestion({ ...out[i], id: old.id, originSetId: old.originSetId, starred: old.starred, createdAt: old.createdAt, updatedAt: Date.now() });
+      const v = validateQuestion({
+        ...out[i],
+        id: old.id,
+        originSetId: old.originSetId,
+        starred: old.starred,
+        report: old.report,
+        rating: old.rating,
+        passage: old.passage,
+        createdAt: old.createdAt,
+        updatedAt: Date.now(),
+      });
       if (needsRepair(v)) continue;
       await db.questions.put(v);
       fixed++;
@@ -482,52 +435,27 @@ export async function repairQuestion(q: Question, keyId?: string): Promise<void>
 }
 
 /** Generate `count` new questions modelled on `q` and insert them right after it. */
-export async function moreLikeThis(setId: string, q: Question, count: number, keyId?: string): Promise<number> {
+/** New questions like `q`, added after it in the set; `easier` asks for one difficulty step down. */
+export async function moreLikeThis(setId: string, q: Question, count: number, keyId?: string, opts: { easier?: boolean } = {}): Promise<number> {
   let questions: Question[];
+  const difficulty = opts.easier ? easier(q.difficulty) : q.difficulty;
   if (q.source === 'procedural') {
-    questions = generateFigural(q.topic, q.difficulty, count);
+    questions = (await procedural()).generateProcedural(q.topic, difficulty, count);
   } else {
     const session = await openSession(keyId);
-    const items = Array.from({ length: count }, () => ({ topic: q.topic, difficulty: q.difficulty }));
+    const items = Array.from({ length: count }, () => ({ topic: q.topic, difficulty }));
     const prompt = buildPrompt({
       subtest: q.subtest,
       items,
       avoid: [q.stem],
-      instruction: `Semua soal meniru gaya, jenis, dan tingkat kesulitan soal contoh ini, tetapi dengan isi, angka, dan konteks berbeda: "${q.stem.slice(0, 600)}"`,
+      instruction: `Semua soal meniru gaya dan jenis soal contoh ini${opts.easier ? ', tetapi lebih mudah' : ', dengan tingkat kesulitan yang sama'}, dengan isi, angka, dan konteks berbeda: "${q.stem.slice(0, 600)}"`,
     });
     const ctrl = new AbortController();
-    questions = await callAndParse(session, prompt, (t) => parseAiQuestions(t, { subtest: q.subtest, items, setId }), ctrl.signal, (i, o) => addUsage(setId, i, o));
+    questions = await callAndParse(session, prompt, { subtest: q.subtest, items, setId }, ctrl.signal, (i, o) => addUsage(setId, i, o));
   }
   const hashes = await knownHashes();
+  await loadMath();
   const validated = questions.slice(0, count).map((x) => validateQuestion(x, hashes));
   await appendToSet(setId, validated, q.id);
   return validated.length;
-}
-
-/** Recover sets left in "generating" after a reload. */
-export async function recoverInterrupted() {
-  await db.sets.where('status').equals('generating').modify({ status: 'paused' });
-}
-
-const VALIDATOR_VERSION = '2';
-
-/** Re-run the answer checks on saved questions once, after the checks themselves improve. */
-export async function revalidateStored() {
-  try {
-    if (localStorage.getItem('validatorVersion') === VALIDATOR_VERSION) return;
-  } catch {
-    return;
-  }
-  const qs = await db.questions.filter((q) => q.subtest !== 'TKP' && q.source !== 'procedural' && !q.locked).toArray();
-  const changed = qs.flatMap((q) => {
-    const v = validateQuestion(q);
-    const next = { ...v, flags: [...v.flags, ...q.flags.filter((f) => f.kind === 'duplicate')] };
-    return JSON.stringify(next.flags) !== JSON.stringify(q.flags) || next.answer !== q.answer ? [next] : [];
-  });
-  if (changed.length) await db.questions.bulkPut(changed);
-  try {
-    localStorage.setItem('validatorVersion', VALIDATOR_VERSION);
-  } catch {
-    // Private mode: the check simply runs again next time.
-  }
 }

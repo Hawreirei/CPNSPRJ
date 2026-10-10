@@ -1,18 +1,20 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { db, getSetQuestions, useSettings } from '../db';
-import { SUBTEST_NAMES } from '../domain/blueprint';
-import { SUBTESTS } from '../domain/types';
+import { opensGroup, passageLabel } from '../domain/groups';
 import type { Question } from '../domain/types';
 import { KeyLine, QuestionCard } from '../components/QuestionCard';
 import { PACK_TITLES, type PackKind } from '../lib/exportDocx';
+import { scoringRulesText, specOf, subtestsIn } from '../domain/examPackage';
 
 export default function PrintView() {
   const { setId = '' } = useParams();
   const [params] = useSearchParams();
   const pack = (params.get('pack') as PackKind) || 'soal';
   const settings = useSettings();
+  // The date printed on the sheet: when the page was opened.
+  const [printedOn] = useState(() => new Date().toLocaleDateString('id-ID', { dateStyle: 'long' }));
   const data = useLiveQuery(async () => {
     const set = await db.sets.get(setId);
     return set ? { set, questions: await getSetQuestions(set) } : null;
@@ -37,17 +39,26 @@ export default function PrintView() {
   if (!data) return null;
   const { set, questions } = data;
   const numbered = questions.map((q, i) => ({ q, i }));
-  const groups = SUBTESTS.map((s) => ({ s, items: numbered.filter((x) => x.q.subtest === s) })).filter((g) => g.items.length);
+  const groups = subtestsIn(numbered.map((x) => x.q)).map((s) => ({ s, items: numbered.filter((x) => x.q.subtest === s) }));
 
   const soal = (withKey: boolean) =>
     groups.map((g) => (
       <section key={g.s}>
         <h2 className="mt-6 mb-2 border-b pb-1">
-          {g.s} — {SUBTEST_NAMES[g.s]}
+          {g.s} — {specOf(g.s).name}
         </h2>
         <div className="space-y-3">
           {g.items.map(({ q, i }) => (
-            <QuestionCard key={q.id} q={q} index={i} mode={withKey ? 'pembahasan' : 'soal'} showFlags={false} />
+            <QuestionCard
+              key={q.id}
+              q={q}
+              index={i}
+              mode={withKey ? 'pembahasan' : 'soal'}
+              showFlags={false}
+              // Printed once, above the first question of its group.
+              passage={opensGroup(questions, q) ? 'open' : 'hidden'}
+              passageLabel={passageLabel(questions, q)}
+            />
           ))}
         </div>
       </section>
@@ -56,7 +67,12 @@ export default function PrintView() {
   const kunci = (
     <section>
       <h2 className="mt-6 mb-2">Kunci Jawaban & Skor</h2>
-      <p className="mb-2 text-xs">TWK & TIU: benar 5, salah/kosong 0. TKP: tiap opsi 1–5.</p>
+      <p className="mb-2 text-xs">
+        {scoringRulesText(
+          groups.map((g) => g.s),
+          true,
+        )}
+      </p>
       {groups.map((g) => (
         <div key={g.s} className="mb-4">
           <h3 className="mb-1">{g.s}</h3>
@@ -87,7 +103,7 @@ export default function PrintView() {
           {PACK_TITLES[pack]}: {set.name}
         </h1>
         <div className="text-sm">
-          Tanggal: {new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })} · {questions.length} soal · {set.blueprint.durationMinutes} menit
+          Tanggal: {printedOn} · {questions.length} soal · {set.blueprint.durationMinutes} menit
         </div>
         {(pack === 'soal' || pack === 'lengkap') && <div className="mt-2 text-sm">Nama: ______________________________</div>}
       </header>

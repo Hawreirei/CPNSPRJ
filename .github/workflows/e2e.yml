@@ -1,0 +1,63 @@
+name: E2E tests
+
+# Separate from the Pages deploy so a slow or failing browser run never blocks publishing.
+# The fast checks run in their own job, so a type, lint, format or unit-test failure shows within a minute.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      # oxlint --deny-warnings: a new warning fails the check.
+      - name: Lint
+        run: npm run lint
+      # Prettier with .prettierrc.json: an unformatted file fails the check.
+      - name: Format
+        run: npm run format:check
+      - name: Unit tests
+        run: npm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      # Uses the build from the step above.
+      - name: Startup bundle budget
+        run: npm run check:bundle
+      - name: Upload report, traces and screenshots
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14

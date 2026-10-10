@@ -6,7 +6,7 @@ export type ModelChoice = { kind: 'auto' } | { kind: 'inherit' } | { kind: 'mode
 const AUTO = '__auto__';
 const INHERIT = '__inherit__';
 
-export const modelLabel = (m: ModelInfo | undefined, id: string) => (m?.label && m.label !== id ? `${m.label} (${id})` : id);
+const modelLabel = (m: ModelInfo | undefined, id: string) => (m?.label && m.label !== id ? `${m.label} (${id})` : id);
 
 /**
  * Every model the key can call, grouped (recommended → cheap → strong → latest
@@ -23,6 +23,7 @@ export function ModelSelect({
   inheritOption,
   className = 'input',
   disabled,
+  id,
 }: {
   models: ModelInfo[];
   /** Selected model id, or null when the auto/inherit option is selected. */
@@ -32,12 +33,14 @@ export function ModelSelect({
   inheritOption?: string;
   className?: string;
   disabled?: boolean;
+  id?: string;
 }) {
   const byId = new Map(models.map((m) => [m.id, m]));
   const groups = groupModels(models.map((m) => m.id));
   const selected = value ?? (autoOption ? AUTO : INHERIT);
   return (
     <select
+      id={id}
       className={className}
       value={selected}
       disabled={disabled}

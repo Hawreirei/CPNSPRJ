@@ -114,7 +114,8 @@ describe('request-saving batching', () => {
     expect(full.filter((b) => !isProcedural(b)).length).toBeLessThanOrEqual(8);
     expect(mini.filter((b) => !isProcedural(b)).length).toBe(3);
     const free = { rpm: 5, tpm: 250_000, rpd: 20 };
-    expect(estimatePlan(full, 'gemini-flash-latest', DEFAULT_SETTINGS, free).requests).toBeLessThanOrEqual(4);
+    // Reading passages need a request of their own: TWK | TIU | wacana | TKP | TKP.
+    expect(estimatePlan(full, 'gemini-flash-latest', DEFAULT_SETTINGS, free).requests).toBeLessThanOrEqual(5);
     // A practice set is a single request on a free key: all sub-tests travel together.
     expect(estimatePlan(mini, 'gemini-flash-latest', DEFAULT_SETTINGS, free).requests).toBe(1);
     // Paid keys keep one request per batch so they can run in parallel.
@@ -135,7 +136,7 @@ describe('request-saving batching', () => {
     expect(groupBatches([mk('a', 'TWK', 10), mk('b', 'TIU', 10)], 0)).toHaveLength(2);
   });
 
-  it('splits a multi sub-test reply by each question\'s sub-test', () => {
+  it("splits a multi sub-test reply by each question's sub-test", () => {
     const q = (subtest: string | undefined, i: number) => ({
       subtest,
       stem: `Soal nomor ${i} yang cukup panjang`,
@@ -145,7 +146,13 @@ describe('request-saving batching', () => {
     });
     const parts = [
       { subtest: 'TWK' as const, items: [{ topic: 'Pancasila', difficulty: 'sedang' as const }] },
-      { subtest: 'TKP' as const, items: [{ topic: 'Pelayanan Publik', difficulty: 'sedang' as const }, { topic: 'Jejaring Kerja', difficulty: 'mudah' as const }] },
+      {
+        subtest: 'TKP' as const,
+        items: [
+          { topic: 'Pelayanan Publik', difficulty: 'sedang' as const },
+          { topic: 'Jejaring Kerja', difficulty: 'mudah' as const },
+        ],
+      },
     ];
     const text = JSON.stringify({ questions: [q('TKP', 1), q('twk', 2), q(undefined, 3)] });
     const out = parseMultiQuestions(text, parts);

@@ -1,7 +1,8 @@
 import Dexie, { type EntityTable } from 'dexie';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
-import type { ApiKeyRecord, Attempt, QSet, Question, RequestLog, Settings } from '../domain/types';
+import { setCustomPackages } from '../domain/examPackage';
+import type { ApiKeyRecord, Attempt, CardState, QSet, Question, RequestLog, ReviewItem, Settings } from '../domain/types';
 
 interface MetaRow {
   key: string;
@@ -15,9 +16,14 @@ export class AppDB extends Dexie {
   keys!: EntityTable<ApiKeyRecord, 'id'>;
   meta!: EntityTable<MetaRow, 'key'>;
   requests!: EntityTable<RequestLog, 'id'>;
+  reviews!: EntityTable<ReviewItem, 'questionId'>;
+  cards!: EntityTable<CardState, 'cardId'>;
 
   constructor() {
-    super('cpns-skd-builder');
+    // Dexie's query cache served a page it had already shown a stale list: an exam finished
+    // elsewhere still read as unfinished on the dashboard until a reload. Every query reads
+    // IndexedDB instead; the data here is small enough that this costs nothing visible.
+    super('cpns-skd-builder', { cache: 'disabled' });
     this.version(1).stores({
       questions: 'id, subtest, topic, difficulty, hash, starred, originSetId, createdAt',
       sets: 'id, updatedAt, status',
@@ -27,6 +33,10 @@ export class AppDB extends Dexie {
     });
     // v2: per-key request log for client-side rate limiting.
     this.version(2).stores({ requests: '++id, keyId, at, [keyId+at]' });
+    // v3: mistake notebook with spaced-repetition schedule, one row per question.
+    this.version(3).stores({ reviews: 'questionId, due, lastReviewedAt' });
+    // v4: flashcards being learned (Kartu Hafalan TWK), one row per card.
+    this.version(4).stores({ cards: 'cardId, due, lastReviewedAt' });
   }
 }
 
@@ -37,12 +47,17 @@ export async function getSettings(): Promise<Settings> {
   const saved = { ...((row?.value as Partial<Settings>) ?? {}) };
   // 20 per request was the old default; more per request saves free-tier quota.
   if (saved.questionsPerRequest === 20 && !saved.perRequestV) delete saved.questionsPerRequest;
-  return { ...DEFAULT_SETTINGS, ...saved, perRequestV: 2 };
+  const settings: Settings = { ...DEFAULT_SETTINGS, ...saved, perRequestV: 2 };
+  // Scoring reads sub-test rules synchronously, so imported packages are registered on every read.
+  setCustomPackages(settings.examPackages);
+  return settings;
 }
 
 export async function saveSettings(patch: Partial<Settings>): Promise<void> {
   const cur = await getSettings();
-  await db.meta.put({ key: 'settings', value: { ...cur, ...patch } });
+  const next = { ...cur, ...patch };
+  await db.meta.put({ key: 'settings', value: next });
+  if ('examPackages' in patch) setCustomPackages(next.examPackages);
 }
 
 export function useSettings(): Settings {

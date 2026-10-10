@@ -7,9 +7,17 @@ export interface ProviderConfig {
   baseUrl?: string;
 }
 
+/** A picture sent with the prompt (a photographed or rendered page), base64 without the data: prefix. */
+export interface LlmImage {
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+  data: string;
+}
+
 export interface LlmRequest {
   system: string;
   prompt: string;
+  /** Sent before the prompt. Only for models that read images; a model that cannot gets a clear error (#38). */
+  images?: LlmImage[];
   signal?: AbortSignal;
   maxTokens?: number;
 }
@@ -49,6 +57,8 @@ export interface ProviderInfo {
   suggestedModels: string[];
   keyUrl: string;
   keyHint: string;
+  /** How to limit what a leaked key can do (#48): the provider's own documentation, and what to set there. */
+  limitHelp: { text: string; url: string };
   needsBaseUrl?: boolean;
 }
 
@@ -60,6 +70,7 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     suggestedModels: ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-flash-lite-latest'],
     keyUrl: 'https://aistudio.google.com/app/apikey',
     keyHint: 'AIza…',
+    limitHelp: { text: 'batasi key hanya untuk Gemini API, dan pantau pemakaiannya', url: 'https://ai.google.dev/gemini-api/docs/api-key' },
   },
   openai: {
     name: 'OpenAI',
@@ -67,6 +78,7 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     suggestedModels: ['gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-5.5'],
     keyUrl: 'https://platform.openai.com/api-keys',
     keyHint: 'sk-…',
+    limitHelp: { text: 'pasang batas pengeluaran (spend limit) pada project key ini', url: 'https://developers.openai.com/api/docs/guides/spend-limits' },
   },
   anthropic: {
     name: 'Anthropic Claude',
@@ -74,6 +86,7 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     suggestedModels: ['claude-sonnet-5-5', 'claude-haiku-4-5', 'claude-opus-5-5'],
     keyUrl: 'https://console.anthropic.com/settings/keys',
     keyHint: 'sk-ant-…',
+    limitHelp: { text: 'pasang batas pengeluaran bulanan (spend limit) organisasi atau workspace', url: 'https://platform.claude.com/docs/en/manage-claude/spend-limits-api' },
   },
   compat: {
     name: 'OpenAI-compatible',
@@ -81,6 +94,7 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     suggestedModels: [],
     keyUrl: 'https://openrouter.ai/keys',
     keyHint: 'kunci dari penyedia Anda',
+    limitHelp: { text: 'bila penyedia Anda mendukung, pasang batas kredit per key (misalnya di OpenRouter)', url: 'https://openrouter.ai/docs/api-reference/limits' },
     needsBaseUrl: true,
   },
 };

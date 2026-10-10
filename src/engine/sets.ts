@@ -1,6 +1,8 @@
 import { db, getSettings } from '../db';
-import { scaledPassing } from '../domain/blueprint';
-import { SUBTESTS } from '../domain/types';
+import { fullExam, fullExamOf, scaledPassing } from '../domain/blueprint';
+import { inExamOrder, inSubtestOrder, packageOf, subtestsIn } from '../domain/examPackage';
+import { bankPriority, isReported } from '../domain/quality';
+import { keepGroupsTogether, moveUnit, takeUnits, units } from '../domain/groups';
 import { shuffle, uid } from '../lib/id';
 import type { BatchItem, Blueprint, PlanBatch, QSet, Question, Subtest, TopicResult } from '../domain/types';
 import { chunkItems, planBatches } from './plan';
@@ -26,8 +28,11 @@ export async function createAiSet(name: string, blueprint: Blueprint, keyId?: st
   return set;
 }
 
-/** Pick questions from the bank matching the blueprint. No AI cost. */
-export async function pickFromBank(blueprint: Blueprint, opts: { starredOnly?: boolean; excludeFlagged?: boolean } = {}) {
+/**
+ * Pick questions from the bank matching the blueprint. No AI cost. Reported questions are left
+ * out unless asked for, and low-rated ones are only used once the rest of a topic runs out.
+ */
+export async function pickFromBank(blueprint: Blueprint, opts: { starredOnly?: boolean; excludeFlagged?: boolean; includeReported?: boolean } = {}) {
   const picked: Question[] = [];
   const shortfall: { subtest: Subtest; missing: number }[] = [];
   for (const sec of blueprint.sections) {
@@ -39,18 +44,22 @@ export async function pickFromBank(blueprint: Blueprint, opts: { starredOnly?: b
           sec.topics.includes(q.topic) &&
           (sec.difficulty === 'campuran' || q.difficulty === sec.difficulty) &&
           (!opts.starredOnly || q.starred) &&
-          (!opts.excludeFlagged || !q.flags.some((f) => f.severity === 'warn')),
+          (!opts.excludeFlagged || !q.flags.some((f) => f.severity === 'warn')) &&
+          (opts.includeReported || !isReported(q)),
       )
       .toArray();
-    // Spread across topics: round-robin over shuffled per-topic pools.
-    const byTopic = new Map<string, Question[]>();
-    for (const q of shuffle(pool)) byTopic.set(q.topic, [...(byTopic.get(q.topic) ?? []), q]);
+    // Spread across topics: round-robin over shuffled per-topic pools, best-rated first within each.
+    // A reading passage's questions come as one unit, or not at all if they don't fit.
+    const byTopic = new Map<string, Question[][]>();
+    const ranked = units(shuffle(pool)).sort((a, b) => Math.max(...a.map(bankPriority)) - Math.max(...b.map(bankPriority)));
+    for (const u of ranked) byTopic.set(u[0].topic, [...(byTopic.get(u[0].topic) ?? []), u]);
     const lists = shuffle([...byTopic.values()]);
     const chosen: Question[] = [];
     while (chosen.length < sec.count && lists.some((l) => l.length)) {
       for (const l of lists) {
-        const q = l.shift();
-        if (q && chosen.length < sec.count) chosen.push(q);
+        const at = l.findIndex((u) => chosen.length + u.length <= sec.count);
+        if (at < 0) l.length = 0;
+        else chosen.push(...l.splice(at, 1)[0]);
       }
     }
     picked.push(...chosen);
@@ -60,7 +69,7 @@ export async function pickFromBank(blueprint: Blueprint, opts: { starredOnly?: b
 }
 
 export async function createBankSet(name: string, blueprint: Blueprint, questions: Question[]): Promise<QSet> {
-  const ordered = [...questions].sort((a, b) => SUBTESTS.indexOf(a.subtest) - SUBTESTS.indexOf(b.subtest));
+  const ordered = keepGroupsTogether(inSubtestOrder(questions));
   const set = newSet({ name, blueprint, source: 'bank', status: 'ready', questionIds: ordered.map((q) => q.id) });
   await db.sets.add(set);
   return set;
@@ -71,13 +80,20 @@ export async function createVariantSet(source: QSet): Promise<QSet> {
   const settings = await getSettings();
   const questions = (await db.questions.bulkGet(source.questionIds)).filter((q): q is Question => !!q);
   const batches: PlanBatch[] = [];
-  for (const s of SUBTESTS) {
+  for (const s of subtestsIn(questions)) {
     const qs = questions.filter((q) => q.subtest === s);
     const figural = qs.filter((q) => q.source === 'procedural');
     const ai = qs.filter((q) => q.source !== 'procedural');
     const items = (list: Question[]) => list.map((q) => ({ topic: q.topic, difficulty: q.difficulty }));
     batches.push(...chunkItems(s, items(figural), settings.questionsPerRequest));
-    batches.push(...chunkItems(s, items(ai), settings.questionsPerRequest, ai.map((q) => q.id)));
+    batches.push(
+      ...chunkItems(
+        s,
+        items(ai),
+        settings.questionsPerRequest,
+        ai.map((q) => q.id),
+      ),
+    );
   }
   const set = newSet({ name: `${source.name} (varian)`, blueprint: source.blueprint, source: 'variant', keyId: source.keyId, batches });
   await db.sets.add(set);
@@ -90,28 +106,36 @@ export async function createRemedialSet(weak: TopicResult[], perTopic = 5, attem
   const exclude = new Set(attemptedIds);
   const picked: Question[] = [];
   const batches: PlanBatch[] = [];
-  const needed: Record<Subtest, BatchItem[]> = { TWK: [], TIU: [], TKP: [] };
+  const needed: Record<Subtest, BatchItem[]> = {};
   for (const t of weak) {
-    const pool = shuffle(await db.questions.where('topic').equals(t.topic).filter((q) => q.subtest === t.subtest && !exclude.has(q.id)).toArray());
-    const take = pool.slice(0, perTopic);
+    const pool = shuffle(
+      await db.questions
+        .where('topic')
+        .equals(t.topic)
+        .filter((q) => q.subtest === t.subtest && !exclude.has(q.id) && !isReported(q))
+        .toArray(),
+    ).sort((a, b) => bankPriority(a) - bankPriority(b));
+    const take = takeUnits(pool, perTopic);
     picked.push(...take);
     const missing = perTopic - take.length;
-    if (missing > 0) needed[t.subtest].push(...Array.from({ length: missing }, () => ({ topic: t.topic, difficulty: 'sedang' as const })));
+    if (missing > 0) (needed[t.subtest] ??= []).push(...Array.from({ length: missing }, () => ({ topic: t.topic, difficulty: 'sedang' as const })));
   }
-  for (const s of SUBTESTS) batches.push(...chunkItems(s, needed[s], settings.questionsPerRequest));
-  const counts: Record<Subtest, number> = { TWK: 0, TIU: 0, TKP: 0 };
-  for (const t of weak) counts[t.subtest] += perTopic;
+  for (const s of inExamOrder(Object.keys(needed))) batches.push(...chunkItems(s, needed[s], settings.questionsPerRequest));
+  const counts: Record<Subtest, number> = {};
+  for (const t of weak) counts[t.subtest] = (counts[t.subtest] ?? 0) + perTopic;
+  const subtests = inExamOrder(Object.keys(counts));
+  const full = fullExamOf(packageOf(subtests[0] ?? 'TWK'), settings);
   const blueprint: Blueprint = {
-    sections: SUBTESTS.filter((s) => counts[s]).map((s) => ({
+    sections: subtests.map((s) => ({
       subtest: s,
       count: counts[s],
       topics: weak.filter((w) => w.subtest === s).map((w) => w.topic),
       difficulty: 'campuran' as const,
     })),
-    durationMinutes: Math.max(10, Math.round((settings.durationMinutes * weak.length * perTopic) / 110)),
-    passing: Object.fromEntries(SUBTESTS.map((s) => [s, scaledPassing(s, counts[s], settings)])) as Record<Subtest, number>,
+    durationMinutes: Math.max(10, Math.round((full.durationMinutes * weak.length * perTopic) / (full.total || 110))),
+    passing: Object.fromEntries(subtests.map((s) => [s, scaledPassing(fullExam(s, settings).passing, counts[s], fullExam(s, settings).count)])),
   };
-  const ordered = picked.sort((a, b) => SUBTESTS.indexOf(a.subtest) - SUBTESTS.indexOf(b.subtest));
+  const ordered = keepGroupsTogether(inSubtestOrder(picked));
   const set = newSet({
     name: `Latihan topik lemah ${new Date().toLocaleDateString('id-ID')}`,
     blueprint,
@@ -125,14 +149,16 @@ export async function createRemedialSet(weak: TopicResult[], perTopic = 5, attem
 }
 
 export async function deleteSet(id: string, alsoQuestions: boolean) {
-  await db.transaction('rw', db.sets, db.questions, db.attempts, async () => {
+  await db.transaction('rw', [db.sets, db.questions, db.attempts, db.reviews], async () => {
     const set = await db.sets.get(id);
     if (!set) return;
     if (alsoQuestions) {
       // Only delete questions not used by another set.
       const others = await db.sets.filter((s) => s.id !== id).toArray();
       const used = new Set(others.flatMap((s) => s.questionIds));
-      await db.questions.bulkDelete(set.questionIds.filter((q) => !used.has(q)));
+      const unused = set.questionIds.filter((q) => !used.has(q));
+      await db.questions.bulkDelete(unused);
+      await db.reviews.bulkDelete(unused);
     }
     await db.sets.delete(id);
   });
@@ -144,24 +170,22 @@ export async function removeFromSet(setId: string, questionId: string) {
   await db.sets.update(setId, { questionIds: set.questionIds.filter((x) => x !== questionId), updatedAt: Date.now() });
 }
 
-export async function moveInSet(setId: string, questionId: string, delta: number) {
+/** Move a question one place, or its whole reading-passage group past the neighbouring question or group. */
+export async function moveInSet(setId: string, questionId: string, delta: -1 | 1) {
   const set = await db.sets.get(setId);
   if (!set) return;
-  const ids = [...set.questionIds];
-  const i = ids.indexOf(questionId);
-  const j = i + delta;
-  if (i < 0 || j < 0 || j >= ids.length) return;
-  [ids[i], ids[j]] = [ids[j], ids[i]];
+  const questions = (await db.questions.bulkGet(set.questionIds)).filter((q): q is Question => !!q);
+  const ids = moveUnit(questions, questionId, delta).map((q) => q.id);
   await db.sets.update(setId, { questionIds: ids, updatedAt: Date.now() });
 }
 
 /** Passing threshold for a set: blueprint value, scaled when the set is partial. */
-export async function passingForSet(set: QSet, questions: Question[]): Promise<Record<Subtest, number>> {
+export async function passingForSet(set: QSet, questions: Question[]): Promise<Partial<Record<Subtest, number>>> {
   const settings = await getSettings();
-  const out = { ...set.blueprint.passing };
-  for (const s of SUBTESTS) {
-    const n = questions.filter((q) => q.subtest === s).length;
-    if (n && n !== settings.counts[s]) out[s] = scaledPassing(s, n, { passing: set.blueprint.passing, counts: settings.counts });
+  const out: Partial<Record<Subtest, number>> = {};
+  for (const s of subtestsIn(questions)) {
+    const mark = scaledPassing(set.blueprint.passing[s], questions.filter((q) => q.subtest === s).length, fullExam(s, settings).count);
+    if (mark !== undefined) out[s] = mark;
   }
   return out;
 }

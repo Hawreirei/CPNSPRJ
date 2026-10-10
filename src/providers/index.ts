@@ -1,13 +1,15 @@
-import { completeAnthropic, listAnthropicModels } from './anthropic';
 import { getJson, postJson } from './http';
 import { ProviderError } from './types';
-import type { LlmRequest, LlmResponse, ProviderConfig } from './types';
+import type { LlmImage, LlmRequest, LlmResponse, ProviderConfig } from './types';
 import type { ModelInfo } from '../domain/types';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const OPENAI_BASE = 'https://api.openai.com/v1';
 
 const trimSlash = (s: string) => s.replace(/\/+$/, '');
+
+// The Anthropic SDK is ~50 KB gzipped and only Anthropic keys need it, so it loads on first use.
+const anthropic = () => import('./anthropic');
 
 /**
  * Keep Gemini's hidden "thinking" short. Gemini 3 thinks at length by default;
@@ -36,7 +38,7 @@ async function completeGemini(cfg: ProviderConfig, req: LlmRequest): Promise<Llm
       `${GEMINI_BASE}/models/${encodeURIComponent(cfg.model)}:generateContent`,
       {
         systemInstruction: { parts: [{ text: req.system }] },
-        contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
+        contents: [{ role: 'user', parts: [...(req.images ?? []).map((i) => ({ inlineData: { mimeType: i.mimeType, data: i.data } })), { text: req.prompt }] }],
         generationConfig: { responseMimeType: 'application/json', maxOutputTokens: req.maxTokens ?? 32768, ...(thinkingConfig ? { thinkingConfig } : {}) },
       },
       { 'x-goog-api-key': cfg.apiKey },
@@ -68,12 +70,14 @@ async function completeGemini(cfg: ProviderConfig, req: LlmRequest): Promise<Llm
   };
 }
 
+const imagePart = (i: LlmImage) => ({ type: 'image_url', image_url: { url: `data:${i.mimeType};base64,${i.data}`, detail: 'high' } });
+
 async function completeOpenAiLike(base: string, cfg: ProviderConfig, req: LlmRequest, isOpenAi: boolean): Promise<LlmResponse> {
   const body: Record<string, unknown> = {
     model: cfg.model,
     messages: [
       { role: 'system', content: req.system },
-      { role: 'user', content: req.prompt },
+      { role: 'user', content: req.images?.length ? [...req.images.map(imagePart), { type: 'text', text: req.prompt }] : req.prompt },
     ],
     response_format: { type: 'json_object' },
   };
@@ -108,13 +112,33 @@ async function completeOpenAiLike(base: string, cfg: ProviderConfig, req: LlmReq
 }
 
 export async function complete(cfg: ProviderConfig, req: LlmRequest): Promise<LlmResponse> {
+  if (!req.images?.length) return completeText(cfg, req);
+  try {
+    return await completeText(cfg, req);
+  } catch (e) {
+    throw imageError(e, cfg.model);
+  }
+}
+
+/**
+ * A rejected request that carried an image most likely means the model cannot read images. Nothing
+ * is assumed up front (an OpenAI-compatible server's models say nothing about it); the error decides.
+ */
+export function imageError(e: unknown, model: string): unknown {
+  if (!(e instanceof ProviderError) || !e.status || ![400, 415, 422].includes(e.status)) return e;
+  return new ProviderError(`Model ${model} tampaknya tidak bisa membaca gambar. Pilih model yang mendukung gambar (vision) di halaman API Keys. Pesan penyedia: ${e.message}`, {
+    status: e.status,
+  });
+}
+
+async function completeText(cfg: ProviderConfig, req: LlmRequest): Promise<LlmResponse> {
   switch (cfg.provider) {
     case 'gemini':
       return completeGemini(cfg, req);
     case 'openai':
       return completeOpenAiLike(OPENAI_BASE, cfg, req, true);
     case 'anthropic':
-      return completeAnthropic(cfg, req);
+      return (await anthropic()).completeAnthropic(cfg, req);
     case 'compat':
       if (!cfg.baseUrl) throw new ProviderError('Base URL wajib diisi untuk penyedia OpenAI-compatible.');
       return completeOpenAiLike(trimSlash(cfg.baseUrl), cfg, req, false);
@@ -148,7 +172,7 @@ export async function listModelInfo(cfg: ProviderConfig): Promise<ModelInfo[]> {
       return (d.data ?? []).map((m) => ({ id: m.id, label: m.name }));
     }
     case 'anthropic':
-      return listAnthropicModels(cfg);
+      return (await anthropic()).listAnthropicModels(cfg);
   }
 }
 
@@ -158,4 +182,4 @@ export async function listModels(cfg: ProviderConfig): Promise<string[]> {
 
 export { PROVIDERS, DEFAULT_PRICES, FALLBACK_PRICE, ProviderError } from './types';
 export { pickRecommendedModel, groupModels, isModelUnavailable, suggestedReplacement } from './models';
-export type { ProviderConfig, LlmResponse } from './types';
+export type { ProviderConfig, LlmImage, LlmResponse } from './types';

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { Question } from '../domain/types';
 import { exportDocx, type ExportMeta, type PackKind } from '../lib/exportDocx';
-import { downloadBlob, Modal } from './ui';
+import { Modal } from './ui';
+import { downloadBlob, safeFileName } from '../lib/download';
 
 const CONTENTS: { id: PackKind; title: string; hint: string }[] = [
   { id: 'soal', title: 'Soal saja', hint: 'Untuk dibagikan ke peserta, tanpa jawaban.' },
@@ -9,14 +10,6 @@ const CONTENTS: { id: PackKind; title: string; hint: string }[] = [
   { id: 'lengkap', title: 'Lengkap', hint: 'Soal, kunci jawaban, dan pembahasan.' },
   { id: 'kunci', title: 'Kunci jawaban saja', hint: 'Daftar jawaban dan skor.' },
 ];
-
-/** File names browsers accept everywhere: letters, digits, spaces, dashes, dots, parentheses. */
-export const safeFileName = (s: string) =>
-  s
-    .normalize('NFKD')
-    .replace(/[^\w\-. ()]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim() || 'soal';
 
 const FILE_SUFFIX: Record<PackKind, string> = {
   soal: 'Soal',
@@ -37,8 +30,7 @@ export function DownloadDialog({ open, onClose, meta, questions }: { open: boole
     setBusy(true);
     setError(null);
     try {
-      const blob =
-        format === 'pdf' ? await (await import('../lib/exportPdf')).exportPdf(meta, questions, pack) : await exportDocx(meta, questions, pack);
+      const blob = format === 'pdf' ? await (await import('../lib/exportPdf')).exportPdf(meta, questions, pack) : await exportDocx(meta, questions, pack);
       downloadBlob(blob, `${safeFileName(`${meta.name} - ${FILE_SUFFIX[pack]}`)}.${format}`);
       onClose();
     } catch (e) {

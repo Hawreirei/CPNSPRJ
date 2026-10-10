@@ -1,4 +1,35 @@
-import { evaluate } from 'mathjs';
+import type { MathJsInstance } from 'mathjs';
+
+// mathjs is the largest dependency (~180 KB gzipped) and only answer checking needs it,
+// so it loads on demand: await loadMath() before calling validateQuestion.
+let mathEvaluate: MathJsInstance['evaluate'] | null = null;
+let loading: Promise<void> | null = null;
+
+export function loadMath(): Promise<void> {
+  loading ??= import('mathjs').then(
+    (m) => {
+      mathEvaluate = m.evaluate;
+    },
+    (e: unknown) => {
+      // A failed chunk fetch (offline before the app was cached) may succeed later.
+      loading = null;
+      throw e;
+    },
+  );
+  return loading;
+}
+
+export class MathNotLoadedError extends Error {
+  constructor() {
+    super('mathjs belum dimuat: panggil loadMath() sebelum validateQuestion().');
+  }
+}
+
+/** Thrown, not swallowed: an unchecked answer must never pass as a checked one. */
+function evaluate(expr: string): unknown {
+  if (!mathEvaluate) throw new MathNotLoadedError();
+  return mathEvaluate(expr);
+}
 
 /**
  * Parse a number written in an option, accepting Indonesian formatting
@@ -32,7 +63,8 @@ export function parseNumeric(raw: string): number | null {
     const v = evaluate(s);
     if (typeof v !== 'number' || !Number.isFinite(v)) return null;
     return pct ? v / 100 : v;
-  } catch {
+  } catch (e) {
+    if (e instanceof MathNotLoadedError) throw e;
     return null;
   }
 }
@@ -68,7 +100,8 @@ function evalNumber(expr: string): number | null {
       return Number.isFinite(n) ? n : null;
     }
     return null;
-  } catch {
+  } catch (e) {
+    if (e instanceof MathNotLoadedError) throw e;
     return null;
   }
 }

@@ -1,15 +1,22 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { db, getSetQuestions } from '../db';
-import { SUBTESTS } from '../domain/types';
+import { db, getSetQuestions, useSettings } from '../db';
 import type { QSet, Question, Subtest } from '../domain/types';
 import { moreLikeThis, needsRepair, repairQuestion, rewriteQuestion, startGeneration, stopGeneration, useGenProgress } from '../engine/generator';
+import { crossCheckQuestions, isCrossCheckable, needsCrossCheck, type CrossCheckResult } from '../engine/crosscheck';
 import { moveInSet, removeFromSet } from '../engine/sets';
 import { QuestionCard, type CardMode } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
+import { FeedbackDialog } from '../components/FeedbackDialog';
+
+// Sharing (and its QR code library) loads only when someone shares.
+const ShareDialog = lazy(() => import('../components/ShareDialog'));
+import { answerStats } from '../domain/quality';
+import { opensGroup, passageLabel } from '../domain/groups';
 import { DownloadDialog } from '../components/DownloadDialog';
 import { Badge, Empty, ProgressBar } from '../components/ui';
+import { subtestsIn } from '../domain/examPackage';
 
 const STATUS_TEXT: Record<string, string> = { ready: 'Siap dipakai', generating: 'Sedang dibuat', paused: 'Belum selesai', draft: 'Draf' };
 
@@ -21,18 +28,43 @@ export default function SetDetail() {
   const [filter, setFilter] = useState<'all' | 'flagged' | 'starred'>('all');
   const [sub, setSub] = useState<Subtest | 'all'>('all');
   const [editing, setEditing] = useState<Question | null>(null);
+  const [feedbackFor, setFeedbackFor] = useState<Question | null>(null);
+  const attempts = useLiveQuery(() => db.attempts.toArray(), []);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const settings = useSettings();
+  const [checking, setChecking] = useState(false);
+  const [checkMsg, setCheckMsg] = useState<string | null>(null);
 
   if (set === undefined || !questions) return null;
   if (set === null) return <Empty title="Set tidak ditemukan" />;
 
   const flaggedCount = questions.filter((q) => q.flags.some((f) => f.severity === 'warn')).length;
   const starredCount = questions.filter((q) => q.starred).length;
+  const stats = answerStats(attempts ?? [], questions);
   const shown = questions
     .map((q, i) => ({ q, i }))
     .filter(({ q }) => (sub === 'all' || q.subtest === sub) && (filter === 'all' || (filter === 'flagged' ? q.flags.some((f) => f.severity === 'warn') : q.starred)));
+
+  const shownQuestions = shown.map((x) => x.q);
+  const unchecked = questions.filter(needsCrossCheck);
+  const describe = (r: CrossCheckResult) =>
+    `${r.checked} soal diperiksa silang, ${r.mismatched} berbeda jawaban${r.mismatched ? ' (ditandai "perlu dicek")' : ''}.` +
+    (r.pending ? ` ${r.pending} soal belum diperiksa karena kuota habis.` : '');
+  async function crossCheckAll() {
+    setChecking(true);
+    setCheckMsg(null);
+    setError(null);
+    try {
+      setCheckMsg(describe(await crossCheckQuestions(unchecked, set!.keyId)));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setChecking(false);
+    }
+  }
 
   async function act(q: Question, fn: () => Promise<unknown>) {
     setBusyId(q.id);
@@ -50,6 +82,8 @@ export default function SetDetail() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
+          {/* The visible name is an editable field; the page still needs a heading. */}
+          <h1 className="sr-only">{set.name}</h1>
           <input
             className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none focus:underline"
             defaultValue={set.name}
@@ -59,21 +93,27 @@ export default function SetDetail() {
           />
           <div className="muted mt-1 text-sm">
             {STATUS_TEXT[set.status] ?? set.status} · {questions.length} soal
-            {SUBTESTS.map((s) => {
-              const n = questions.filter((q) => q.subtest === s).length;
-              return n ? ` · ${s} ${n}` : '';
-            })}
+            {subtestsIn(questions).map((s) => ` · ${s} ${questions.filter((q) => q.subtest === s).length}`)}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <button className="btn btn-primary" disabled={!questions.length} onClick={() => setDownloading(true)}>
             ⬇ Unduh PDF / Word
           </button>
+          <button className="btn" disabled={!questions.length || set.status === 'generating'} onClick={() => setSharing(true)}>
+            Bagikan
+          </button>
           <Link className={`btn ${questions.length ? '' : 'pointer-events-none opacity-50'}`} to={`/simulation?set=${set.id}`}>
             Mulai latihan ujian
           </Link>
+          {settings.crossCheck?.enabled && unchecked.length > 0 && set.status !== 'generating' && (
+            <button className="btn" disabled={checking} onClick={crossCheckAll} title="Minta model lain menjawab soal tanpa melihat kunci. Memakai kuota AI.">
+              {checking ? 'Memeriksa silang…' : `Periksa silang (${unchecked.length} soal)`}
+            </button>
+          )}
         </div>
       </div>
+      {checkMsg && <div className="rounded-lg bg-brand-50 p-3 text-sm dark:bg-slate-800">{checkMsg}</div>}
 
       <GenerationPanel set={set} />
 
@@ -95,7 +135,7 @@ export default function SetDetail() {
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-1.5 text-sm">
-            {(['all', ...SUBTESTS] as const).map((s) => (
+            {['all', ...subtestsIn(questions)].map((s) => (
               <Chip key={s} on={sub === s} onClick={() => setSub(s)}>
                 {s === 'all' ? 'Semua' : s}
               </Chip>
@@ -125,22 +165,36 @@ export default function SetDetail() {
               q={q}
               index={i}
               mode={mode}
+              // The passage in full above the first shown question of its group, folded on the rest.
+              passage={opensGroup(shownQuestions, q) ? 'open' : 'closed'}
+              passageLabel={passageLabel(questions, q)}
+              stats={stats.get(q.id)}
+              onFeedback={() => setFeedbackFor(q)}
               actions={
                 busyId === q.id ? (
                   <Badge tone="blue">memproses…</Badge>
                 ) : (
                   <>
                     {needsRepair(q) && (
-                      <button className="btn btn-sm" title="Minta AI mencocokkan ulang kunci jawaban dan pembahasan" onClick={() => void act(q, () => repairQuestion(q, set.keyId))}>
+                      <button
+                        className="btn btn-sm"
+                        title="Minta AI mencocokkan ulang kunci jawaban dan pembahasan"
+                        onClick={() => void act(q, () => repairQuestion(q, set.keyId))}
+                      >
                         🔧 Perbaiki
                       </button>
                     )}
-                    <button className="btn btn-ghost btn-sm" title={q.starred ? 'Hapus bintang' : 'Beri bintang'} onClick={() => db.questions.update(q.id, { starred: !q.starred })}>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      title={q.starred ? 'Hapus bintang' : 'Beri bintang'}
+                      onClick={() => db.questions.update(q.id, { starred: !q.starred })}
+                    >
                       {q.starred ? '★' : '☆'}
                     </button>
                     <ActionMenu
                       items={[
                         { label: 'Edit soal', disabled: q.locked, onClick: () => setEditing(q) },
+                        { label: q.report ? 'Ubah laporan atau nilai' : 'Laporkan atau nilai soal', onClick: () => setFeedbackFor(q) },
                         {
                           label: 'Tulis ulang dengan AI',
                           disabled: q.locked || q.source === 'procedural',
@@ -149,6 +203,16 @@ export default function SetDetail() {
                             if (instr === null) return;
                             void act(q, () => rewriteQuestion(q, instr, set.keyId));
                           },
+                        },
+                        {
+                          label: 'Periksa silang dengan model lain',
+                          disabled: !isCrossCheckable(q),
+                          onClick: () =>
+                            void act(q, async () => {
+                              const r = await crossCheckQuestions([q], set.keyId);
+                              if (!r.checked)
+                                throw new Error(r.pending ? 'Kuota AI hari ini habis; soal belum diperiksa silang.' : 'Pemeriksa tidak memberi jawaban untuk soal ini. Coba lagi.');
+                            }),
                         },
                         {
                           label: 'Buat soal serupa',
@@ -177,9 +241,13 @@ export default function SetDetail() {
         </div>
       )}
       {editing && <QuestionEditor q={editing} onClose={() => setEditing(null)} />}
-      {downloading && (
-        <DownloadDialog open onClose={() => setDownloading(false)} meta={{ name: set.name, durationMinutes: set.blueprint.durationMinutes }} questions={questions} />
+      {feedbackFor && <FeedbackDialog q={feedbackFor} onClose={() => setFeedbackFor(null)} />}
+      {sharing && (
+        <Suspense fallback={null}>
+          <ShareDialog setId={set.id} name={set.name} onClose={() => setSharing(false)} />
+        </Suspense>
       )}
+      {downloading && <DownloadDialog open onClose={() => setDownloading(false)} meta={{ name: set.name, durationMinutes: set.blueprint.durationMinutes }} questions={questions} />}
     </div>
   );
 }
@@ -256,9 +324,7 @@ function GenerationPanel({ set }: { set: QSet }) {
       </div>
       <ProgressBar value={done} max={total} />
       {running && prog?.waitUntil && <WaitCountdown until={prog.waitUntil} />}
-      {!running && !finished && lastError && (
-        <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">{lastError}</p>
-      )}
+      {!running && !finished && lastError && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">{lastError}</p>}
       {running && <p className="muted text-xs">Soal tersimpan otomatis. Anda boleh membuka halaman lain selama tab ini tetap terbuka.</p>}
       {prog?.log.length ? (
         <details>
@@ -277,7 +343,7 @@ function GenerationPanel({ set }: { set: QSet }) {
 }
 
 function WaitCountdown({ until }: { until: number }) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
