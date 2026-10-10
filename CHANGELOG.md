@@ -2,6 +2,12 @@
 
 Perubahan yang terasa bagi pengguna, per versi. Berkas ini dibuat dari `src/data/changelog.ts` dengan `npm run changelog`; jangan diedit langsung.
 
+## 1.6.0 (2026-10-10)
+
+- Progres Belajar: pilih "5 terakhir" untuk melihat grafik, angka, dan tren dari lima ujian terakhir saja; tombol 1, 2, dan 3 menampilkan TWK, TIU, atau TKP sebagai grafik utama; Unduh CSV menyimpan riwayat skor untuk dibuka di Excel atau Google Sheets.
+- Kartu Hafalan TWK: buka pasal UUD 1945 langsung dari kolom di atas halaman, misalnya "28I"; ulangan hari ini dan daftar materi kini berdampingan.
+- Kamus Rumus TIU: pencarian di atas halaman, daftar topik tetap terlihat di samping, dan rumus tampil dua kolom di layar lebar.
+
 ## 1.5.0 (2026-10-10)
 
 - Tampilan baru yang lebih lega. Beranda kini muat satu layar di laptop: target hari ini, kesiapan per sub-tes, dan konsistensi di baris atas, lalu angka ringkas, set terbaru, dan pintasan. Pengingat cadangan dan penyimpanan tampil sebagai satu baris tipis.

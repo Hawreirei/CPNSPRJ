@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import type { Page } from '@playwright/test';
 import { expect, keyAndSet, KEY, test } from './fixtures';
 
@@ -50,4 +51,15 @@ test('the report explains the score and the progress page shows the trend', asyn
   await expect(trends).toContainText('Perkiraan kasar ujian berikutnya');
   await expect(trends.getByText('Paling membaik')).toBeVisible();
   await expect(trends.getByText('Paling menurun')).toBeVisible();
+
+  // Number keys put a sub-test on the large chart; the score history downloads as CSV.
+  await page.keyboard.press('3');
+  await expect(page.getByRole('button', { name: 'Tampilkan TKP sebagai grafik utama' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Tampilkan TWK sebagai grafik utama' })).toBeVisible();
+  const [csv] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Unduh CSV' }).click()]);
+  expect(csv.suggestedFilename()).toBe('riwayat-skor.csv');
+  const lines = (await readFile((await csv.path())!, 'utf8')).trimEnd().split('\r\n');
+  expect(lines[0]).toBe('\uFEFFTanggal;Set;Mode;TWK;TWK maks;TIU;TIU maks;TKP;TKP maks;Total;Total maks;Status');
+  expect(lines).toHaveLength(4);
+  expect(lines[3]).toContain(';ujian;20;50;');
 });

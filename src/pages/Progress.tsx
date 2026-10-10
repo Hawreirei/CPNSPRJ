@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { db, useSettings } from '../db';
 import { SUBTEST_NAMES } from '../domain/blueprint';
@@ -10,6 +10,8 @@ import { isSkd, packageOf, packages } from '../domain/examPackage';
 import { examSeries, MIN_EXAMS_FOR_PROJECTION, reasonSummary, topicMovers, trend } from '../engine/analytics';
 import { ScoreChart, ScoreSpark, type TrendPoint } from '../components/ScoreTrend';
 import { MAX_PER_QUESTION } from '../domain/scoring';
+import { historyCsv } from '../domain/historyCsv';
+import { downloadBlob } from '../lib/download';
 import { Badge, Empty, PageHeader, ProgressBar, SubtestBadge, Tabs } from '../components/ui';
 
 export default function Progress() {
@@ -18,6 +20,19 @@ export default function Progress() {
   const [picked, setPicked] = useState<Subtest | null>(readFocus);
   const [full, setFull] = useState(false);
   const [only, setOnly] = useState<'semua' | Subtest>('semua');
+  const [recentOnly, setRecentOnly] = useState(false);
+  const summary = !params.get('tab');
+  // 1, 2, 3 put TWK, TIU or TKP on the large chart, like the number keys elsewhere in the app.
+  useEffect(() => {
+    if (!summary) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) return;
+      const s = SUBTESTS[Number(e.key) - 1];
+      if (s && /^[1-9]$/.test(e.key)) pickFocus(s, setPicked);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [summary]);
   const attempts = useLiveQuery(
     () =>
       db.attempts
@@ -50,7 +65,9 @@ export default function Progress() {
   const exams = examAttempts(attempts);
   const practiceCount = attempts.length - exams.length;
   // Partial sets are rescaled to the full maximum so every exam sits on the same chart.
-  const bySubtest = examSeries(attempts, settings.counts);
+  const allSeries = examSeries(attempts, settings.counts);
+  // "Ujian terakhir" narrows the whole summary (charts, numbers, trend) to the latest exams.
+  const bySubtest = recentOnly ? (Object.fromEntries(SUBTESTS.map((s) => [s, allSeries[s].slice(-RECENT_EXAMS)])) as typeof allSeries) : allSeries;
   const series = (s: Subtest): TrendPoint[] =>
     bySubtest[s].map((p) => ({
       label: `${new Date(p.at).toLocaleDateString('id-ID')} · ${p.setName}`,
@@ -101,14 +118,8 @@ export default function Progress() {
     return t ? (settings.passing[s] - t.last) / (settings.counts[s] * MAX_PER_QUESTION) : -Infinity;
   };
   const focus = picked && SUBTESTS.includes(picked) ? picked : [...SUBTESTS].sort((a, b) => shortfall(b) - shortfall(a))[0];
-  const pick = (s: Subtest) => {
-    setPicked(s);
-    try {
-      localStorage.setItem(FOCUS_KEY, s);
-    } catch {
-      /* private window: the pick lasts for this visit */
-    }
-  };
+  const pick = (s: Subtest) => pickFocus(s, setPicked);
+  const exportCsv = () => downloadBlob(new Blob([historyCsv(attempts)], { type: 'text/csv;charset=utf-8' }), 'riwayat-skor.csv');
 
   return (
     <div className="space-y-4">
@@ -121,16 +132,31 @@ export default function Progress() {
           </>
         }
         actions={
-          tab === 'ringkasan' && (
-            <div className="seg" role="group" aria-label="Skala grafik">
-              <button aria-pressed={!full} onClick={() => setFull(false)}>
-                Skala fokus
-              </button>
-              <button aria-pressed={full} onClick={() => setFull(true)}>
-                Skala penuh
-              </button>
-            </div>
-          )
+          <>
+            {tab === 'ringkasan' && exams.length > RECENT_EXAMS && (
+              <div className="seg" role="group" aria-label="Rentang ujian">
+                <button aria-pressed={!recentOnly} onClick={() => setRecentOnly(false)}>
+                  Semua ujian
+                </button>
+                <button aria-pressed={recentOnly} onClick={() => setRecentOnly(true)}>
+                  {RECENT_EXAMS} terakhir
+                </button>
+              </div>
+            )}
+            {tab === 'ringkasan' && (
+              <div className="seg" role="group" aria-label="Skala grafik">
+                <button aria-pressed={!full} onClick={() => setFull(false)}>
+                  Skala fokus
+                </button>
+                <button aria-pressed={full} onClick={() => setFull(true)}>
+                  Skala penuh
+                </button>
+              </div>
+            )}
+            <button className="btn btn-sm" onClick={exportCsv}>
+              ⤓ Unduh CSV
+            </button>
+          </>
         }
       />
 
@@ -306,6 +332,18 @@ export default function Progress() {
 }
 
 const FOCUS_KEY = 'progress-focus';
+/** Exams the "terakhir" range keeps. */
+const RECENT_EXAMS = 5;
+
+/** Put `s` on the large chart and remember it in this browser. */
+function pickFocus(s: Subtest, setPicked: (s: Subtest) => void) {
+  setPicked(s);
+  try {
+    localStorage.setItem(FOCUS_KEY, s);
+  } catch {
+    /* private window: the pick lasts for this visit */
+  }
+}
 
 function readFocus(): Subtest | null {
   try {
@@ -344,6 +382,7 @@ function HeroChart({
           <p className="muted mt-0.5 text-xs">
             Garis putus = ambang {passing}
             {!full && points.length > 0 && <span className="text-amber-700 dark:text-amber-300"> · sumbu tidak mulai dari 0</span>}
+            <span className="hidden lg:inline"> · tombol 1, 2, 3 memilih TWK, TIU, TKP</span>
           </p>
         </div>
         <dl className="ml-auto flex flex-wrap gap-x-7 gap-y-2">
