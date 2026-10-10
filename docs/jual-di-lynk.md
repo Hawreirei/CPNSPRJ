@@ -4,6 +4,8 @@ Ganti semua isian dalam kurung siku `[...]` sebelum dipakai. Angka dan fitur di 
 
 ---
 
+> **Versi final nama, deskripsi, dan harga ada di [produk-lynk.md](produk-lynk.md).** Bagian 1 di bawah adalah draf awal dan tidak lagi dipakai. Bagian 2 (panduan pembeli) masih berlaku.
+
 ## BAGIAN 1. Halaman produk di Lynk
 
 ### Judul produk
