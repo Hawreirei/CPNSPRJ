@@ -11,15 +11,17 @@ Isi dulu: `[LINK APLIKASI]` (alamat domain Cloudflare Anda) dan `[KONTAK WA / IG
 | 4 | **Skorin Coba**: 20 Soal SKD Gratis | Rp0 | – |
 | 2 | **Skorin Paket Soal**: 1 Set (110 soal) | Rp29.000 | Rp24.000 |
 | 2 | **Skorin Paket Soal**: 3 Set (330 soal) | Rp69.000 | Rp55.000 |
-| 1 | **Skorin Studio**: Akses Aplikasi Pembuat Soal | Rp39.000 | Rp29.000 |
-| 3 | **Skorin Starter**: Bundel 5 Set (±550 soal) + Aplikasi | Rp79.000 | Rp59.000 |
-| 3 | **Skorin Lengkap**: Bundel 10 Set (±1.100 soal) + Aplikasi | Rp129.000 | Rp99.000 |
+| 1 | **Skorin Studio**: Akses Aplikasi Pembuat Soal | **Rp79.000** | tanpa diskon |
+| 3 | **Skorin Starter**: Bundel 5 Set (±550 soal) + Aplikasi | Rp99.000 | tanpa diskon |
+| 3 | **Skorin Lengkap**: Bundel 10 Set (±1.100 soal) + Aplikasi | Rp129.000 | Rp109.000 |
 
 Aturan pakai:
 
 - Jual **Starter** hanya jika sudah ada minimal 5 set yang selesai diperiksa, dan **Lengkap** hanya jika sudah ada 10. Ubah angka di judul sesuai jumlah set yang sebenarnya.
 - Produk "Mini 30 soal" dari rancangan awal **dihapus**: nilainya mirip Free Sample dan mudah termakan biaya pembayaran.
-- Pasang harga normal sebagai harga coret, dan harga peluncuran sebagai harga aktif selama 14 hari. Setelah itu kembali ke harga normal.
+- Pasang harga normal sebagai harga coret, dan harga peluncuran sebagai harga aktif selama 14 hari. Setelah itu kembali ke harga normal. Hanya PDF dan Skorin Lengkap yang diberi diskon peluncuran.
+- **Tangga harga: Studio Rp79.000 → Starter Rp99.000 → Lengkap Rp129.000.** Studio dipatok Rp79.000 atas keputusan pemilik. Starter dinaikkan dari Rp79.000 ke Rp99.000 agar tidak sama dengan Studio (Starter berisi aplikasi + 5 set, jadi harganya harus di atas Studio). Skorin Lengkap diskon peluncuran Rp109.000, supaya tetap di atas Starter.
+- **Peringatan:** Rp79.000 untuk aplikasi tanpa soal bawaan hampir sama dengan Paket 3 Set PDF (330 soal, Rp69.000). Pantau konversinya. Jika halaman banyak dilihat tetapi tidak laku, turunkan harga atau tambahkan nilai (lihat bonus di bawah).
 - Jangan menaikkan harga sebelum ada bukti (laku jauh di atas perkiraan dan tidak ada yang menawar).
 
 ---
@@ -67,7 +69,7 @@ Soal SKD siap cetak, tanpa aplikasi dan tanpa langganan. Tiap set mengikuti komp
 
 ## 1. Skorin Studio: Akses Aplikasi Pembuat Soal SKD
 
-**Harga:** Rp39.000
+**Harga:** Rp79.000 (tanpa diskon peluncuran)
 
 **Deskripsi**
 
@@ -82,6 +84,13 @@ Aplikasi latihan SKD yang bisa Anda isi sendiri. Buat soal dengan AI, kerjakan d
 - Kartu Hafalan TWK, Kamus Rumus TIU, dan Rencana belajar
 - Unduh PDF atau Word, dan bisa dipakai offline setelah dibuka sekali
 
+**Termasuk**
+
+- Akses ke aplikasi dan pembaruan fiturnya
+- Panduan memulai lengkap
+- Grup pembeli untuk dukungan dan pengumuman pembaruan [HAPUS BARIS INI JIKA TIDAK ADA GRUP]
+- Bonus: 1 set PDF SKD 110 soal [HAPUS JIKA TIDAK DIBERIKAN; nilainya Rp29.000 dan membuat harga terasa lebih adil]
+
 **Penting diketahui**
 
 - Produk ini **tidak berisi soal bawaan**. Soal dibuat sendiri memakai API key AI milik Anda (Gemini, OpenAI, Claude, atau OpenRouter). Biaya AI dibayar langsung ke penyedia sesuai pemakaian, dan ada penyedia dengan kuota gratis.
@@ -92,7 +101,7 @@ Aplikasi latihan SKD yang bisa Anda isi sendiri. Buat soal dengan AI, kerjakan d
 
 ## 3a. Skorin Starter: Bundel 5 Set + Aplikasi
 
-**Harga:** Rp79.000
+**Harga:** Rp99.000 (tanpa diskon peluncuran)
 
 **Deskripsi**
 
