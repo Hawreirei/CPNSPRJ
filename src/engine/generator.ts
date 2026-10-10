@@ -1,10 +1,11 @@
 import { useSyncExternalStore } from 'react';
-import { db, getSettings } from '../db';
+import { db, getSetQuestions, getSettings } from '../db';
 import { endOfGroup } from '../domain/groups';
 import { easier } from '../domain/blueprint';
 import { buildMultiPrompt, buildPassagePrompt, buildPrompt, buildRewritePrompt, SYSTEM_PROMPT } from '../domain/prompts';
 import { parseAiQuestions, salvageQuestions } from '../domain/schemas';
 import { loadMath, validateQuestion } from '../domain/validators';
+import { keyBalancer, keyIndex, placeKey } from '../domain/shuffle';
 import { ProviderError } from '../providers';
 import type { BatchItem, PlanBatch, QSet, Question, Subtest } from '../domain/types';
 import { uid } from '../lib/id';
@@ -131,12 +132,36 @@ export function slotFor(group: PlanBatch[], taken: Map<Subtest, number>, named?:
   return null;
 }
 
+type Balance = ReturnType<typeof keyBalancer>;
+const warnings = (q: Question) => q.flags.filter((f) => f.severity === 'warn').length;
+
+/**
+ * Check a new question and move its answer to where the set needs one, so answers follow no
+ * pattern (see domain/shuffle). The move is kept only when it raises no new doubt, e.g. a letter
+ * in the explanation the renaming could not follow.
+ */
+function arranged(q: Question, hashes: Set<string>, balance: Balance): Question {
+  const checked = validateQuestion(q, hashes);
+  let v = checked;
+  if (q.source === 'ai') {
+    const moved = placeKey(checked, balance.next());
+    if (moved !== checked) {
+      const again = validateQuestion(moved, hashes);
+      // A key the calculation corrected says so even after the move.
+      const note = checked.flags.filter((f) => f.kind === 'math-corrected');
+      if (warnings(again) <= warnings(checked)) v = { ...again, flags: [...again.flags, ...note] };
+    }
+  }
+  balance.record(keyIndex(v));
+  return v;
+}
+
 /**
  * Saves questions while the model is still writing its reply: each one is checked, stored and
  * shown the moment its JSON object is complete, instead of when the whole reply is in. A reply
  * cut off half-way therefore still keeps every question finished before the cut.
  */
-function liveQuestions(set: QSet, group: PlanBatch[], hashes: Set<string>, onStored: () => void) {
+function liveQuestions(set: QSet, group: PlanBatch[], hashes: Set<string>, balance: Balance, onStored: () => void) {
   const taken = new Map<Subtest, number>();
   const stored = new Map<string, Question[]>(group.map((b) => [b.id, []]));
   let seen = 0;
@@ -155,7 +180,7 @@ function liveQuestions(set: QSet, group: PlanBatch[], hashes: Set<string>, onSto
     if (!q) return;
     taken.set(slot.subtest, (taken.get(slot.subtest) ?? 0) + 1);
     await loadMath();
-    const v = validateQuestion({ ...q, originSetId: set.id }, hashes);
+    const v = arranged({ ...q, originSetId: set.id }, hashes, balance);
     hashes.add(v.hash);
     await appendToSet(set.id, [v]);
     stored.get(slot.batch.id)!.push(v);
@@ -194,6 +219,7 @@ async function fetchGroup(
   session: ModelSession | null,
   signal: AbortSignal,
   hashes: Set<string>,
+  balance: Balance,
   onStored: () => void,
 ): Promise<{ questions: Question[][]; stored: boolean }> {
   const onUsage = (i: number, o: number) => addUsage(set.id, i, o);
@@ -222,18 +248,18 @@ async function fetchGroup(
   } else {
     prompt = buildMultiPrompt(await Promise.all(subtests.map(async (subtest) => ({ subtest, items: itemsOf(subtest), avoid: await avoidFor(subtest) }))));
   }
-  const live = liveQuestions(set, group, hashes, onStored);
+  const live = liveQuestions(set, group, hashes, balance, onStored);
   const questions = await callModel(session, { system: SYSTEM_PROMPT, prompt, onText: live.feed }, (text) => live.finish(text), signal, onUsage);
   return { questions, stored: true };
 }
 
 /** Save a batch's questions (unless already stored as they arrived) and queue only what is still missing. */
-async function storeBatch(set: QSet, batch: PlanBatch, questions: Question[], hashes: Set<string>, alreadyStored: boolean) {
+async function storeBatch(set: QSet, batch: PlanBatch, questions: Question[], hashes: Set<string>, balance: Balance, alreadyStored: boolean) {
   let validated = questions.slice(0, batch.count);
   if (!alreadyStored) {
     await loadMath();
     validated = validated.map((q) => {
-      const v = validateQuestion({ ...q, originSetId: set.id }, hashes);
+      const v = arranged({ ...q, originSetId: set.id }, hashes, balance);
       hashes.add(v.hash);
       return v;
     });
@@ -330,6 +356,8 @@ export async function startGeneration(setId: string): Promise<void> {
   }
 
   const hashes = await knownHashes();
+  // Answers go where the set needs them, counting the questions it already has (a resumed run).
+  const balance = keyBalancer((await getSetQuestions(set)).map(keyIndex));
   // Procedural (free) batches first, so they're done even if the AI quota runs out.
   const queue = [...todo.filter(isProcedural), ...todo.filter((b) => !isProcedural(b))];
   let failures = 0;
@@ -344,9 +372,9 @@ export async function startGeneration(setId: string): Promise<void> {
       try {
         // Each AI question counts (and shows on the set page) as soon as it is written.
         const bump = () => update(setId, { done: (progress.get(setId)?.done ?? 0) + 1, waitUntil: undefined, waitReason: undefined });
-        const results = await fetchGroup(set, group, session, ctrl.signal, hashes, bump);
+        const results = await fetchGroup(set, group, session, ctrl.signal, hashes, balance, bump);
         for (const [k, batch] of group.entries()) {
-          const r = await storeBatch(set, batch, results.questions[k], hashes, results.stored);
+          const r = await storeBatch(set, batch, results.questions[k], hashes, balance, results.stored);
           producedIds.push(...r.ids);
           if (!results.stored) update(setId, { done: (progress.get(setId)?.done ?? 0) + r.added });
           if (r.rest) {
@@ -476,7 +504,13 @@ export async function moreLikeThis(setId: string, q: Question, count: number, ke
   }
   const hashes = await knownHashes();
   await loadMath();
-  const validated = questions.slice(0, count).map((x) => validateQuestion(x, hashes));
+  const set = await db.sets.get(setId);
+  const balance = keyBalancer(set ? (await getSetQuestions(set)).map(keyIndex) : []);
+  const validated = questions.slice(0, count).map((x) => {
+    const v = arranged(x, hashes, balance);
+    hashes.add(v.hash);
+    return v;
+  });
   await appendToSet(setId, validated, q.id);
   return validated.length;
 }
