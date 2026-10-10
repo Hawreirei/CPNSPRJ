@@ -69,6 +69,8 @@ Soal SKD siap cetak, tanpa aplikasi dan tanpa langganan. Tiap set mengikuti komp
 
 ## 1. Skorin Studio: Akses Aplikasi Pembuat Soal SKD
 
+> Versi lengkap deskripsi (fitur per kelompok, privasi, dan tanya-jawab) ada di [deskripsi-skorin-studio.md](deskripsi-skorin-studio.md). Teks di bawah adalah versi ringkasnya.
+
 **Harga:** Rp79.000 (tanpa diskon peluncuran)
 
 **Deskripsi**
