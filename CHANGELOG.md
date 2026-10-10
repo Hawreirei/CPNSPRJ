@@ -2,8 +2,9 @@
 
 Perubahan yang terasa bagi pengguna, per versi. Berkas ini dibuat dari `src/data/changelog.ts` dengan `npm run changelog`; jangan diedit langsung.
 
-## 1.7.1 (2026-10-10)
+## 1.8.0 (2026-10-11)
 
+- Tombol baru "🔧 Perbaiki semua" di halaman set: semua soal yang perlu dicek diperbaiki sekaligus. Yang bisa diselaraskan tanpa AI (kunci, skor, dan pembahasan yang sebenarnya sudah sepakat) diperbaiki dulu secara gratis; sisanya ditulis ulang oleh AI, 10 soal per permintaan.
 - Perbaikan PPPK Manajerial dan Sosial Kultural (juga TKP): skor tiap pilihan jawaban di Kunci Jawaban kini sama dengan yang disebut di pembahasan. Sebelumnya, bila AI hanya menulis skor di pembahasan, semua pilihan tercatat 0.
 - Soal lama yang skornya tercatat 0 diperbaiki otomatis dari pembahasannya saat aplikasi dibuka. Bila pembahasannya tidak menyebut skor, soal ditandai "perlu dicek" dan bisa diperbaiki dengan tombol 🔧 Perbaiki.
 

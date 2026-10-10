@@ -20,6 +20,8 @@ const LABELS = ['A', 'B', 'C', 'D', 'E'] as const;
 export interface GeminiMock {
   /** generateContent calls received for writing questions. */
   generateCalls: number;
+  /** Repair requests ("Perbaiki"): questions marked "perlu dicek" sent back to be rewritten. */
+  repairCalls: number;
   /** How many of those were streamed (questions shown one by one as they are written). */
   streamCalls: number;
   /** The thinking setting each of those calls carried (Gemini 3 thinks at length unless told otherwise). */
@@ -137,6 +139,7 @@ export function fakePassages(prompt: string) {
 export async function mockGemini(page: Page): Promise<GeminiMock> {
   const stats: GeminiMock = {
     generateCalls: 0,
+    repairCalls: 0,
     streamCalls: 0,
     thinking: [],
     served: { TWK: 0, TIU: 0, TKP: 0 },
@@ -246,6 +249,19 @@ export async function mockGemini(page: Page): Promise<GeminiMock> {
           json: {
             candidates: [{ content: { parts: [{ text: JSON.stringify({ answers }) }] }, finishReason: 'STOP' }],
             usageMetadata: { promptTokenCount: 800, candidatesTokenCount: 60 * answers.length },
+          },
+        });
+      }
+      if (prompt.includes('ditandai "perlu dicek"')) {
+        // A repair: one rewritten question per "N. Masalah:" entry, in the same order, consistent again.
+        stats.repairCalls++;
+        const count = [...prompt.matchAll(/^\d+\. Masalah:/gm)].length;
+        const slots = Array.from({ length: count }, (_, i) => `${i + 1}. topik "Perbaikan", kesulitan sedang`).join('\n');
+        const { questions } = fakeQuestions(`${prompt}\n${slots}`);
+        return route.fulfill({
+          json: {
+            candidates: [{ content: { parts: [{ text: JSON.stringify({ questions }) }] }, finishReason: 'STOP' }],
+            usageMetadata: { promptTokenCount: 900, candidatesTokenCount: 300 * count },
           },
         });
       }

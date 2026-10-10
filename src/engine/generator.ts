@@ -2,11 +2,11 @@ import { useSyncExternalStore } from 'react';
 import { db, getSettings } from '../db';
 import { endOfGroup } from '../domain/groups';
 import { easier } from '../domain/blueprint';
-import { buildMultiPrompt, buildPassagePrompt, buildPrompt, buildRepairPrompt, buildRewritePrompt, SYSTEM_PROMPT } from '../domain/prompts';
+import { buildMultiPrompt, buildPassagePrompt, buildPrompt, buildRewritePrompt, SYSTEM_PROMPT } from '../domain/prompts';
 import { parseAiQuestions, salvageQuestions } from '../domain/schemas';
 import { loadMath, validateQuestion } from '../domain/validators';
 import { ProviderError } from '../providers';
-import type { BatchItem, FlagKind, PlanBatch, QSet, Question, Subtest } from '../domain/types';
+import type { BatchItem, PlanBatch, QSet, Question, Subtest } from '../domain/types';
 import { uid } from '../lib/id';
 import { batchLabel, groupBatches, groupCap, isPassageBatch, isProcedural, passageSizes, takeGroup } from './plan';
 import { isLimited, keyUsage, limitsOf, QuotaExhaustedError } from './quota';
@@ -15,7 +15,9 @@ import { callAndParse, callAndParsePassages, callModel, openSession, type ModelS
 import { errorText, isQuotaError } from './storage';
 import { logError } from '../lib/errorLog';
 import { controllers } from './running';
-import { examRank, isGraded, subtestsIn } from '../domain/examPackage';
+import { needsAutoRepair, repairWith } from './repair';
+import { addUsage } from './usage';
+import { examRank } from '../domain/examPackage';
 
 export interface GenProgress {
   setId: string;
@@ -103,18 +105,6 @@ async function recentStems(subtest: string, topics: string[]): Promise<string[]>
     out.push(...rows.map((q) => q.stem));
   }
   return out;
-}
-
-async function addUsage(setId: string, inputTokens: number, outputTokens: number) {
-  const set = await db.sets.get(setId);
-  if (!set) return;
-  await db.sets.update(setId, {
-    usage: {
-      inputTokens: set.usage.inputTokens + inputTokens,
-      outputTokens: set.usage.outputTokens + outputTokens,
-      requests: set.usage.requests + 1,
-    },
-  });
 }
 
 // The figural and data generators are only needed while questions are being made.
@@ -391,13 +381,13 @@ export async function startGeneration(setId: string): Promise<void> {
 
   // One extra request to fix questions whose key, explanation and calculation disagree.
   if (session && !quotaStop && !ctrl.signal.aborted) {
-    const broken = ((await db.questions.bulkGet(producedIds)).filter(Boolean) as Question[]).filter(needsRepair);
+    const broken = ((await db.questions.bulkGet(producedIds)).filter(Boolean) as Question[]).filter(needsAutoRepair);
     const u = broken.length ? await keyUsage(session.key) : null;
     if (u && (u.remainingToday === null || u.remainingToday > 0)) {
       update(setId, { current: ['Memeriksa ulang soal'] });
       log(setId, 'info', `Memeriksa ulang ${broken.length} soal yang kunci jawaban dan pembahasannya tidak cocok…`);
       try {
-        const fixed = await repairWith(session, broken, ctrl.signal, (i, o) => addUsage(setId, i, o));
+        const fixed = await repairWith(session, broken, ctrl.signal, (i, o) => addUsage(setId, i, o), { maxRequests: 1 });
         log(setId, 'info', `${fixed} dari ${broken.length} soal berhasil diperbaiki.${fixed < broken.length ? ' Sisanya ditandai "perlu dicek".' : ''}`);
       } catch (e) {
         if ((e as Error).name !== 'AbortError') log(setId, 'info', `Perbaikan otomatis dilewati: ${(e as Error).message}`);
@@ -463,60 +453,6 @@ export async function rewriteQuestion(q: Question, instruction: string, keyId?: 
   const updated = validateQuestion({ ...nq, id: q.id, starred: q.starred, locked: q.locked, report: q.report, passage: q.passage, createdAt: q.createdAt, updatedAt: Date.now() });
   await db.questions.put(updated);
   return updated;
-}
-
-const REPAIRABLE = new Set<FlagKind>(['math-mismatch', 'explanation-mismatch']);
-
-/**
- * A question the AI may rewrite: key, explanation and calculation disagree, or (TKP, PPPK
- * Manajerial and other graded sub-tests) the option scores are missing or break the rules.
- */
-export const needsRepair = (q: Question) =>
-  q.source === 'ai' && !q.locked && q.flags.some((f) => f.severity === 'warn' && (isGraded(q.subtest) ? f.kind === 'tkp-spread' : REPAIRABLE.has(f.kind)));
-
-/** Ask the model to fix the given questions (one request at most); returns how many were fixed. */
-async function repairWith(session: ModelSession, questions: Question[], signal: AbortSignal, onUsage: (i: number, o: number) => Promise<void>): Promise<number> {
-  let fixed = 0;
-  // A single request: the sub-test with the most broken questions, at most 10 of them.
-  const groups = subtestsIn(questions)
-    .map((s) => questions.filter((q) => q.subtest === s).slice(0, 10))
-    .filter((g) => g.length)
-    .sort((a, b) => b.length - a.length)
-    .slice(0, 1);
-  for (const group of groups) {
-    const subtest = group[0].subtest;
-    const items = group.map((q) => ({ topic: q.topic, difficulty: q.difficulty }));
-    const out = await callAndParse(session, buildRepairPrompt(subtest, group), { subtest, items, setId: group[0].originSetId }, signal, onUsage);
-    // Answers are matched to questions by position, so a partial reply can't be trusted.
-    if (out.length !== group.length) continue;
-    await loadMath();
-    for (const [i, old] of group.entries()) {
-      const v = validateQuestion({
-        ...out[i],
-        id: old.id,
-        originSetId: old.originSetId,
-        starred: old.starred,
-        report: old.report,
-        rating: old.rating,
-        passage: old.passage,
-        createdAt: old.createdAt,
-        updatedAt: Date.now(),
-      });
-      if (needsRepair(v)) continue;
-      await db.questions.put(v);
-      fixed++;
-    }
-  }
-  return fixed;
-}
-
-/** Fix one question whose key and explanation disagree. */
-export async function repairQuestion(q: Question, keyId?: string): Promise<void> {
-  const session = await openSession(keyId);
-  const fixed = await repairWith(session, [q], new AbortController().signal, async (i, o) => {
-    if (q.originSetId) await addUsage(q.originSetId, i, o);
-  });
-  if (!fixed) throw new Error('AI belum berhasil memperbaiki soal ini. Coba lagi, atau edit soal secara manual.');
 }
 
 /** Generate `count` new questions modelled on `q` and insert them right after it. */

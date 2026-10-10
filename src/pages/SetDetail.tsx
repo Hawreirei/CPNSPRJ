@@ -3,7 +3,8 @@ import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { db, getSetQuestions, useSettings } from '../db';
 import type { QSet, Question, Subtest } from '../domain/types';
-import { moreLikeThis, needsRepair, repairQuestion, rewriteQuestion, startGeneration, stopGeneration, useGenProgress } from '../engine/generator';
+import { moreLikeThis, rewriteQuestion, startGeneration, stopGeneration, useGenProgress } from '../engine/generator';
+import { needsRepair, repairAll, repairQuestion, repairRequests } from '../engine/repair';
 import { crossCheckQuestions, isCrossCheckable, needsCrossCheck, type CrossCheckResult } from '../engine/crosscheck';
 import { moveInSet, removeFromSet } from '../engine/sets';
 import { QuestionCard, type CardMode } from '../components/QuestionCard';
@@ -37,16 +38,20 @@ export default function SetDetail() {
   const settings = useSettings();
   const [checking, setChecking] = useState(false);
   const [checkMsg, setCheckMsg] = useState<string | null>(null);
+  const [fixing, setFixing] = useState<{ done: number; total: number } | null>(null);
+  const [fixMsg, setFixMsg] = useState<string | null>(null);
 
   if (set === undefined || !questions) return null;
   if (set === null) return <Empty title="Set tidak ditemukan" />;
 
   const flaggedCount = questions.filter((q) => q.flags.some((f) => f.severity === 'warn')).length;
   const starredCount = questions.filter((q) => q.starred).length;
+  const view = (filter === 'flagged' && !flaggedCount) || (filter === 'starred' && !starredCount) ? 'all' : filter;
   const stats = answerStats(attempts ?? [], questions);
   const shown = questions
     .map((q, i) => ({ q, i }))
-    .filter(({ q }) => (sub === 'all' || q.subtest === sub) && (filter === 'all' || (filter === 'flagged' ? q.flags.some((f) => f.severity === 'warn') : q.starred)));
+    // Once nothing needs checking (or nothing is starred) any more, its chip is gone: show everything again.
+    .filter(({ q }) => (sub === 'all' || q.subtest === sub) && (view === 'all' || (view === 'flagged' ? q.flags.some((f) => f.severity === 'warn') : q.starred)));
 
   const shownQuestions = shown.map((x) => x.q);
   const unchecked = questions.filter(needsCrossCheck);
@@ -63,6 +68,34 @@ export default function SetDetail() {
       setError((e as Error).message);
     } finally {
       setChecking(false);
+    }
+  }
+
+  const fixable = questions.filter(needsRepair);
+  async function fixAll() {
+    const requests = repairRequests(fixable);
+    if (
+      !confirm(
+        `Perbaiki ${fixable.length} soal yang perlu dicek sekaligus?\n\n` +
+          `Yang bisa diselaraskan tanpa AI diperbaiki dulu (gratis). Sisanya ditulis ulang oleh AI: paling banyak ${requests} permintaan AI.`,
+      )
+    )
+      return;
+    setFixing({ done: 0, total: fixable.length });
+    setFixMsg(null);
+    setError(null);
+    try {
+      const r = await repairAll(set!.id, { keyId: set!.keyId, onProgress: (done, total) => setFixing({ done, total }) });
+      const parts = [r.synced ? `${r.synced} soal diselaraskan tanpa AI` : '', r.rewritten ? `${r.rewritten} soal ditulis ulang oleh AI` : ''].filter(Boolean);
+      setFixMsg(
+        `${parts.length ? `${parts.join(', ')}.` : 'Belum ada soal yang berhasil diperbaiki.'}` +
+          (r.remaining ? ` ${r.remaining} soal masih perlu dicek: buka "Perlu dicek" untuk mengeditnya, atau coba lagi.` : ' Semua soal sudah sesuai.') +
+          (r.quotaMessage ? ` ${r.quotaMessage}` : ''),
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setFixing(null);
     }
   }
 
@@ -114,6 +147,20 @@ export default function SetDetail() {
         </div>
       </div>
       {checkMsg && <div className="rounded-lg bg-brand-50 p-3 text-sm dark:bg-slate-800">{checkMsg}</div>}
+
+      {(fixable.length > 0 || fixing) && set.status !== 'generating' && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+          <span className="min-w-0 flex-1">
+            {fixing
+              ? `Memperbaiki soal yang perlu dicek… ${fixing.done} dari ${fixing.total}`
+              : `${fixable.length}${fixable.length < flaggedCount ? ` dari ${flaggedCount}` : ''} soal yang perlu dicek bisa diperbaiki sekaligus: kunci jawaban, skor, dan pembahasan diselaraskan, atau ditulis ulang oleh AI.`}
+          </span>
+          <button className="btn btn-primary btn-sm" disabled={!!fixing} onClick={fixAll}>
+            {fixing ? 'Memperbaiki…' : `🔧 Perbaiki semua (${fixable.length})`}
+          </button>
+        </div>
+      )}
+      {fixMsg && <div className="rounded-lg bg-brand-50 p-3 text-sm dark:bg-slate-800">{fixMsg}</div>}
 
       <GenerationPanel set={set} />
 

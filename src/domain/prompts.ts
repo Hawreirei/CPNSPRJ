@@ -242,13 +242,14 @@ export function buildRepairPrompt(subtest: Subtest, questions: Question[]): stri
 
 ${
   rule.kind === 'graded'
-    ? `Soal-soal berikut bermasalah: skor pilihan jawabannya kosong, tidak lengkap, atau tidak sesuai pembahasan.
-Perbaiki setiap soal: beri SETIAP opsi "score" ${rule.min} sampai ${rule.max} di dalam objek opsinya (bukan hanya di pembahasan), tepat satu opsi mendapat skor ${rule.max}, dan pembahasan menyebut skor yang sama untuk tiap opsi.`
-    : `Soal-soal berikut bermasalah: kunci jawaban, pembahasan, dan hitungannya tidak saling cocok.
-Perbaiki setiap soal: kerjakan ulang dengan teliti, pastikan tepat satu opsi benar, "answer" menunjuk opsi itu, dan pembahasan menyimpulkan opsi dan nilai yang sama${
+    ? `Soal-soal berikut ditandai "perlu dicek"; masalah tiap soal tertulis di atas datanya.
+Perbaiki setiap soal sesuai masalahnya: beri SETIAP opsi "score" ${rule.min} sampai ${rule.max} di dalam objek opsinya (bukan hanya di pembahasan), tepat satu opsi mendapat skor ${rule.max}, dan pembahasan menyebut skor yang sama untuk tiap opsi.`
+    : `Soal-soal berikut ditandai "perlu dicek"; masalah tiap soal tertulis di atas datanya.
+Perbaiki setiap soal sesuai masalahnya: kerjakan ulang dengan teliti, pastikan tepat satu opsi benar, "answer" menunjuk opsi itu, dan pembahasan menyimpulkan opsi dan nilai yang sama${
         subtest === 'TIU' ? '; untuk soal hitungan, "mathExpression" (sintaks mathjs, titik sebagai desimal) harus menghasilkan nilai opsi benar' : ''
-      }.`
+      }${subtest === 'TWK' ? '; isi "reference" dengan rujukan spesifik yang Anda yakini benar' : ''}.`
 }
+Bila soal dilaporkan pengguna, tangani isi laporannya. Bila Anda ragu akan suatu fakta, ganti isi soal dengan fakta yang Anda yakini; jangan mengarang nomor pasal atau tahun.
 Boleh mengubah angka pada soal atau opsi bila perlu. Pertahankan topik dan tingkat kesulitan. Kembalikan ${questions.length} soal dengan urutan yang sama.
 
 ${list}
