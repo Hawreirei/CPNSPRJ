@@ -2,7 +2,7 @@ import { db } from '../db';
 import { isGraded } from '../domain/examPackage';
 import { CROSS_CHECK_KINDS } from '../domain/quality';
 
-const VALIDATOR_VERSION = '2';
+const VALIDATOR_VERSION = '3';
 
 /**
  * Re-run the answer checks on saved questions once, after the checks themselves improve. Runs at
@@ -25,6 +25,21 @@ export async function revalidateStored() {
       return JSON.stringify(next.flags) !== JSON.stringify(q.flags) || next.answer !== q.answer ? [next] : [];
     });
     if (changed.length) await db.questions.bulkPut(changed);
+  }
+  // Graded questions (TKP, PPPK Manajerial…) saved with every option at 0 because the model wrote
+  // the scores only in the explanation: take them from there.
+  const unscored = await db.questions.filter((q) => isGraded(q.subtest) && !q.locked && q.options.every((o) => !o.score)).toArray();
+  if (unscored.length) {
+    const { withRecoveredScores } = await import('../domain/schemas');
+    const { loadMath, validateQuestion } = await import('../domain/validators');
+    await loadMath();
+    const recovered = unscored.flatMap((q) => {
+      const r = withRecoveredScores(q);
+      if (r === q) return [];
+      const v = validateQuestion(r);
+      return [{ ...v, flags: [...v.flags, ...q.flags.filter((f) => f.kind === 'duplicate' || CROSS_CHECK_KINDS.has(f.kind))] }];
+    });
+    if (recovered.length) await db.questions.bulkPut(recovered);
   }
   try {
     localStorage.setItem('validatorVersion', VALIDATOR_VERSION);

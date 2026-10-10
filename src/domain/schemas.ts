@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { hashText, uid } from '../lib/id';
 import { OPTION_LABELS } from './types';
 import type { BatchItem, OptionLabel, Question, Subtest } from './types';
-import { isGraded, keyedScore } from './examPackage';
+import { isGraded, keyedScore, scoringOf } from './examPackage';
 
 const label = z
   .string()
@@ -15,12 +15,68 @@ const label = z
   )
   .pipe(z.enum(['A', 'B', 'C', 'D', 'E']));
 
-const aiOption = z.object({
-  label: label.optional(),
-  text: z.string().min(1),
-  score: z.coerce.number().optional(),
-  rationale: z.string().optional().nullable(),
-});
+/** Where models put an option's score besides `"score": 3`. */
+const SCORE_KEYS = ['score', 'skor', 'nilai', 'bobot', 'poin', 'point', 'points', 'value'];
+
+/** A score written as a number or as text ("4", "4 poin", "Skor: 4"); undefined when there is none. */
+function scoreValue(v: unknown): number | undefined {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(/-?\d+(?:[.,]\d+)?/.exec(v)?.[0]?.replace(',', '.')) : NaN;
+  return Number.isFinite(n) ? n : undefined;
+}
+
+const aiOption = z.preprocess(
+  (raw) => {
+    if (!raw || typeof raw !== 'object') return raw;
+    const o = raw as Record<string, unknown>;
+    const key = SCORE_KEYS.find((k) => o[k] !== undefined && o[k] !== null && o[k] !== '');
+    return { ...o, score: key ? scoreValue(o[key]) : undefined };
+  },
+  z.object({
+    label: label.optional(),
+    text: z.string().min(1),
+    score: z.number().optional(),
+    rationale: z.string().optional().nullable(),
+  }),
+);
+
+const LABEL_MARK = /(?:\b(?:[Oo]psi|[Pp]ilihan|[Jj]awaban)\s+\(?([A-E])\)?|(?:^|[\s([*"'])\(?([A-E])(?:\)|\]|\.(?!\d)|:|\s*[-–—=]|(?=\s+\()))/gm;
+const SCORE_AFTER = /^[^\S\n]*\(?(\d)\)?(?!\d|[.,]\d)|\b(?:skor|score|nilai|poin|bobot)(?:nya)?\s*[:=]?\s*(\d)(?!\d|[.,]\d)/i;
+const SCORE_BEFORE = /\b(?:skor|score|nilai|poin|bobot)\s*[:=]?\s*(\d)\s*(?:untuk|pada|bagi|:|-|–)?\s*(?:opsi|pilihan|jawaban)?\s*\(?([A-E])\b/gi;
+
+/**
+ * Each option's score as an explanation states it ("A (skor 4): ...", "Opsi B mendapat skor 3",
+ * "C = 2", "skor 1 untuk D"), or null unless every option gets one. Models asked for scores
+ * sometimes write them only in the explanation, which would otherwise leave every option at 0.
+ */
+export function scoresFromText(text: string, labels: readonly string[]): number[] | null {
+  const found = new Map<string, number>();
+  for (const m of text.matchAll(SCORE_BEFORE)) if (!found.has(m[2].toUpperCase())) found.set(m[2].toUpperCase(), Number(m[1]));
+  const marks = [...text.matchAll(LABEL_MARK)].map((m) => ({ label: (m[1] ?? m[2]).toUpperCase(), start: m.index!, end: m.index! + m[0].length }));
+  marks.forEach((mark, i) => {
+    if (found.has(mark.label)) return;
+    const m = SCORE_AFTER.exec(text.slice(mark.end, marks[i + 1]?.start ?? text.length));
+    if (m) found.set(mark.label, Number(m[1] ?? m[2]));
+  });
+  return labels.every((l) => found.has(l)) ? labels.map((l) => found.get(l)!) : null;
+}
+
+/**
+ * A graded question whose options came back without scores: take them from each option's
+ * rationale, or else from the explanation. Unchanged when neither gives every option a score.
+ */
+export function withRecoveredScores<T extends Pick<Question, 'subtest' | 'options' | 'explanation'>>(q: T): T {
+  const rule = scoringOf(q.subtest);
+  if (rule.kind !== 'graded' || q.options.some((o) => o.score >= rule.min)) return q;
+  const fromRationale = q.options.map((o) => (o.rationale ? scoresFromText(`${o.label}: ${o.rationale}`, [o.label])?.[0] : undefined));
+  const scores = fromRationale.every((s) => s !== undefined)
+    ? (fromRationale as number[])
+    : scoresFromText(
+        q.explanation,
+        q.options.map((o) => o.label),
+      );
+  if (!scores) return q;
+  return { ...q, options: q.options.map((o, i) => ({ ...o, score: Math.max(rule.min, Math.min(rule.max, scores[i])) })) };
+}
 
 const aiQuestion = z.object({
   topic: z.string().optional(),
@@ -126,7 +182,7 @@ export function parseAiQuestions(text: string, ctx: { subtest: Subtest; items: B
       answer = byOrig?.label ?? (q.answer as OptionLabel | undefined);
       if (!answer) answer = options[q.options.findIndex((o) => (o.score ?? 0) >= 5)]?.label;
     }
-    return {
+    return withRecoveredScores({
       id: uid(),
       subtest: ctx.subtest,
       topic: slot.topic,
@@ -146,7 +202,7 @@ export function parseAiQuestions(text: string, ctx: { subtest: Subtest; items: B
       source: 'ai',
       createdAt: now,
       updatedAt: now,
-    } satisfies Question;
+    } satisfies Question);
   });
 }
 
