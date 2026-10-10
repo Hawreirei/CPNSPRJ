@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.5.0',
+    date: '2026-10-10',
+    items: [
+      'Tampilan baru yang lebih lega. Beranda kini muat satu layar di laptop: target hari ini, kesiapan per sub-tes, dan konsistensi di baris atas, lalu angka ringkas, set terbaru, dan pintasan. Pengingat cadangan dan penyimpanan tampil sebagai satu baris tipis.',
+      'Progres Belajar: satu grafik besar dan dua grafik kecil. Klik grafik kecil untuk menukarnya jadi besar; skala fokus memperjelas naik-turun skor, Skala penuh menampilkan sumbu dari 0. Daftar topik dan riwayat skor pindah ke tab Topik dan Riwayat.',
+      'Menu samping dikelompokkan (Belajar, Soal, Materi, Sistem) dengan ikon, dan Buku Kesalahan menampilkan jumlah soal yang perlu diulang hari ini.',
+    ],
+  },
+  {
     version: '1.4.0',
     date: '2026-10-10',
     items: [

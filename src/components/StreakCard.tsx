@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { db, getSettings, saveSettings } from '../db';
 import type { Attempt, ReviewItem, Settings } from '../domain/types';
-import { activityDays, badgeLabel, earnedBadges, endPause, isStudyDay, startPause, streak } from '../engine/streak';
+import { activityDays, badgeLabel, dayKey, earnedBadges, endPause, isStudyDay, startPause, streak } from '../engine/streak';
+import { addDays } from '../engine/srs';
 
 /** Store badges not yet earned and return them; read fresh inside one transaction so each is announced once. */
 async function award(ids: string[], now: number): Promise<string[]> {
@@ -27,12 +28,14 @@ export function StreakCard({
   reviews,
   reviewDays,
   now,
+  className = '',
 }: {
   settings: Settings;
   attempts: Attempt[];
   reviews: ReviewItem[];
   reviewDays: string[];
   now: number;
+  className?: string;
 }) {
   const [news, setNews] = useState<string[]>([]);
   const off = !!settings.streak?.off;
@@ -62,25 +65,42 @@ export function StreakCard({
           ? 'Satu latihan, ujian, atau ulangan hari ini menambah streak.'
           : 'Mulai kapan saja: satu latihan, ujian, atau ulangan sudah dihitung.';
 
+  // The last seven days, oldest first, for the row of dots.
+  const week = Array.from({ length: 7 }, (_, i) => addDays(now, i - 6)).map((t) => ({ t, on: days.has(dayKey(t)) }));
+  const shown = earned.slice(-3).reverse();
+
   return (
-    <section className="card space-y-3" aria-labelledby="streak-title">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 id="streak-title">Konsistensi belajar</h2>
-          <p className="text-sm">
-            <b className="text-lg tabular-nums">{s.days}</b> hari beruntun
-          </p>
-          <p className="muted text-sm">{status}</p>
-        </div>
+    <section className={`card flex flex-col gap-3 ${className}`} aria-labelledby="streak-title">
+      <div className="flex items-start justify-between gap-2">
+        <h2 id="streak-title" className="text-[15px]">
+          Konsistensi belajar
+        </h2>
         <button className="btn btn-sm" onClick={() => void setPauses(s.paused ? endPause : startPause)}>
           {s.paused ? 'Lanjutkan streak' : 'Jeda streak'}
         </button>
       </div>
+      <div>
+        <p className="text-sm">
+          <b className="text-3xl font-bold tracking-tight text-brand-700 tabular-nums dark:text-brand-100">{s.days}</b> hari beruntun
+        </p>
+        <p className="muted text-xs">{status}</p>
+      </div>
+      <ol className="flex justify-between gap-1" aria-label="Tujuh hari terakhir">
+        {week.map(({ t, on }) => (
+          <li key={t} className="flex flex-col items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400">
+            <span aria-hidden className={`h-5 w-5 rounded-full ${on ? 'bg-brand-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+            <span aria-hidden>{WEEKDAY_LETTER[new Date(t).getDay()]}</span>
+            <span className="sr-only">
+              {new Date(t).toLocaleDateString('id-ID', { weekday: 'long' })}: {on ? 'belajar' : 'tidak ada aktivitas'}
+            </span>
+          </li>
+        ))}
+      </ol>
 
       {/* Always rendered, so screen readers hear new badges; no animation. */}
       <div role="status" aria-live="polite">
         {news.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-green-600 p-2 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-green-600 p-2 text-xs">
             <span>Lencana baru: {news.map(badgeLabel).join(', ')}.</span>
             <button className="btn btn-sm" onClick={() => setNews([])}>
               Tutup
@@ -89,11 +109,12 @@ export function StreakCard({
         )}
       </div>
 
-      {earned.length > 0 && (
+      {/* While new badges are announced they are not listed a second time. */}
+      {earned.length > 0 && !news.length && (
         <div>
-          <div className="mb-1 text-sm font-medium">Lencana</div>
+          <div className="muted mb-1 text-xs">Lencana{earned.length > shown.length && ` (${shown.length} terbaru dari ${earned.length})`}</div>
           <ul className="flex flex-wrap gap-1.5">
-            {earned.map((e) => (
+            {shown.map((e) => (
               <li key={e.id} className="rounded-full border border-slate-300 px-2.5 py-0.5 text-xs dark:border-slate-600">
                 {badgeLabel(e.id)}
               </li>
@@ -104,3 +125,5 @@ export function StreakCard({
     </section>
   );
 }
+
+const WEEKDAY_LETTER = ['M', 'S', 'S', 'R', 'K', 'J', 'S'];

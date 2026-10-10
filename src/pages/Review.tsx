@@ -72,7 +72,7 @@ export default function Review() {
                 role="tab"
                 aria-selected={tab === id}
                 onClick={() => setParams(id === 'ulang' ? {} : { tab: id }, { replace: true })}
-                className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${tab === id ? 'border-brand-500 text-brand-700 dark:text-brand-100' : 'border-transparent text-slate-500 dark:text-slate-400'}`}
+                className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${tab === id ? 'border-brand-500 text-brand-700 dark:text-brand-100' : 'border-transparent text-slate-600 dark:text-slate-400'}`}
               >
                 {label}
               </button>

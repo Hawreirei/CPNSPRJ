@@ -39,11 +39,13 @@ test("a study plan shows the countdown, today's targets and readiness, and expor
   await expect(card).toContainText('± 60 menit');
   // Not a Saturday: no simulation today.
   await expect(card).not.toContainText('Simulasi SKD penuh');
-  // TWK 10 of 10 is 150 on the full scale; TIU 0 against a target of 88.
-  await expect(card).toContainText('rata-rata 150 dari 1 ujian terakhir · target 72');
-  await expect(card).toContainText('1 dari 1 mencapai target');
-  await expect(card).toContainText('kurang 88 poin');
-  await expect(card).toContainText('bukan peluang kelulusan');
+  // TWK 10 of 10 is 150 on the full scale; TIU 0 against a target of 88. Readiness has its own card.
+  const ready = page.locator('section', { has: page.getByRole('heading', { name: 'Kesiapan menurut ujian terakhir' }) });
+  await expect(ready).toContainText('rata-rata 150 · target 72');
+  await expect(ready).toContainText('Rata-rata 1 ujian terakhir');
+  await expect(ready).toContainText('1 dari 1 mencapai target');
+  await expect(ready).toContainText('kurang 88 poin');
+  await expect(ready).toContainText('bukan peluang kelulusan');
 
   // The practice target opens practice mode on the suggested topics.
   await card.getByRole('link', { name: 'Latih' }).click();

@@ -10,7 +10,7 @@ const fakeEstimate = (page: Page, usage: number) =>
 test('storage use shows in Settings, warns on the dashboard when nearly full, and old data can be cleared', async ({ page }) => {
   await fakeEstimate(page, 0.9 * 1024 ** 3);
   await page.goto('#/');
-  const warning = page.locator('.card', { hasText: 'Penyimpanan hampir penuh (90%)' });
+  const warning = page.locator('.strip', { hasText: 'Penyimpanan hampir penuh (90%)' });
   await expect(warning).toBeVisible();
   await warning.getByRole('link', { name: 'Buka Penyimpanan' }).click();
 

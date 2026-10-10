@@ -37,6 +37,7 @@ test('API key, generate a set, take the exam, and see the report and progress', 
 
   await page.getByRole('link', { name: 'Progres', exact: true }).click();
   await expect(page.getByText('1 ujian selesai.', { exact: false })).toBeVisible();
+  await page.getByRole('tab', { name: 'Riwayat' }).click();
   await expect(page.locator('table')).toContainText('Latihan Singkat');
 });
 
