@@ -26,14 +26,16 @@ test('an imported exam package: questions from a job title, an exam without pass
   const section = page.locator('section', { has: page.getByRole('heading', { name: 'Paket ujian' }) });
   await section.getByLabel('Impor paket ujian (.json)').setInputFiles({ name: 'paket.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(PACKAGE)) });
   await expect(section.getByRole('status')).toContainText('Paket "Ujian Uji" ditambahkan.');
-  await expect(section).toContainText('Contoh untuk pengujian · bukan data resmi · 60 menit');
+  // Where the numbers came from is kept in the file, not shown.
+  await expect(section).toContainText('2 sub-tes · 60 menit');
+  await expect(section).not.toContainText('Contoh untuk pengujian');
   await expect(section).toContainText('UJI-SIKAP Sikap kerja: 10 soal, tiap opsi 1–4, tanpa ambang batas');
   await expect(section).toContainText('topik dari nama jabatan');
 
   // New set: pick the package, name the job.
   await page.goto('#/new');
   await page.getByRole('radio', { name: /Ujian Uji/ }).click();
-  await expect(page.getByText('bukan data resmi', { exact: true })).toBeVisible();
+  await expect(page.getByText(/bukan data resmi|Sumber angka/)).toHaveCount(0);
   await expect(page.getByText('Isi nama jabatan dulu.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Buat Soal', exact: true }).first()).toBeDisabled();
   await page.getByLabel('Nama jabatan yang dilamar').fill('Pranata Komputer');

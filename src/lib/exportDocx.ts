@@ -187,7 +187,7 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
   }
 
   const doc = new Document({
-    creator: settings.brandName || 'CPNS SKD Set Builder',
+    creator: settings.brandName || 'CASN Set Builder',
     title: `${PACK_TITLES[pack]} - ${meta.name}`,
     styles: { default: { document: { run: { font: 'Calibri', size: 22 } } } },
     sections: [

@@ -46,8 +46,8 @@ export function KisiProfiles({ settings }: { settings: Settings }) {
   return (
     <div className="space-y-3">
       <p className="muted text-sm">
-        Profil menentukan topik yang ditawarkan saat membuat soal baru, dan bisa membawa jumlah soal, durasi, dan ambang batas. Bila kisi-kisi resmi berubah, buat atau impor profil
-        baru tanpa menunggu aplikasi diperbarui. Soal lama dengan topik di luar profil tetap tersimpan dan bisa dipakai.
+        Profil menentukan topik yang ditawarkan saat membuat soal baru, dan bisa membawa jumlah soal, durasi, dan ambang batas. Bila kisi-kisi berubah, buat atau impor profil baru
+        tanpa menunggu aplikasi diperbarui. Soal lama dengan topik di luar profil tetap tersimpan dan bisa dipakai.
       </p>
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-0 flex-1">
@@ -74,12 +74,13 @@ export function KisiProfiles({ settings }: { settings: Settings }) {
 
       <div className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
         <div className="font-medium">{active.name}</div>
-        <div className="muted text-xs">
-          {active.source ?? 'Sumber tidak dicantumkan'}
-          {active.date && ` · ${new Date(`${active.date}T00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`}
-        </div>
-        {active.id === BUILTIN_ID && (
-          <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">Bila kisi-kisi resmi terbit, buat profil dari dokumen resminya dan cantumkan sumber serta tanggalnya.</p>
+        {/* Only a learner's own profile shows where it came from; the app's own sources stay in the code. */}
+        {!isBuiltinProfile(active.id) && (active.source || active.date) && (
+          <div className="muted text-xs">
+            {[active.source, active.date && new Date(`${active.date}T00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })]
+              .filter(Boolean)
+              .join(' · ')}
+          </div>
         )}
         {active.notes?.length ? (
           <ul className="mt-1 list-disc space-y-1 pl-5 text-xs">

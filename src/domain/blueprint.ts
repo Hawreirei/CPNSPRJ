@@ -1,7 +1,6 @@
 import { SUBTESTS } from './types';
 import type { Blueprint, Difficulty, DifficultyChoice, ExamNumbers, KisiProfile, KisiTopic, Settings, Subtest } from './types';
 import { isSkd, packageOf, SKD_CPNS, specOf, type ExamPackage } from './examPackage';
-import { SEKOLAH_KEDINASAN_2026 } from '../data/kisiSekolahKedinasan2026';
 
 export const TOPICS: Record<Subtest, string[]> = {
   TWK: ['Pancasila', 'UUD 1945', 'NKRI', 'Bhinneka Tunggal Ika', 'Nasionalisme', 'Integritas', 'Bela Negara', 'Sejarah Indonesia', 'Bahasa Indonesia', 'Pilar Negara'],
@@ -62,18 +61,17 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export const BUILTIN_ID = 'bawaan';
 
-/** The topics the app has always used. Not an official syllabus, and labelled as such. */
+/** The topics the app has always used. */
 export const BUILTIN_PROFILE: KisiProfile = {
   version: 1,
   id: BUILTIN_ID,
   name: 'Bawaan aplikasi',
-  source: 'Bawaan aplikasi, bukan kisi-kisi resmi',
   topics: Object.fromEntries(SUBTESTS.map((s) => [s, TOPICS[s].map((name) => ({ name }))])) as Record<Subtest, KisiTopic[]>,
   exam: { counts: DEFAULT_SETTINGS.counts, passing: DEFAULT_SETTINGS.passing, durationMinutes: DEFAULT_SETTINGS.durationMinutes },
 };
 
-/** Profiles that come with the app and cannot be edited or removed: the app's own topics, then ones from official documents. */
-export const BUILTIN_PROFILES: KisiProfile[] = [BUILTIN_PROFILE, SEKOLAH_KEDINASAN_2026];
+/** Profiles that come with the app and cannot be edited or removed. */
+export const BUILTIN_PROFILES: KisiProfile[] = [BUILTIN_PROFILE];
 export const isBuiltinProfile = (id: string) => BUILTIN_PROFILES.some((p) => p.id === id);
 
 export function allProfiles(settings: Pick<Settings, 'kisi'>): KisiProfile[] {

@@ -131,7 +131,7 @@ Soal di bundel sudah cukup untuk berlatih dan **tidak perlu API key**. Kalau ing
 
 | Pesan atau masalah | Yang dilakukan |
 |---|---|
-| "Berkas bukan set bersama CPNS SKD Set Builder" | Berkas yang dipilih salah. Pilih berkas yang berakhiran `.cpnsbundle.json`. |
+| "Berkas bukan set bersama CASN Set Builder" | Berkas yang dipilih salah. Pilih berkas yang berakhiran `.cpnsbundle.json`. |
 | "Berkas ... bukan JSON yang valid" | Berkas terpotong atau berubah saat diunduh. Unduh ulang dari Lynk. |
 | "Dibuat oleh versi aplikasi yang lebih baru" | Tutup aplikasi dan buka lagi dari link, atau muat ulang halaman agar pembaruan masuk. |
 | Berkas tidak terlihat di HP saat memilih | Buka folder **Download/Unduhan** di pemilih berkas. |

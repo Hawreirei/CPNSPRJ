@@ -69,9 +69,9 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'CPNS SKD Set Builder',
-        short_name: 'SKD Builder',
-        description: 'Buat set latihan SKD CPNS (TWK, TIU, TKP) dengan AI, simulasi CAT, dan laporan skor.',
+        name: 'CASN Set Builder',
+        short_name: 'CASN Builder',
+        description: 'Buat set latihan CPNS (SKD: TWK, TIU, TKP) dan PPPK dengan AI, simulasi CAT, dan laporan skor.',
         lang: 'id',
         start_url: './',
         scope: './',

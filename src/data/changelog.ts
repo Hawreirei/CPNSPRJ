@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.0',
+    date: '2026-10-10',
+    items: [
+      'Nama aplikasi kini CASN Set Builder, untuk dua jalur seleksi ASN: CPNS dan PPPK. Buat Soal dimulai dengan memilih salah satunya.',
+      'Paket dan profil kini memakai nama singkat, misalnya "PPPK", tanpa nomor keputusan atau tahun.',
+      'Profil kisi-kisi Sekolah Kedinasan dihapus. Bila Anda sedang memakainya, topik, jumlah soal, dan ambang batas kembali ke bawaan aplikasi.',
+    ],
+  },
+  {
     version: '1.3.0',
     date: '2026-10-10',
     items: [
@@ -27,7 +36,7 @@ export const CHANGELOG: Release[] = [
     version: '1.2.0',
     date: '2026-10-09',
     items: [
-      'Profil kisi-kisi baru "SKD Sekolah Kedinasan 2026" dari Keputusan MenPAN-RB Nomor 406 Tahun 2026: topik per sub-tes, 110 soal dalam 100 menit, dan ambang batas TWK 65, TIU 80, TKP 156. Pilih di Pengaturan → Profil kisi-kisi. Aturan afirmasi daerah tertentu tampil sebagai catatan.',
+      'Profil kisi-kisi baru "SKD Sekolah Kedinasan": topik per sub-tes, 110 soal dalam 100 menit, dan ambang batas TWK 65, TIU 80, TKP 156. Pilih di Pengaturan → Profil kisi-kisi. Aturan afirmasi daerah tertentu tampil sebagai catatan.',
     ],
   },
   {
@@ -42,7 +51,7 @@ export const CHANGELOG: Release[] = [
     date: '2026-10-09',
     items: [
       'Aplikasi kini punya nomor versi. Setelah pembaruan, Beranda menampilkan kartu "Apa yang baru" satu kali; riwayat lengkapnya ada di Bantuan.',
-      'Buat set SKD CPNS dan PPPK 2024 dengan AI memakai API key Anda sendiri, lalu unduh sebagai PDF atau Word. Ujian lain bisa ditambahkan sebagai berkas paket ujian.',
+      'Buat set CPNS (SKD) dan PPPK dengan AI memakai API key Anda sendiri, lalu unduh sebagai PDF atau Word. Ujian lain bisa ditambahkan sebagai berkas paket ujian.',
       'Soal TIU bergambar, analisis data (tabel dan grafik), dan bacaan; soal hitungan diperiksa ulang otomatis, dan pemeriksa silang opsional meminta model AI lain menjawab tanpa melihat kunci.',
       'Simulasi CAT dengan timer, grid nomor, dan Mode CAT layar penuh, plus Mode Latihan yang langsung menampilkan kunci dan pembahasan.',
       'Laporan Skor dengan saran latihan, analisis waktu, dan perbandingan dengan ujian sebelumnya; Progres menampilkan tren dan penguasaan topik.',

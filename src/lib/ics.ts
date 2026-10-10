@@ -58,7 +58,7 @@ export interface IcsInput {
 
 export function buildIcs({ now, examDate, simulationDay, simulationMinutes }: IcsInput): string {
   const stamp = icsStamp(now);
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CPNS SKD Set Builder//Rencana Belajar//ID', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CASN Set Builder//Rencana Belajar//ID', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
   const event = (uid: string, start: number, summary: string, description: string, extra: string[] = []) => {
     lines.push(
       'BEGIN:VEVENT',

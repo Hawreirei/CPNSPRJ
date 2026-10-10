@@ -65,7 +65,7 @@ describe('PPPK 2024 package', () => {
 
   it('tells the model what each sub-test measures', () => {
     const p = buildPrompt({ subtest: 'PPPK-SOSKUL', items: [{ topic: 'Empati', difficulty: 'sedang' }] });
-    expect(p).toContain('Sub-tes: PPPK-SOSKUL (Kompetensi Sosial Kultural) untuk PPPK 2024.');
+    expect(p).toContain('Sub-tes: PPPK-SOSKUL (Kompetensi Sosial Kultural) untuk PPPK.');
     expect(p).toContain('Tujuan sub-tes: Menilai pengetahuan dan sikap terkait pengalaman berinteraksi dengan masyarakat majemuk');
     expect(p).toContain('"score" 1 sampai 4');
   });

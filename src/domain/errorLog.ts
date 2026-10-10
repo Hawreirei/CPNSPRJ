@@ -99,7 +99,7 @@ const SOURCE_LABEL: Record<ErrorSource, string> = {
 /** The downloadable text: app version, browser, then each entry. */
 export function logText(entries: readonly ErrorEntry[], env: { version: string; buildTime: string; userAgent: string; now: number }): string {
   const head = [
-    'Log galat CPNS SKD Set Builder',
+    'Log galat CASN Set Builder',
     `Dibuat: ${new Date(env.now).toISOString()}`,
     `Versi aplikasi: ${env.version}, dibuat ${env.buildTime}`,
     `Browser: ${env.userAgent}`,

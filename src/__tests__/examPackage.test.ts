@@ -135,3 +135,13 @@ describe('a second package (made up for this test, not real exam numbers)', () =
     expect(examSeries([attempt], DEFAULT_SETTINGS.counts)).toEqual({ TWK: [], TIU: [], TKP: [] });
   });
 });
+
+describe('what the learner sees of the built-in packages', () => {
+  it('is a plain name, CPNS and PPPK, with no decree, diktum or year; the sources stay in the code', () => {
+    const builtIn = packages().filter((p) => p.id === 'skd-cpns' || p.id === 'pppk-2024');
+    expect(builtIn.map((p) => p.name)).toEqual(['CPNS', 'PPPK']);
+    for (const p of builtIn) {
+      for (const text of [p.name, ...(p.notes ?? []), ...p.subtests.map((s) => s.name)]) expect(text).not.toMatch(/\b(19|20)\d{2}\b|Keputusan|Diktum|MenPAN/i);
+    }
+  });
+});

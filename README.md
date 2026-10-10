@@ -1,6 +1,6 @@
-# CPNS SKD Set Builder
+# CASN Set Builder
 
-Aplikasi web untuk membuat set latihan **SKD CPNS** (TWK, TIU, TKP) dan **seleksi PPPK 2024** dengan AI, memakai **API key milik pengguna sendiri**. Ujian lain bisa ditambahkan lewat berkas paket ujian. Tanpa server dan tanpa login: semua data tersimpan di browser.
+Aplikasi web untuk membuat set latihan seleksi **CASN** (calon ASN) dengan AI, untuk dua jalurnya: **CPNS** (SKD: TWK, TIU, TKP) dan **PPPK**. Buat Soal dimulai dengan memilih salah satunya. Set dibuat memakai **API key milik pengguna sendiri**. Ujian lain bisa ditambahkan lewat berkas paket ujian. Tanpa server dan tanpa login: semua data tersimpan di browser.
 
 Setiap set terdiri dari tiga keluaran yang saling terhubung:
 
@@ -15,8 +15,8 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 | Fitur | Keterangan |
 |---|---|
 | Set builder | Preset (SKD lengkap, Mini SKD, TWK saja, drill TIU, drill TKP), pilihan topik, jumlah, dan kesulitan |
-| Paket ujian dan PPPK 2024 | SKD CPNS dan PPPK 2024 bawaan; ujian lain diimpor sebagai berkas paket di Pengaturan, dan paket tanpa dokumen resmi ditandai "bukan data resmi". Soal kompetensi teknis PPPK dibuat dari nama jabatan yang diisi pengguna. Lihat [docs/paket-ujian.md](docs/paket-ujian.md) |
-| Profil kisi-kisi | Daftar topik per sub-tes SKD (dengan bobot opsional), plus jumlah soal, durasi, dan ambang batas bila perlu. Bisa dibuat, diimpor, dan diekspor di Pengaturan tanpa menunggu aplikasi diperbarui. Profil bawaan "SKD Sekolah Kedinasan 2026" diambil dari Keputusan MenPAN-RB Nomor 406 Tahun 2026; lihat [docs/paket-ujian.md](docs/paket-ujian.md#skd-sekolah-kedinasan-2026-profil-kisi-kisi-bawaan) |
+| CPNS dan PPPK | Dua seleksi bawaan, dipilih di awal Buat Soal; ujian lain diimpor sebagai berkas paket di Pengaturan. Soal kompetensi teknis PPPK dibuat dari nama jabatan yang diisi pengguna. Lihat [docs/paket-ujian.md](docs/paket-ujian.md) |
+| Profil kisi-kisi | Daftar topik per sub-tes SKD (dengan bobot opsional), plus jumlah soal, durasi, dan ambang batas bila perlu. Bisa dibuat, diimpor, dan diekspor di Pengaturan tanpa menunggu aplikasi diperbarui. |
 | Panel rencana | Jumlah permintaan API, perkiraan token, biaya, dan waktu sebelum generasi |
 | Generasi | Batch campuran topik, progres, stop/lanjut, coba ulang batch gagal, autosave per batch |
 | Pemeriksaan keandalan | TIU numerik dihitung ulang dengan mathjs (kunci dikoreksi otomatis bila jelas); TKP wajib skor 1–5 tanpa skor tertinggi kembar; TWK wajib rujukan, ditandai bila meragukan; deteksi duplikat |
@@ -97,7 +97,9 @@ Riwayat ujian, Buku Kesalahan, catatan, nilai, laporan soal, rencana belajar, da
 
 Durasi default 100 menit. Angka-angka SKD ini adalah bawaan aplikasi ("Bawaan aplikasi" di `src/domain/examPackage.ts`), belum disertai rujukan dokumen resmi; preset formasi khusus dengan sumber resmi menunggu dokumennya (#19). Semua angka dapat diubah di **Pengaturan** karena aturan bisa berubah per tahun dan formasi. Untuk set yang lebih pendek, ambang batas diskalakan proporsional.
 
-Angka paket **PPPK 2024** (145 soal, nilai tertinggi 670, 120 + 10 menit, tanpa ambang batas) berasal dari **Keputusan MenPAN-RB Nomor 347 Tahun 2024** tentang Mekanisme Seleksi PPPK Tahun Anggaran 2024. Rincian per diktum ada di [docs/paket-ujian.md](docs/paket-ujian.md#paket-pppk-2024-dan-rujukannya).
+**Sumber angka tidak ditampilkan di aplikasi.** Pengguna hanya melihat nama seperti "CPNS" dan "PPPK", tanpa nomor keputusan atau tahun (keputusan pemilik produk, 10 Oktober 2026). Sumbernya dicatat di kode dan di `docs/`, dan diperbarui pemilik produk secara berkala.
+
+Angka paket **PPPK** (145 soal, nilai tertinggi 670, 120 + 10 menit, tanpa ambang batas) berasal dari **Keputusan MenPAN-RB Nomor 347 Tahun 2024** tentang Mekanisme Seleksi PPPK Tahun Anggaran 2024. Rincian per diktum ada di [docs/paket-ujian.md](docs/paket-ujian.md#paket-pppk-2024-dan-rujukannya).
 
 ## Pengembangan
 
