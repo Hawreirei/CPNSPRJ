@@ -467,8 +467,12 @@ export async function rewriteQuestion(q: Question, instruction: string, keyId?: 
 
 const REPAIRABLE = new Set<FlagKind>(['math-mismatch', 'explanation-mismatch']);
 
-/** A question whose key, explanation and calculation disagree, and that the AI may rewrite. */
-export const needsRepair = (q: Question) => q.source === 'ai' && !q.locked && !isGraded(q.subtest) && q.flags.some((f) => f.severity === 'warn' && REPAIRABLE.has(f.kind));
+/**
+ * A question the AI may rewrite: key, explanation and calculation disagree, or (TKP, PPPK
+ * Manajerial and other graded sub-tests) the option scores are missing or break the rules.
+ */
+export const needsRepair = (q: Question) =>
+  q.source === 'ai' && !q.locked && q.flags.some((f) => f.severity === 'warn' && (isGraded(q.subtest) ? f.kind === 'tkp-spread' : REPAIRABLE.has(f.kind)));
 
 /** Ask the model to fix the given questions (one request at most); returns how many were fixed. */
 async function repairWith(session: ModelSession, questions: Question[], signal: AbortSignal, onUsage: (i: number, o: number) => Promise<void>): Promise<number> {

@@ -2,6 +2,11 @@
 
 Perubahan yang terasa bagi pengguna, per versi. Berkas ini dibuat dari `src/data/changelog.ts` dengan `npm run changelog`; jangan diedit langsung.
 
+## 1.7.1 (2026-10-10)
+
+- Perbaikan PPPK Manajerial dan Sosial Kultural (juga TKP): skor tiap pilihan jawaban di Kunci Jawaban kini sama dengan yang disebut di pembahasan. Sebelumnya, bila AI hanya menulis skor di pembahasan, semua pilihan tercatat 0.
+- Soal lama yang skornya tercatat 0 diperbaiki otomatis dari pembahasannya saat aplikasi dibuka. Bila pembahasannya tidak menyebut skor, soal ditandai "perlu dicek" dan bisa diperbaiki dengan tombol 🔧 Perbaiki.
+
 ## 1.7.0 (2026-10-10)
 
 - Jauh lebih hemat kuota API key gratis: Latihan Singkat kini cukup 1 permintaan AI (sebelumnya 3) dan SKD Lengkap sekitar 5 (sebelumnya 8), karena soal TWK, TIU, dan TKP diminta sekaligus. Satu key Gemini gratis kini cukup untuk sekitar 20 latihan singkat sehari.

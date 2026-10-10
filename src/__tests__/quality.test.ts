@@ -155,6 +155,25 @@ describe('feedback in the bank', () => {
     expect(set.questionIds).toEqual(['r1']);
   });
 
+  it('gives saved PPPK Manajerial questions the scores their explanation states', async () => {
+    const options = (['A', 'B', 'C', 'D', 'E'] as const).map((label) => ({ label, text: `Tindakan ${label}`, score: 0 }));
+    await db.questions.put(
+      mkQ({
+        id: 'm1',
+        subtest: 'PPPK-MANAJERIAL',
+        answer: undefined,
+        options,
+        explanation: 'A (skor 2): lambat. B (skor 4): tepat. C (skor 3): cukup. D (skor 1): pasif. E (skor 1): menghindar.',
+      }),
+    );
+    // No scores anywhere: left as it is, still flagged for a repair.
+    await db.questions.put(mkQ({ id: 'm2', subtest: 'PPPK-MANAJERIAL', answer: undefined, options, explanation: 'Opsi B paling tepat.' }));
+    localStorage.setItem('validatorVersion', 'old');
+    await revalidateStored();
+    expect((await db.questions.get('m1'))?.options.map((o) => o.score)).toEqual([2, 4, 3, 1, 1]);
+    expect((await db.questions.get('m2'))?.options.every((o) => o.score === 0)).toBe(true);
+  });
+
   it('keeps the report through the startup re-check and a backup', async () => {
     await db.questions.put(mkQ({ id: 'k1', report, rating: 2, flags: [] }));
     await revalidateStored();

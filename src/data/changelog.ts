@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.7.1',
+    date: '2026-10-10',
+    items: [
+      'Perbaikan PPPK Manajerial dan Sosial Kultural (juga TKP): skor tiap pilihan jawaban di Kunci Jawaban kini sama dengan yang disebut di pembahasan. Sebelumnya, bila AI hanya menulis skor di pembahasan, semua pilihan tercatat 0.',
+      'Soal lama yang skornya tercatat 0 diperbaiki otomatis dari pembahasannya saat aplikasi dibuka. Bila pembahasannya tidak menyebut skor, soal ditandai "perlu dicek" dan bisa diperbaiki dengan tombol 🔧 Perbaiki.',
+    ],
+  },
+  {
     version: '1.7.0',
     date: '2026-10-10',
     items: [

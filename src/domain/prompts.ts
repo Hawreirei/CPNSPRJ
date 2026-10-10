@@ -1,5 +1,5 @@
 import { NUMERIC_TOPICS } from './blueprint';
-import { isGraded, isSkd, packageOf, specOf } from './examPackage';
+import { isGraded, isSkd, packageOf, scoringOf, specOf } from './examPackage';
 import type { BatchItem, Difficulty, Question, Subtest } from './types';
 
 export const SYSTEM_PROMPT = `Anda adalah penyusun soal latihan SKD CPNS (Seleksi Kompetensi Dasar) yang teliti.
@@ -136,8 +136,9 @@ export function buildMultiPrompt(parts: { subtest: Subtest; items: BatchItem[]; 
   const example = parts
     .map(
       (p) =>
-        `    {"subtest": "${p.subtest}", "topic": "...", "stem": "...", "options": [{"label": "A", "text": "..."${p.subtest === 'TKP' ? ', "score": 3' : ''}}, ... 5 opsi A-E],${
-          p.subtest !== 'TKP' ? ' "answer": "C",' : ''
+        // Graded sub-tests (TKP, PPPK Manajerial, Sosial Kultural…) score every option and have no "answer".
+        `    {"subtest": "${p.subtest}", "topic": "...", "stem": "...", "options": [{"label": "A", "text": "..."${isGraded(p.subtest) ? ', "score": 3' : ''}}, ... 5 opsi A-E],${
+          !isGraded(p.subtest) ? ' "answer": "C",' : ''
         } "explanation": "...",${p.subtest === 'TWK' ? ' "reference": "...",' : ''}${p.subtest === 'TIU' ? ' "mathExpression": "hanya untuk soal numerik",' : ''} "confidence": "high"}`,
     )
     .join(',\n');
@@ -222,13 +223,14 @@ ${formatSpec(q.subtest)}`;
 
 /** Ask the model to fix questions whose key, explanation and calculation disagree. */
 export function buildRepairPrompt(subtest: Subtest, questions: Question[]): string {
+  const rule = scoringOf(subtest);
   const list = questions
     .map((q, i) => {
       const problems = q.flags.filter((f) => f.severity === 'warn').map((f) => f.message);
       const data = {
         stem: q.stem,
-        options: q.options.map(({ label, text }) => ({ label, text })),
-        answer: q.answer,
+        options: q.options.map(({ label, text, score }) => (rule.kind === 'graded' ? { label, text, score } : { label, text })),
+        answer: rule.kind === 'graded' ? undefined : q.answer,
         explanation: q.explanation,
         reference: q.reference,
         mathExpression: q.mathExpression,
@@ -238,10 +240,15 @@ export function buildRepairPrompt(subtest: Subtest, questions: Question[]): stri
     .join('\n\n');
   return `${subtestGuide(subtest, [...new Set(questions.map((q) => q.topic))])}
 
-Soal-soal berikut bermasalah: kunci jawaban, pembahasan, dan hitungannya tidak saling cocok.
+${
+  rule.kind === 'graded'
+    ? `Soal-soal berikut bermasalah: skor pilihan jawabannya kosong, tidak lengkap, atau tidak sesuai pembahasan.
+Perbaiki setiap soal: beri SETIAP opsi "score" ${rule.min} sampai ${rule.max} di dalam objek opsinya (bukan hanya di pembahasan), tepat satu opsi mendapat skor ${rule.max}, dan pembahasan menyebut skor yang sama untuk tiap opsi.`
+    : `Soal-soal berikut bermasalah: kunci jawaban, pembahasan, dan hitungannya tidak saling cocok.
 Perbaiki setiap soal: kerjakan ulang dengan teliti, pastikan tepat satu opsi benar, "answer" menunjuk opsi itu, dan pembahasan menyimpulkan opsi dan nilai yang sama${
-    subtest === 'TIU' ? '; untuk soal hitungan, "mathExpression" (sintaks mathjs, titik sebagai desimal) harus menghasilkan nilai opsi benar' : ''
-  }.
+        subtest === 'TIU' ? '; untuk soal hitungan, "mathExpression" (sintaks mathjs, titik sebagai desimal) harus menghasilkan nilai opsi benar' : ''
+      }.`
+}
 Boleh mengubah angka pada soal atau opsi bila perlu. Pertahankan topik dan tingkat kesulitan. Kembalikan ${questions.length} soal dengan urutan yang sama.
 
 ${list}
