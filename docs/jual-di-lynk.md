@@ -4,6 +4,8 @@ Ganti semua isian dalam kurung siku `[...]` sebelum dipakai. Angka dan fitur di 
 
 ---
 
+> **Versi final nama, deskripsi, dan harga ada di [produk-lynk.md](produk-lynk.md).** Bagian 1 di bawah adalah draf awal dan tidak lagi dipakai. Bagian 2 (panduan pembeli) masih berlaku.
+
 ## BAGIAN 1. Halaman produk di Lynk
 
 ### Judul produk
@@ -77,7 +79,7 @@ Terima kasih sudah membeli. Panduan ini membawa Anda dari nol sampai latihan per
 
 ## Isi paket
 
-- **Link aplikasi**: [LINK APLIKASI]
+- **Link aplikasi**: https://hawreirei.github.io/CPNSPRJ/
 - **Berkas bundel**: `[NAMA-BUNDEL].cpnsbundle.json`
 - Panduan ini
 
@@ -88,7 +90,7 @@ Terima kasih sudah membeli. Panduan ini membawa Anda dari nol sampai latihan per
 
 ## Langkah 2: Buka aplikasi
 
-1. Buka [LINK APLIKASI] di Chrome (disarankan), Edge, atau Safari.
+1. Buka https://hawreirei.github.io/CPNSPRJ/ di Chrome (disarankan), Edge, atau Safari.
 2. Tidak perlu daftar atau login.
 
 ## Langkah 3: Impor bundel

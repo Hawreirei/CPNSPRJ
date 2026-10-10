@@ -1,6 +1,6 @@
 name: E2E tests
 
-# Separate from the Pages deploy so a slow or failing browser run never blocks publishing.
+# The slow browser run has its own job, apart from the fast checks.
 # The fast checks run in their own job, so a type, lint, format or unit-test failure shows within a minute.
 on:
   pull_request:
