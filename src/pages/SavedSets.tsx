@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../db';
 import { createVariantSet, deleteSet } from '../engine/sets';
 import { startGeneration } from '../engine/generator';
+import BundleDialog from '../components/BundleDialog';
 import { Empty } from '../components/ui';
 import { StatusBadge } from './Dashboard';
 import { subtestsIn } from '../domain/examPackage';
@@ -14,6 +15,7 @@ const SOURCE_LABEL = { ai: 'AI', bank: 'dari bank', variant: 'varian', remedial:
 export default function SavedSets() {
   const nav = useNavigate();
   const [q, setQ] = useState('');
+  const [bundling, setBundling] = useState(false);
   const sets = useLiveQuery(() => db.sets.orderBy('updatedAt').reverse().toArray(), []);
   if (!sets) return null;
   const shown = sets.filter((s) => s.name.toLowerCase().includes(q.toLowerCase()));
@@ -29,6 +31,9 @@ export default function SavedSets() {
           <Link className="btn" to="/import">
             Impor set dari berkas
           </Link>
+          <button className="btn" disabled={!sets.some((x) => x.questionIds.length)} onClick={() => setBundling(true)}>
+            Ekspor bundel
+          </button>
           <Link className="btn btn-primary" to="/new">
             + Buat soal baru
           </Link>
@@ -36,7 +41,13 @@ export default function SavedSets() {
       </div>
       <input className="input max-w-sm" placeholder="Cari nama set…" value={q} onChange={(e) => setQ(e.target.value)} />
       {shown.length === 0 ? (
-        <Empty title="Belum ada set">Buat set pertama Anda di halaman Buat Soal.</Empty>
+        <Empty title="Belum ada set">
+          Buat set pertama Anda di halaman Buat Soal, atau{' '}
+          <Link to="/import" className="underline">
+            impor bundel soal
+          </Link>{' '}
+          yang sudah Anda miliki.
+        </Empty>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {shown.map((s) => {
@@ -88,6 +99,7 @@ export default function SavedSets() {
           })}
         </div>
       )}
+      {bundling && <BundleDialog sets={sets} onClose={() => setBundling(false)} />}
     </div>
   );
 }

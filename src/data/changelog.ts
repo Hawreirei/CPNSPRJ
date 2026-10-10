@@ -17,6 +17,13 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.3.0',
+    date: '2026-10-10',
+    items: [
+      'Bundel soal: Set Saya → Ekspor bundel menggabungkan beberapa set jadi satu berkas (.cpnsbundle.json). Impor set menerimanya, atau beberapa berkas sekaligus, lalu semua set masuk ke Set Saya dan soalnya ke Bank Soal. Beranda yang masih kosong menautkan ke Impor set.',
+    ],
+  },
+  {
     version: '1.2.0',
     date: '2026-10-09',
     items: [

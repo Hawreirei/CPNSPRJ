@@ -132,7 +132,13 @@ export default function Dashboard() {
       <section>
         <h2 className="mb-2">Set terbaru</h2>
         {data.sets.length === 0 ? (
-          <p className="muted">Belum ada set.</p>
+          <p className="muted">
+            Belum ada set. Punya bundel soal?{' '}
+            <Link to="/import" className="underline">
+              Impor di sini
+            </Link>
+            ; soalnya langsung masuk ke Set Saya dan Bank Soal.
+          </p>
         ) : (
           <div className="grid gap-2">
             {data.sets.map((s) => (

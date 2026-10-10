@@ -2,6 +2,10 @@
 
 Perubahan yang terasa bagi pengguna, per versi. Berkas ini dibuat dari `src/data/changelog.ts` dengan `npm run changelog`; jangan diedit langsung.
 
+## 1.3.0 (2026-10-10)
+
+- Bundel soal: Set Saya → Ekspor bundel menggabungkan beberapa set jadi satu berkas (.cpnsbundle.json). Impor set menerimanya, atau beberapa berkas sekaligus, lalu semua set masuk ke Set Saya dan soalnya ke Bank Soal. Beranda yang masih kosong menautkan ke Impor set.
+
 ## 1.2.0 (2026-10-09)
 
 - Profil kisi-kisi baru "SKD Sekolah Kedinasan 2026" dari Keputusan MenPAN-RB Nomor 406 Tahun 2026: topik per sub-tes, 110 soal dalam 100 menit, dan ambang batas TWK 65, TIU 80, TKP 156. Pilih di Pengaturan → Profil kisi-kisi. Aturan afirmasi daerah tertentu tampil sebagai catatan.

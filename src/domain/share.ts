@@ -211,6 +211,60 @@ export function parseShared(raw: unknown): SharedSet {
 
 const isSkdSubtest = (s: Subtest) => (SKD_SUBTESTS as string[]).includes(s);
 
+/* ------------------------------------------------------------ bundles */
+
+/** Sets in one bundle file: a seller's whole pack, imported in one go. */
+export const MAX_BUNDLE_SETS = 50;
+
+export interface SharedBundle {
+  app: 'cpns-skd-builder';
+  kind: 'bundle';
+  version: number;
+  name: string;
+  sets: SharedSet[];
+}
+
+/** Several shared sets in one file. Its version is the highest of its sets, so an older app asks for an update. */
+export function toBundle(name: string, sets: SharedSet[]): SharedBundle {
+  return { app: 'cpns-skd-builder', kind: 'bundle', version: Math.max(SHARE_VERSION, ...sets.map((s) => s.version)), name, sets };
+}
+
+const bundleSchema = z.object({
+  app: z.literal('cpns-skd-builder'),
+  kind: z.literal('bundle'),
+  version: z.number().int(),
+  name: text(120).min(1),
+  sets: z.array(z.unknown()).min(1, 'bundel kosong').max(MAX_BUNDLE_SETS, `paling banyak ${MAX_BUNDLE_SETS} set`),
+});
+
+/** Validate a bundle: every set in it is checked like a set received alone. Throws, in Indonesian; stores nothing. */
+export function parseBundle(raw: unknown): SharedBundle {
+  const version = (raw as { version?: unknown } | null)?.version;
+  if (typeof version === 'number' && version > SHARE_VERSION_PACKAGES) throw new Error('Bundel ini dibuat oleh versi aplikasi yang lebih baru. Perbarui aplikasi lalu coba lagi.');
+  const r = bundleSchema.safeParse(raw);
+  if (!r.success) {
+    const i = r.error.issues[0];
+    throw new Error(`Bundel tidak valid${i.path.length ? ` (${i.path.join('.')})` : ''}: ${i.message}.`);
+  }
+  const sets = r.data.sets.map((s, i) => {
+    try {
+      return parseShared(s);
+    } catch (e) {
+      throw new Error(`Set ke-${i + 1} di bundel ini: ${(e as Error).message}`);
+    }
+  });
+  return { ...r.data, kind: 'bundle', sets };
+}
+
+/** A received file: one set or a bundle of sets. */
+export function parseSharedFile(raw: unknown): { bundleName?: string; sets: SharedSet[] } {
+  if ((raw as { kind?: unknown } | null)?.kind === 'bundle') {
+    const b = parseBundle(raw);
+    return { bundleName: b.name, sets: b.sets };
+  }
+  return { sets: [parseShared(raw)] };
+}
+
 /* -------------------------------------------------------------- links */
 
 /** Set data in a link goes after "#/import?d=", in the fragment: browsers never send it to a server. */

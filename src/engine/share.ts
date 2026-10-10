@@ -1,6 +1,6 @@
 import { db, getSetQuestions } from '../db';
 import { units } from '../domain/groups';
-import { SHARED_FLAG_KINDS, toShared, type SharedQuestion, type SharedSet } from '../domain/share';
+import { SHARED_FLAG_KINDS, toBundle, toShared, type SharedBundle, type SharedQuestion, type SharedSet } from '../domain/share';
 import { inExamOrder, isSkd, packageOf } from '../domain/examPackage';
 import { SUBTESTS } from '../domain/types';
 import type { QSet, Question, Subtest } from '../domain/types';
@@ -15,6 +15,22 @@ export async function sharedSetOf(setId: string, opts: Parameters<typeof toShare
   if (!set) throw new Error('Set tidak ditemukan.');
   const questions = await getSetQuestions(set);
   return { shared: toShared(set.name, set.blueprint, questions, opts), imported: questions.filter((q) => q.source === 'import').length };
+}
+
+/**
+ * Several of the learner's sets as one bundle file. Questions from the learner's own photos or PDFs
+ * stay out, and a set left empty by that is skipped; `skipped` names those sets.
+ */
+export async function bundleOf(setIds: string[], name: string): Promise<{ bundle: SharedBundle; skipped: string[] }> {
+  const sets: SharedSet[] = [];
+  const skipped: string[] = [];
+  for (const id of setIds) {
+    const { shared } = await sharedSetOf(id);
+    if (shared.questions.length) sets.push(shared);
+    else skipped.push(shared.set.name);
+  }
+  if (!sets.length) throw new Error('Tidak ada soal yang bisa dibagikan di set yang dipilih.');
+  return { bundle: toBundle(name, sets), skipped };
 }
 
 const identity = (q: Pick<SharedQuestion, 'stem' | 'passage'>) => hashText((q.passage?.text ?? '') + q.stem);
@@ -102,4 +118,11 @@ export async function importShared(shared: SharedSet): Promise<QSet> {
     .anyOf(fresh.map((q) => q.id))
     .modify({ originSetId: set.id });
   return set;
+}
+
+/** Add the sets of a bundle one after the other, so a question shared by two sets is stored once. */
+export async function importMany(sets: SharedSet[]): Promise<QSet[]> {
+  const out: QSet[] = [];
+  for (const shared of sets) out.push(await importShared(shared));
+  return out;
 }
