@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../db';
 import { dayWindowStart, keyUsage, markDayExhausted, QuotaExhaustedError, releaseRequest, reserveRequest } from '../engine/quota';
 import { balancedSizes, estimatePlan, groupBatches, isProcedural, planBatches } from '../engine/plan';
-import { finishBatch } from '../engine/generator';
+import { finishBatch, slotFor } from '../engine/generator';
 import { quotaInfo } from '../providers/http';
-import { parseAiQuestions, parseMultiQuestions, salvageQuestions } from '../domain/schemas';
+import { parseAiQuestions, salvageQuestions } from '../domain/schemas';
 import { buildMultiPrompt } from '../domain/prompts';
 import { geminiThinking } from '../providers';
 import { buildPreset, DEFAULT_SETTINGS } from '../domain/blueprint';
@@ -136,35 +136,43 @@ describe('request-saving batching', () => {
     expect(groupBatches([mk('a', 'TWK', 10), mk('b', 'TIU', 10)], 0)).toHaveLength(2);
   });
 
-  it("splits a multi sub-test reply by each question's sub-test", () => {
-    const q = (subtest: string | undefined, i: number) => ({
+  it('puts each streamed question in its sub-test, batch and planned slot', () => {
+    const mk = (id: string, subtest: PlanBatch['subtest'], topics: string[]): PlanBatch => ({
+      id,
       subtest,
-      stem: `Soal nomor ${i} yang cukup panjang`,
-      options: [1, 2, 3, 4, 5].map((n) => ({ text: `Opsi ${n}`, score: n })),
-      answer: 'B',
-      explanation: 'Jawaban: B.',
+      items: topics.map((topic) => ({ topic, difficulty: 'sedang' as const })),
+      count: topics.length,
+      status: 'pending',
     });
-    const parts = [
-      { subtest: 'TWK' as const, items: [{ topic: 'Pancasila', difficulty: 'sedang' as const }] },
-      {
-        subtest: 'TKP' as const,
-        items: [
-          { topic: 'Pelayanan Publik', difficulty: 'sedang' as const },
-          { topic: 'Jejaring Kerja', difficulty: 'mudah' as const },
-        ],
-      },
-    ];
-    const text = JSON.stringify({ questions: [q('TKP', 1), q('twk', 2), q(undefined, 3)] });
-    const out = parseMultiQuestions(text, parts);
-    expect(out.get('TWK')).toHaveLength(1);
-    expect(out.get('TKP')).toHaveLength(2);
-    expect(out.get('TKP')![0].options.map((o) => o.score)).toEqual([1, 2, 3, 4, 5]);
-    expect(out.get('TKP')![1].topic).toBe('Jejaring Kerja');
-    expect(() => parseMultiQuestions('{"questions": []}', parts)).toThrow();
-    const prompt = buildMultiPrompt(parts);
+    const group = [mk('twk', 'TWK', ['Pancasila']), mk('tkp1', 'TKP', ['Pelayanan Publik']), mk('tkp2', 'TKP', ['Jejaring Kerja'])];
+    const taken = new Map<PlanBatch['subtest'], number>();
+    const take = (named?: string) => {
+      const slot = slotFor(group, taken, named);
+      if (slot) taken.set(slot.subtest, (taken.get(slot.subtest) ?? 0) + 1);
+      return slot && `${slot.batch.id}:${slot.item.topic}`;
+    };
+    expect(take('TKP')).toBe('tkp1:Pelayanan Publik');
+    expect(take('twk')).toBe('twk:Pancasila');
+    // A question that names no sub-test fills the first one still short.
+    expect(take(undefined)).toBe('tkp2:Jejaring Kerja');
+    // Every slot is filled: extra questions are left out.
+    expect(take('TKP')).toBeNull();
+    expect(take(undefined)).toBeNull();
+    const prompt = buildMultiPrompt([
+      { subtest: 'TWK', items: group[0].items },
+      { subtest: 'TKP', items: [...group[1].items, ...group[2].items] },
+    ]);
     expect(prompt).toContain('Sub-tes: TWK');
     expect(prompt).toContain('Sub-tes: TKP');
     expect(prompt).toContain('total 3 soal');
+  });
+
+  it('finds the finished questions in a reply that is still being written', () => {
+    const q = (i: number) => JSON.stringify({ stem: `Soal nomor ${i}`, options: [{ text: 'a' }], answer: 'A', explanation: 'x' });
+    const full = `{"questions": [${q(1)}, ${q(2)}, ${q(3)}]}`;
+    const cut = full.slice(0, full.indexOf('Soal nomor 3'));
+    expect(salvageQuestions(cut)).toHaveLength(2);
+    expect(salvageQuestions(full)).toHaveLength(3);
   });
 
   it('keeps Gemini thinking short', () => {

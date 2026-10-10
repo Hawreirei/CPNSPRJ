@@ -1,4 +1,4 @@
-import { getJson, postJson } from './http';
+import { getJson, postJson, postStream } from './http';
 import { ProviderError } from './types';
 import type { LlmImage, LlmRequest, LlmResponse, ProviderConfig } from './types';
 import type { ModelInfo } from '../domain/types';
@@ -31,42 +31,61 @@ export function geminiThinking(model: string): Record<string, unknown> | undefin
 /** Models that rejected the thinking setting; they are called without it from then on. */
 const noThinking = new Set<string>();
 
+type GeminiResp = {
+  candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[];
+  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
+  promptFeedback?: { blockReason?: string };
+};
+
 async function completeGemini(cfg: ProviderConfig, req: LlmRequest): Promise<LlmResponse> {
   const thinking = noThinking.has(cfg.model) ? undefined : geminiThinking(cfg.model);
-  const call = (thinkingConfig?: Record<string, unknown>) =>
-    postJson(
-      `${GEMINI_BASE}/models/${encodeURIComponent(cfg.model)}:generateContent`,
-      {
-        systemInstruction: { parts: [{ text: req.system }] },
-        contents: [{ role: 'user', parts: [...(req.images ?? []).map((i) => ({ inlineData: { mimeType: i.mimeType, data: i.data } })), { text: req.prompt }] }],
-        generationConfig: { responseMimeType: 'application/json', maxOutputTokens: req.maxTokens ?? 32768, ...(thinkingConfig ? { thinkingConfig } : {}) },
-      },
-      { 'x-goog-api-key': cfg.apiKey },
-      req.signal,
-    );
-  let data;
-  try {
-    data = await call(thinking);
-  } catch (e) {
-    // An invalid argument is rejected before any work is done: retry once without the setting.
-    if (!(thinking && e instanceof ProviderError && e.status === 400 && /think/i.test(e.message))) throw e;
-    noThinking.add(cfg.model);
-    data = await call();
-  }
-  type GeminiResp = {
-    candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
-    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
-    promptFeedback?: { blockReason?: string };
+  let text = '';
+  let finish: string | undefined;
+  let usage: GeminiResp['usageMetadata'];
+  // A reply is one response, or (streamed) a series of them that each carry the next piece.
+  const take = (data: unknown) => {
+    const d = data as GeminiResp;
+    if (d.promptFeedback?.blockReason) throw new ProviderError(`Permintaan diblokir Gemini: ${d.promptFeedback.blockReason}`);
+    const cand = d.candidates?.[0];
+    const piece =
+      cand?.content?.parts
+        ?.filter((p) => !p.thought)
+        .map((p) => p.text ?? '')
+        .join('') ?? '';
+    if (cand?.finishReason) finish = cand.finishReason;
+    if (d.usageMetadata) usage = d.usageMetadata;
+    if (piece) {
+      text += piece;
+      req.onText?.(text);
+    }
   };
-  const d = data as GeminiResp;
-  if (d.promptFeedback?.blockReason) throw new ProviderError(`Permintaan diblokir Gemini: ${d.promptFeedback.blockReason}`);
-  const cand = d.candidates?.[0];
-  const text = cand?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
-  if (!text) throw new ProviderError(`Gemini tidak mengembalikan teks (${cand?.finishReason ?? 'unknown'}).`, { retryable: true });
+  const call = async (thinkingConfig?: Record<string, unknown>) => {
+    const body = {
+      systemInstruction: { parts: [{ text: req.system }] },
+      contents: [{ role: 'user', parts: [...(req.images ?? []).map((i) => ({ inlineData: { mimeType: i.mimeType, data: i.data } })), { text: req.prompt }] }],
+      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: req.maxTokens ?? 32768, ...(thinkingConfig ? { thinkingConfig } : {}) },
+    };
+    const model = `${GEMINI_BASE}/models/${encodeURIComponent(cfg.model)}`;
+    const headers = { 'x-goog-api-key': cfg.apiKey };
+    if (req.onText) await postStream(`${model}:streamGenerateContent?alt=sse`, body, headers, req.signal, take);
+    else take(await postJson(`${model}:generateContent`, body, headers, req.signal));
+  };
+  try {
+    await call(thinking);
+  } catch (e) {
+    if (thinking && e instanceof ProviderError && e.status === 400 && /think/i.test(e.message)) {
+      // An invalid argument is rejected before any work is done: retry once without the setting.
+      noThinking.add(cfg.model);
+      await call();
+    } else if (!(text && e instanceof ProviderError && e.retryable)) throw e;
+    // Otherwise the connection dropped mid-reply: keep what arrived, so its finished questions
+    // are kept and only the missing ones are asked for again.
+  }
+  if (!text) throw new ProviderError(`Gemini tidak mengembalikan teks (${finish ?? 'unknown'}).`, { retryable: true });
   return {
     text,
-    inputTokens: d.usageMetadata?.promptTokenCount ?? 0,
-    outputTokens: (d.usageMetadata?.candidatesTokenCount ?? 0) + (d.usageMetadata?.thoughtsTokenCount ?? 0),
+    inputTokens: usage?.promptTokenCount ?? 0,
+    outputTokens: (usage?.candidatesTokenCount ?? 0) + (usage?.thoughtsTokenCount ?? 0),
   };
 }
 
@@ -132,6 +151,14 @@ export function imageError(e: unknown, model: string): unknown {
 }
 
 async function completeText(cfg: ProviderConfig, req: LlmRequest): Promise<LlmResponse> {
+  if (cfg.provider === 'gemini') return completeGemini(cfg, req);
+  // Only Gemini streams; the others hand over the whole reply at once.
+  const res = await completeOther(cfg, req);
+  req.onText?.(res.text);
+  return res;
+}
+
+async function completeOther(cfg: ProviderConfig, req: LlmRequest): Promise<LlmResponse> {
   switch (cfg.provider) {
     case 'gemini':
       return completeGemini(cfg, req);

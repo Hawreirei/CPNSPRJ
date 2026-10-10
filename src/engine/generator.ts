@@ -3,10 +3,10 @@ import { db, getSettings } from '../db';
 import { endOfGroup } from '../domain/groups';
 import { easier } from '../domain/blueprint';
 import { buildMultiPrompt, buildPassagePrompt, buildPrompt, buildRepairPrompt, buildRewritePrompt, SYSTEM_PROMPT } from '../domain/prompts';
-import { parseMultiQuestions } from '../domain/schemas';
+import { parseAiQuestions, salvageQuestions } from '../domain/schemas';
 import { loadMath, validateQuestion } from '../domain/validators';
 import { ProviderError } from '../providers';
-import type { FlagKind, PlanBatch, QSet, Question, Subtest } from '../domain/types';
+import type { BatchItem, FlagKind, PlanBatch, QSet, Question, Subtest } from '../domain/types';
 import { uid } from '../lib/id';
 import { batchLabel, groupBatches, groupCap, isPassageBatch, isProcedural, passageSizes, takeGroup } from './plan';
 import { isLimited, keyUsage, limitsOf, QuotaExhaustedError } from './quota';
@@ -121,19 +121,101 @@ async function addUsage(setId: string, inputTokens: number, outputTokens: number
 const procedural = () => import('../domain/procedural');
 
 /**
- * Get the questions for a group of batches in one request (or from the procedural
- * generators), handed back per batch in the group's order.
+ * Where the next question of a reply goes: its sub-test (named by the question, or the first
+ * one still short when it names none), the batch it fills, and the planned slot (topic and
+ * difficulty) it takes. Null when every slot is already filled.
  */
-async function fetchGroup(set: QSet, group: PlanBatch[], session: ModelSession | null, signal: AbortSignal): Promise<Question[][]> {
+export function slotFor(group: PlanBatch[], taken: Map<Subtest, number>, named?: unknown): { subtest: Subtest; batch: PlanBatch; item: BatchItem } | null {
+  const subtests = [...new Set(group.map((b) => b.subtest))];
+  const room = (s: Subtest) => group.filter((b) => b.subtest === s).reduce((n, b) => n + b.count, 0) - (taken.get(s) ?? 0);
+  const name = String(named ?? '')
+    .trim()
+    .toUpperCase();
+  const subtest = subtests.length === 1 ? subtests[0] : (subtests.find((s) => s.toUpperCase() === name) ?? subtests.find((s) => room(s) > 0));
+  if (!subtest || room(subtest) <= 0) return null;
+  let k = taken.get(subtest) ?? 0;
+  for (const batch of group.filter((b) => b.subtest === subtest)) {
+    if (k < batch.count) return { subtest, batch, item: batch.items[k] };
+    k -= batch.count;
+  }
+  return null;
+}
+
+/**
+ * Saves questions while the model is still writing its reply: each one is checked, stored and
+ * shown the moment its JSON object is complete, instead of when the whole reply is in. A reply
+ * cut off half-way therefore still keeps every question finished before the cut.
+ */
+function liveQuestions(set: QSet, group: PlanBatch[], hashes: Set<string>, onStored: () => void) {
+  const taken = new Map<Subtest, number>();
+  const stored = new Map<string, Question[]>(group.map((b) => [b.id, []]));
+  let seen = 0;
+  let lastLength = 0;
+  let chain: Promise<void> = Promise.resolve();
+
+  async function store(raw: unknown) {
+    const slot = slotFor(group, taken, (raw as { subtest?: unknown } | null)?.subtest);
+    if (!slot) return;
+    let q: Question | undefined;
+    try {
+      [q] = parseAiQuestions(JSON.stringify({ questions: [raw] }), { subtest: slot.subtest, items: [slot.item], setId: set.id });
+    } catch {
+      return; // An unusable question leaves its slot for the next one.
+    }
+    if (!q) return;
+    taken.set(slot.subtest, (taken.get(slot.subtest) ?? 0) + 1);
+    await loadMath();
+    const v = validateQuestion({ ...q, originSetId: set.id }, hashes);
+    hashes.add(v.hash);
+    await appendToSet(set.id, [v]);
+    stored.get(slot.batch.id)!.push(v);
+    onStored();
+  }
+
+  /** The reply so far. A shorter one than last time means a retry started over. */
+  function feed(text: string) {
+    if (text.length < lastLength) seen = 0;
+    lastLength = text.length;
+    const raws = salvageQuestions(text);
+    for (; seen < raws.length; seen++) {
+      const raw = raws[seen];
+      chain = chain.then(() => store(raw));
+    }
+  }
+
+  /** The whole reply: stores what is left and returns each batch's questions. */
+  async function finish(text: string): Promise<Question[][]> {
+    feed(text);
+    await chain;
+    if (![...stored.values()].some((q) => q.length)) throw new Error('Respons AI tidak berisi soal yang valid.');
+    return group.map((b) => stored.get(b.id)!);
+  }
+
+  return { feed, finish };
+}
+
+/**
+ * Get the questions for a group of batches in one request (or from the procedural generators),
+ * per batch in the group's order. AI questions are stored as they arrive (`stored`).
+ */
+async function fetchGroup(
+  set: QSet,
+  group: PlanBatch[],
+  session: ModelSession | null,
+  signal: AbortSignal,
+  hashes: Set<string>,
+  onStored: () => void,
+): Promise<{ questions: Question[][]; stored: boolean }> {
   const onUsage = (i: number, o: number) => addUsage(set.id, i, o);
   if (group.length === 1) {
     const batch = group[0];
-    if (isProcedural(batch)) return [(await procedural()).generateProcedural(batch.items[0].topic, batch.items[0].difficulty, batch.count)];
+    if (isProcedural(batch)) return { questions: [(await procedural()).generateProcedural(batch.items[0].topic, batch.items[0].difficulty, batch.count)], stored: false };
     if (!session) throw new Error('Belum ada API key.');
     if (isPassageBatch(batch)) {
+      // A passage and its questions are checked together, so they are stored together.
       const sizes = passageSizes(batch.count);
       const prompt = buildPassagePrompt({ items: batch.items, sizes, avoid: await recentStems(batch.subtest, [batch.items[0].topic]) });
-      return [await callAndParsePassages(session, prompt, { items: batch.items, sizes, setId: set.id }, signal, onUsage)];
+      return { questions: [await callAndParsePassages(session, prompt, { items: batch.items, sizes, setId: set.id }, signal, onUsage)], stored: false };
     }
   }
   if (!session) throw new Error('Belum ada API key.');
@@ -141,35 +223,32 @@ async function fetchGroup(set: QSet, group: PlanBatch[], session: ModelSession |
   const subtests = [...new Set(group.map((b) => b.subtest))];
   const itemsOf = (s: Subtest) => group.filter((b) => b.subtest === s).flatMap((b) => b.items);
   const avoidFor = (s: Subtest) => recentStems(s, [...new Set(itemsOf(s).map((i) => i.topic))]);
-  let bySubtest: Map<Subtest, Question[]>;
+  let prompt: string;
   if (subtests.length === 1) {
     const subtest = subtests[0];
-    const items = itemsOf(subtest);
     // Batches modelled on existing questions are always sent alone (see takeGroup).
     const basedOn = group[0].basedOn ? ((await db.questions.bulkGet(group[0].basedOn)).filter(Boolean) as Question[]) : undefined;
-    const prompt = buildPrompt({ subtest, items, avoid: await avoidFor(subtest), basedOn });
-    bySubtest = new Map([[subtest, await callAndParse(session, prompt, { subtest, items, setId: set.id }, signal, onUsage)]]);
+    prompt = buildPrompt({ subtest, items: itemsOf(subtest), avoid: await avoidFor(subtest), basedOn });
   } else {
-    const parts = await Promise.all(subtests.map(async (subtest) => ({ subtest, items: itemsOf(subtest), avoid: await avoidFor(subtest) })));
-    bySubtest = await callModel(session, { system: SYSTEM_PROMPT, prompt: buildMultiPrompt(parts) }, (t) => parseMultiQuestions(t, parts, set.id), signal, onUsage);
+    prompt = buildMultiPrompt(await Promise.all(subtests.map(async (subtest) => ({ subtest, items: itemsOf(subtest), avoid: await avoidFor(subtest) }))));
   }
-  const taken = new Map<Subtest, number>();
-  return group.map((b) => {
-    const from = taken.get(b.subtest) ?? 0;
-    taken.set(b.subtest, from + b.count);
-    return (bySubtest.get(b.subtest) ?? []).slice(from, from + b.count);
-  });
+  const live = liveQuestions(set, group, hashes, onStored);
+  const questions = await callModel(session, { system: SYSTEM_PROMPT, prompt, onText: live.feed }, (text) => live.finish(text), signal, onUsage);
+  return { questions, stored: true };
 }
 
-/** Save a batch's questions and queue only what is still missing. */
-async function storeBatch(set: QSet, batch: PlanBatch, questions: Question[], hashes: Set<string>) {
-  await loadMath();
-  const validated = questions.slice(0, batch.count).map((q) => {
-    const v = validateQuestion({ ...q, originSetId: set.id }, hashes);
-    hashes.add(v.hash);
-    return v;
-  });
-  await appendToSet(set.id, validated);
+/** Save a batch's questions (unless already stored as they arrived) and queue only what is still missing. */
+async function storeBatch(set: QSet, batch: PlanBatch, questions: Question[], hashes: Set<string>, alreadyStored: boolean) {
+  let validated = questions.slice(0, batch.count);
+  if (!alreadyStored) {
+    await loadMath();
+    validated = validated.map((q) => {
+      const v = validateQuestion({ ...q, originSetId: set.id }, hashes);
+      hashes.add(v.hash);
+      return v;
+    });
+    await appendToSet(set.id, validated);
+  }
   // Keep what we got; queue only the missing items instead of redoing the whole batch.
   const leftover = finishBatch(batch, validated.length);
   await db.transaction('rw', db.sets, async () => {
@@ -273,11 +352,13 @@ export async function startGeneration(setId: string): Promise<void> {
       const name = groupLabel(group);
       update(setId, { current: [...(progress.get(setId)?.current ?? []), name] });
       try {
-        const results = await fetchGroup(set, group, session, ctrl.signal);
+        // Each AI question counts (and shows on the set page) as soon as it is written.
+        const bump = () => update(setId, { done: (progress.get(setId)?.done ?? 0) + 1, waitUntil: undefined, waitReason: undefined });
+        const results = await fetchGroup(set, group, session, ctrl.signal, hashes, bump);
         for (const [k, batch] of group.entries()) {
-          const r = await storeBatch(set, batch, results[k], hashes);
+          const r = await storeBatch(set, batch, results.questions[k], hashes, results.stored);
           producedIds.push(...r.ids);
-          update(setId, { done: (progress.get(setId)?.done ?? 0) + r.added });
+          if (!results.stored) update(setId, { done: (progress.get(setId)?.done ?? 0) + r.added });
           if (r.rest) {
             log(setId, 'info', `${label(batch)}: ${r.added}/${batch.count} soal diterima; ${r.rest.count} sisanya diminta ulang.`);
             queue.push(r.rest);

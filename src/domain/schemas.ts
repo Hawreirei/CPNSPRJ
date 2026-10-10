@@ -150,42 +150,6 @@ export function parseAiQuestions(text: string, ctx: { subtest: Subtest; items: B
   });
 }
 
-/**
- * Split a reply that covers several sub-tests (see buildMultiPrompt) by each
- * question's "subtest" field and parse every part on its own.
- */
-export function parseMultiQuestions(text: string, parts: { subtest: Subtest; items: BatchItem[] }[], setId?: string): Map<Subtest, Question[]> {
-  const bySub = new Map<Subtest, unknown[]>(parts.map((p) => [p.subtest, []]));
-  const unlabeled: unknown[] = [];
-  for (const raw of rawQuestions(text)) {
-    const s = String((raw as { subtest?: unknown } | null)?.subtest ?? '')
-      .trim()
-      .toUpperCase() as Subtest;
-    if (bySub.has(s)) bySub.get(s)!.push(raw);
-    else unlabeled.push(raw);
-  }
-  // Without a label, fill the parts in the order the prompt asked for.
-  for (const raw of unlabeled) {
-    const part = parts.find((p) => bySub.get(p.subtest)!.length < p.items.length);
-    if (part) bySub.get(part.subtest)!.push(raw);
-  }
-  const out = new Map<Subtest, Question[]>();
-  for (const p of parts) {
-    const list = bySub.get(p.subtest)!;
-    let questions: Question[] = [];
-    if (list.length) {
-      try {
-        questions = parseAiQuestions(JSON.stringify({ questions: list }), { subtest: p.subtest, items: p.items, setId });
-      } catch {
-        // Nothing usable for this part; its items are requested again.
-      }
-    }
-    out.set(p.subtest, questions);
-  }
-  if (![...out.values()].some((q) => q.length)) throw new Error('Respons AI tidak berisi soal yang valid.');
-  return out;
-}
-
 const aiPassage = z.object({
   title: z.string().optional().nullable(),
   text: z.string().min(80, 'wacana terlalu pendek'),

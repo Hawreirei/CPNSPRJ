@@ -294,9 +294,11 @@ function GenerationPanel({ set }: { set: QSet }) {
   const prog = useGenProgress(set.id);
   if (!set.batches.length) return null;
   const total = set.batches.reduce((n, b) => n + b.count, 0);
-  const done = set.batches.filter((b) => b.status === 'done').reduce((n, b) => n + b.count, 0);
+  const batchesDone = set.batches.filter((b) => b.status === 'done').reduce((n, b) => n + b.count, 0);
   const failed = set.batches.filter((b) => b.status === 'failed');
   const running = prog?.running ?? false;
+  // While running, count each question the moment it is written, not when its whole request ends.
+  const done = running && prog ? Math.min(total, Math.max(batchesDone, prog.done)) : batchesDone;
   if (done === total && !running && !prog?.log.length) return null;
   const lastError = [...(prog?.log ?? [])].reverse().find((l) => l.level === 'error')?.message ?? failed[0]?.error;
   const finished = done === total && !running;
