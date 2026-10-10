@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* Laptops with a short window (1366 × 768 leaves about 650 px): the dashboard tightens to fit one screen. */
+@custom-variant short (@media (min-width: 64rem) and (max-height: 45rem));
 
 @theme {
   --color-brand-50: #eef6ff;
@@ -10,6 +12,8 @@
   --color-brand-500: #2f6fdb;
   --color-brand-600: #2259bd;
   --color-brand-700: #1d4a99;
+  /* Page background: a touch lighter and cooler than slate-50, so white cards lift off it. */
+  --color-canvas: #f6f8fb;
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -18,10 +22,10 @@
     color-scheme: light dark;
   }
   body {
-    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+    @apply bg-canvas text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
   }
   h1 {
-    @apply text-2xl font-semibold tracking-tight;
+    @apply text-2xl font-bold tracking-tight;
   }
   h2 {
     @apply text-lg font-semibold;
@@ -59,10 +63,38 @@
 
 @layer components {
   .card {
-    @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900;
+    @apply rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-none;
+  }
+  /* The one card on a page that says what to do next: a faint brand tint and border. */
+  .card-focus {
+    @apply border-brand-100 bg-gradient-to-b from-brand-50/70 to-white to-40% dark:border-brand-700 dark:from-slate-800 dark:to-slate-900;
+  }
+  /* Title row of a card: heading on the left, a quiet link or small button on the right. */
+  .card-head {
+    @apply mb-3 flex items-center justify-between gap-2;
+  }
+  .card-head > h2 {
+    @apply text-[15px] font-semibold;
+  }
+  .card-link {
+    @apply text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300;
+  }
+  /* One-line notices (backup, storage) stacked above the dashboard instead of full cards. */
+  .strip {
+    @apply flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100;
+  }
+  /* Segmented control: a row of mutually exclusive buttons on a grey track. */
+  .seg {
+    @apply inline-flex rounded-lg bg-slate-200/70 p-0.5 dark:bg-slate-800;
+  }
+  .seg > button {
+    @apply rounded-md px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300;
+  }
+  .seg > button[aria-pressed='true'] {
+    @apply bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-[10px] border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700;
   }
   .btn-primary {
     @apply border-brand-600 bg-brand-600 text-white hover:bg-brand-700 dark:border-brand-500 dark:bg-brand-600 dark:text-white dark:hover:bg-brand-700;

@@ -72,7 +72,7 @@ test('an imported exam package: questions from a job title, an exam without pass
   expect(await seriousViolations(page)).toEqual([]);
 
   // Its own history table in Progress, apart from SKD.
-  await page.goto('#/progress');
+  await page.goto('#/progress?tab=riwayat');
   const history = page.locator('section', { has: page.getByRole('heading', { name: 'Riwayat skor Ujian Uji' }) });
   await expect(history).toContainText('5/50');
   await expect(history).toContainText('4/40');

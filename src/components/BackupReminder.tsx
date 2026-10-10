@@ -45,17 +45,16 @@ export function BackupReminderCard() {
         ? { label: 'Pilih berkas lagi', run: chooseBackupFile }
         : { label: err.kind === 'permission' ? 'Izinkan lagi' : 'Coba lagi', run: () => autoBackupNow({ request: true }) };
     return (
-      <div className="card flex flex-wrap items-center justify-between gap-3 border-amber-300 dark:border-amber-800">
-        <div className="min-w-0">
-          <div className="font-semibold">Cadangan otomatis tertunda</div>
-          <div className="muted text-sm">{err.message}</div>
-          {msg && <div className="mt-1 text-sm text-red-600 dark:text-red-400">{msg}</div>}
+      <div className="strip">
+        <div className="min-w-0 flex-1">
+          <b>Cadangan otomatis tertunda.</b> <span>{err.message}</span>
+          {msg && <div className="mt-1 text-red-700 dark:text-red-300">{msg}</div>}
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className="btn btn-primary" disabled={busy} onClick={act(fix.run)}>
+          <button className="btn btn-primary btn-sm" disabled={busy} onClick={act(fix.run)}>
             {fix.label}
           </button>
-          <button className="btn" disabled={busy} onClick={act(downloadBackup)}>
+          <button className="btn btn-sm" disabled={busy} onClick={act(downloadBackup)}>
             Unduh manual
           </button>
         </div>
@@ -67,10 +66,10 @@ export function BackupReminderCard() {
   if (!r) return null;
   const title = r.reason === 'sets' ? `${r.newSets} set belum dicadangkan` : state.lastBackupAt ? `Cadangan terakhir ${r.days} hari lalu` : 'Data Anda belum pernah dicadangkan';
   return (
-    <div className="card flex flex-wrap items-center justify-between gap-3 border-amber-300 dark:border-amber-800">
-      <div className="min-w-0">
-        <div className="font-semibold">{title}</div>
-        <div className="muted text-sm">
+    <div className="strip">
+      <div className="min-w-0 flex-1">
+        <b>{title}.</b>{' '}
+        <span>
           Set, bank soal, dan riwayat hanya tersimpan di browser ini dan bisa hilang bila data situs dibersihkan.
           {isAutoBackupSupported() && !state.auto && (
             <>
@@ -82,14 +81,14 @@ export function BackupReminderCard() {
               .
             </>
           )}
-        </div>
-        {msg && <div className="mt-1 text-sm text-red-600 dark:text-red-400">{msg}</div>}
+        </span>
+        {msg && <div className="mt-1 text-red-700 dark:text-red-300">{msg}</div>}
       </div>
       <div className="flex flex-wrap gap-2">
-        <button className="btn btn-primary" disabled={busy} onClick={act(downloadBackup)}>
+        <button className="btn btn-primary btn-sm" disabled={busy} onClick={act(downloadBackup)}>
           Unduh cadangan
         </button>
-        <button className="btn" disabled={busy} onClick={act(() => snoozeBackupReminder())}>
+        <button className="btn btn-sm" disabled={busy} onClick={act(() => snoozeBackupReminder())}>
           Nanti
         </button>
       </div>

@@ -90,12 +90,11 @@ export function StorageWarningCard() {
   const s = info?.status;
   if (!s?.warn) return null;
   return (
-    <div className="card flex flex-wrap items-center justify-between gap-3 border-amber-500">
-      <div className="text-sm">
-        <div className="font-semibold">Penyimpanan hampir penuh ({Math.round(s.ratio * 100)}%)</div>
-        <div className="muted">Bila penuh, soal dan jawaban baru tidak bisa disimpan. Unduh cadangan, lalu bersihkan data lama.</div>
+    <div className="strip">
+      <div className="min-w-0 flex-1">
+        <b>Penyimpanan hampir penuh ({Math.round(s.ratio * 100)}%).</b> Bila penuh, soal dan jawaban baru tidak bisa disimpan. Unduh cadangan, lalu bersihkan data lama.
       </div>
-      <Link className="btn" to="/settings">
+      <Link className="btn btn-sm" to="/settings">
         Buka Penyimpanan
       </Link>
     </div>

@@ -71,6 +71,8 @@ test('main pages and dialogs have no serious or critical WCAG violations, light 
     practice,
     results,
     '#/progress',
+    '#/progress?tab=topik',
+    '#/progress?tab=riwayat',
     '#/review',
     '#/review?tab=semua',
     '#/keys',

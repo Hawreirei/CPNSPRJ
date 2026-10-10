@@ -48,12 +48,56 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
   );
 }
 
-export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
+export function Stat({ label, value, hint, tone }: { label: string; value: ReactNode; hint?: ReactNode; tone?: 'green' | 'amber' | 'red' }) {
+  const hintTone = { green: 'text-green-700 dark:text-green-400', amber: 'text-amber-700 dark:text-amber-300', red: 'text-red-600 dark:text-red-400' };
   return (
-    <div className="card">
+    <div className="card px-4 py-3">
       <div className="muted text-xs">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
-      {hint && <div className="muted mt-1 text-xs">{hint}</div>}
+      <div className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums">{value}</div>
+      {hint && <div className={`mt-0.5 text-xs font-medium ${tone ? hintTone[tone] : 'muted'}`}>{hint}</div>}
+    </div>
+  );
+}
+
+/** Title and one-line description on the left, the page's actions on the right. */
+export function PageHeader({ title, description, actions }: { title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+      <div className="min-w-0">
+        <h1>{title}</h1>
+        {description && <p className="muted mt-0.5">{description}</p>}
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/** Underlined tabs. The caller renders the panel for `value`; arrow keys move between tabs. */
+export function Tabs<T extends string>({ tabs, value, onChange, label }: { tabs: readonly (readonly [T, string])[]; value: T; onChange: (v: T) => void; label: string }) {
+  const move = (i: number) => {
+    const next = tabs[(i + tabs.length) % tabs.length][0];
+    onChange(next);
+    document.getElementById(`tab-${next}`)?.focus();
+  };
+  return (
+    <div role="tablist" aria-label={label} className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
+      {tabs.map(([id, text], i) => (
+        <button
+          key={id}
+          id={`tab-${id}`}
+          role="tab"
+          aria-selected={value === id}
+          tabIndex={value === id ? 0 : -1}
+          onClick={() => onChange(id)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowRight') move(i + 1);
+            if (e.key === 'ArrowLeft') move(i - 1);
+          }}
+          className={`tab ${value === id ? 'tab-active' : ''}`}
+        >
+          {text}
+        </button>
+      ))}
     </div>
   );
 }

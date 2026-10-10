@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Link } from 'react-router-dom';
+import { useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { db, useSettings } from '../db';
 import { SUBTEST_NAMES } from '../domain/blueprint';
 import { attemptMode, examAttempts } from '../domain/practice';
@@ -7,11 +8,16 @@ import { SUBTESTS } from '../domain/types';
 import type { Attempt, Question, Subtest } from '../domain/types';
 import { isSkd, packageOf, packages } from '../domain/examPackage';
 import { examSeries, MIN_EXAMS_FOR_PROJECTION, reasonSummary, topicMovers, trend } from '../engine/analytics';
-import { ScoreTrend } from '../components/ScoreTrend';
-import { Badge, Empty, ProgressBar, SubtestBadge } from '../components/ui';
+import { ScoreChart, ScoreSpark, type TrendPoint } from '../components/ScoreTrend';
+import { MAX_PER_QUESTION } from '../domain/scoring';
+import { Badge, Empty, PageHeader, ProgressBar, SubtestBadge, Tabs } from '../components/ui';
 
 export default function Progress() {
   const settings = useSettings();
+  const [params, setParams] = useSearchParams();
+  const [picked, setPicked] = useState<Subtest | null>(readFocus);
+  const [full, setFull] = useState(false);
+  const [only, setOnly] = useState<'semua' | Subtest>('semua');
   const attempts = useLiveQuery(
     () =>
       db.attempts
@@ -29,7 +35,7 @@ export default function Progress() {
   if (!attempts.length) {
     return (
       <div className="space-y-4">
-        <h1>Progres</h1>
+        <PageHeader title="Progres Belajar" />
         <Empty title="Belum ada simulasi selesai">
           <Link className="text-brand-600 dark:text-brand-300 underline" to="/simulation">
             Mulai simulasi
@@ -45,7 +51,13 @@ export default function Progress() {
   const practiceCount = attempts.length - exams.length;
   // Partial sets are rescaled to the full maximum so every exam sits on the same chart.
   const bySubtest = examSeries(attempts, settings.counts);
-  const series = (s: Subtest) => bySubtest[s].map((p) => ({ label: `${new Date(p.at).toLocaleDateString('id-ID')} · ${p.setName}`, value: p.value, max: p.max }));
+  const series = (s: Subtest): TrendPoint[] =>
+    bySubtest[s].map((p) => ({
+      label: `${new Date(p.at).toLocaleDateString('id-ID')} · ${p.setName}`,
+      short: new Date(p.at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+      value: p.value,
+      max: p.max,
+    }));
   const moves = topicMovers(attempts);
   const improved = moves
     .filter((m) => m.delta >= 0.1)
@@ -72,106 +84,309 @@ export default function Progress() {
   });
   const topics = [...mastery.values()].map((m) => ({ ...m, pct: m.w ? m.ws / m.w : 0 })).sort((a, b) => a.pct - b.pct);
 
+  const tab = (['topik', 'riwayat'] as const).find((t) => t === params.get('tab')) ?? 'ringkasan';
+  const setTab = (t: string) => setParams(t === 'ringkasan' ? {} : { tab: t }, { replace: true });
+  const trends = Object.fromEntries(
+    SUBTESTS.map((s) => [
+      s,
+      trend(
+        bySubtest[s].map((p) => p.value),
+        settings.counts[s] * MAX_PER_QUESTION,
+      ),
+    ]),
+  ) as Record<Subtest, ReturnType<typeof trend>>;
+  // The large chart: the learner's pick, else the sub-test furthest below its threshold.
+  const shortfall = (s: Subtest) => {
+    const t = trends[s];
+    return t ? (settings.passing[s] - t.last) / (settings.counts[s] * MAX_PER_QUESTION) : -Infinity;
+  };
+  const focus = picked && SUBTESTS.includes(picked) ? picked : [...SUBTESTS].sort((a, b) => shortfall(b) - shortfall(a))[0];
+  const pick = (s: Subtest) => {
+    setPicked(s);
+    try {
+      localStorage.setItem(FOCUS_KEY, s);
+    } catch {
+      /* private window: the pick lasts for this visit */
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1>Progres</h1>
-        <p className="muted mt-1">
-          {exams.length} ujian{practiceCount > 0 && ` dan ${practiceCount} latihan`} selesai. Grafik skor hanya memakai ujian; skor set yang tidak penuh diskalakan ke skor maksimum
-          standar agar sebanding.
-        </p>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-3">
-        {SUBTESTS.map((s) => (
-          <ScoreTrend key={s} title={`${s} — ${SUBTEST_NAMES[s]}`} points={series(s)} passing={settings.passing[s]} max={settings.counts[s] * 5} />
-        ))}
-      </div>
-
-      {exams.length > 0 && (
-        <section className="card space-y-3">
-          <h2>Tren</h2>
-          <ul className="space-y-1.5 text-sm">
-            {SUBTESTS.map((s) => {
-              const t = trend(
-                bySubtest[s].map((p) => p.value),
-                settings.counts[s] * 5,
-              );
-              if (!t) return null;
-              const step = Math.round(Math.abs(t.slope));
-              return (
-                <li key={s} className="flex flex-wrap items-baseline gap-x-2">
-                  <SubtestBadge subtest={s} />
-                  <span>
-                    {t.n < 2 ? 'Baru 1 ujian.' : step < 1 ? 'Stabil.' : t.slope > 0 ? `Naik rata-rata ${step} poin per ujian.` : `Turun rata-rata ${step} poin per ujian.`}
-                  </span>
-                  <span className="muted">
-                    {t.projection
-                      ? `Perkiraan kasar ujian berikutnya: ${t.projection.low}–${t.projection.high} (ambang ${settings.passing[s]}, dari ${t.n} ujian).`
-                      : `Perkiraan muncul setelah ${MIN_EXAMS_FOR_PROJECTION} ujian.`}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-          {(improved.length > 0 || declined.length > 0) && (
-            <div className="grid gap-3 text-sm sm:grid-cols-2">
-              <TopicMoves title="Paling membaik" moves={improved} />
-              <TopicMoves title="Paling menurun" moves={declined} />
+    <div className="space-y-4">
+      <PageHeader
+        title="Progres Belajar"
+        description={
+          <>
+            {exams.length} ujian{practiceCount > 0 && ` dan ${practiceCount} latihan`} selesai. Grafik skor hanya memakai ujian; skor set yang tidak penuh diskalakan ke skor
+            maksimum standar agar sebanding.
+          </>
+        }
+        actions={
+          tab === 'ringkasan' && (
+            <div className="seg" role="group" aria-label="Skala grafik">
+              <button aria-pressed={!full} onClick={() => setFull(false)}>
+                Skala fokus
+              </button>
+              <button aria-pressed={full} onClick={() => setFull(true)}>
+                Skala penuh
+              </button>
             </div>
-          )}
-          <p className="muted text-xs">Perubahan topik: ujian terakhir dibanding rata-rata ujian sebelumnya yang memuat topik itu.</p>
-        </section>
-      )}
+          )
+        }
+      />
 
-      {reasons && reasons.length > 0 && (
-        <section className="card space-y-2">
-          <h2>Alasan salah tersering</h2>
-          <div className="flex flex-wrap gap-1.5">
-            {reasons.slice(0, 6).map((r) => (
-              <span key={r.subtest + r.tag} className="flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-xs dark:border-slate-700">
-                <SubtestBadge subtest={r.subtest} /> {r.label} <b className="tabular-nums">{r.count}</b>
-              </span>
-            ))}
+      <Tabs
+        label="Bagian progres"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          ['ringkasan', 'Ringkasan'],
+          ['topik', `Topik (${topics.length})`],
+          ['riwayat', 'Riwayat'],
+        ]}
+      />
+
+      {tab === 'ringkasan' && (
+        <div role="tabpanel" aria-labelledby="tab-ringkasan" className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-12">
+            <HeroChart subtest={focus} points={series(focus)} t={trends[focus]} passing={settings.passing[focus]} max={settings.counts[focus] * MAX_PER_QUESTION} full={full} />
+            <div className="grid gap-4 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1">
+              {SUBTESTS.filter((s) => s !== focus).map((s) => {
+                const t = trends[s];
+                const step = t && t.n >= 2 ? Math.round(t.slope) : 0;
+                return (
+                  <button
+                    key={s}
+                    className="card flex flex-col gap-1 text-left transition hover:border-brand-500 focus-visible:border-brand-500"
+                    onClick={() => pick(s)}
+                    aria-label={`Tampilkan ${s} sebagai grafik utama`}
+                  >
+                    <span className="flex w-full items-center gap-2 text-sm">
+                      <SubtestBadge subtest={s} />
+                      <b className="truncate">{SUBTEST_NAMES[s]}</b>
+                      <span className="muted ml-auto shrink-0 text-xs">⇄ jadikan besar</span>
+                    </span>
+                    <span className="flex w-full items-baseline gap-2">
+                      <span className="text-2xl font-bold tabular-nums">{t ? t.last : '—'}</span>
+                      <span className="muted text-xs">ambang {settings.passing[s]}</span>
+                      {step !== 0 && (
+                        <span className={`ml-auto text-xs font-semibold ${step > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {step > 0 ? '▲' : '▼'} {Math.abs(step)} per ujian
+                        </span>
+                      )}
+                    </span>
+                    <span className="block w-full">
+                      <ScoreSpark subtest={s} points={series(s)} passing={settings.passing[s]} max={settings.counts[s] * MAX_PER_QUESTION} full={full} />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <p className="muted text-xs">Dari tag yang Anda pilih saat mengulang soal di Buku Kesalahan.</p>
+
+          <div className="flex flex-col gap-4 lg:flex-row">
+            {topics.length > 0 && (
+              <section className="card lg:flex-1" aria-labelledby="weak-title">
+                <div className="card-head">
+                  <h2 id="weak-title">Topik terlemah</h2>
+                  <button className="card-link" onClick={() => setTab('topik')}>
+                    Semua topik →
+                  </button>
+                </div>
+                <ul className="space-y-2.5">
+                  {topics.slice(0, 3).map((t) => (
+                    <TopicRow key={t.subtest + t.topic} t={t} />
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {exams.length > 0 && (
+              <section className="card space-y-3 lg:flex-1" aria-labelledby="trend-title">
+                <h2 id="trend-title" className="text-[15px]">
+                  Tren
+                </h2>
+                <ul className="space-y-1.5 text-sm">
+                  {SUBTESTS.map((s) => {
+                    const t = trends[s];
+                    if (!t) return null;
+                    const step = Math.round(Math.abs(t.slope));
+                    return (
+                      <li key={s} className="flex flex-wrap items-baseline gap-x-2">
+                        <SubtestBadge subtest={s} />
+                        <span>
+                          {t.n < 2 ? 'Baru 1 ujian.' : step < 1 ? 'Stabil.' : t.slope > 0 ? `Naik rata-rata ${step} poin per ujian.` : `Turun rata-rata ${step} poin per ujian.`}
+                        </span>
+                        <span className="muted text-xs">
+                          {t.projection
+                            ? `Perkiraan kasar ujian berikutnya: ${t.projection.low}–${t.projection.high} (ambang ${settings.passing[s]}, dari ${t.n} ujian).`
+                            : `Perkiraan muncul setelah ${MIN_EXAMS_FOR_PROJECTION} ujian.`}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {(improved.length > 0 || declined.length > 0) && (
+                  <div className="grid gap-3 border-t border-slate-100 pt-3 text-sm sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 dark:border-slate-800">
+                    <TopicMoves title="Paling membaik" moves={improved} />
+                    <TopicMoves title="Paling menurun" moves={declined} />
+                  </div>
+                )}
+                <p className="muted text-xs">Perubahan topik: ujian terakhir dibanding rata-rata ujian sebelumnya yang memuat topik itu.</p>
+              </section>
+            )}
+
+            {reasons && reasons.length > 0 && (
+              <section className="card space-y-3 lg:flex-1" aria-labelledby="reason-title">
+                <div className="card-head mb-0">
+                  <h2 id="reason-title">Alasan salah tersering</h2>
+                  <Link className="card-link" to="/review?tab=semua">
+                    Buku Kesalahan →
+                  </Link>
+                </div>
+                <ul className="space-y-2 text-sm">
+                  {reasons.slice(0, 5).map((r) => (
+                    <li key={r.subtest + r.tag} className="flex items-center gap-2">
+                      <SubtestBadge subtest={r.subtest} />
+                      <span className="w-32 shrink-0 truncate">{r.label}</span>
+                      <span className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800" aria-hidden>
+                        <span className="block h-full rounded-full bg-slate-500" style={{ width: `${(r.count / reasons[0].count) * 100}%` }} />
+                      </span>
+                      <b className="w-6 text-right tabular-nums">{r.count}</b>
+                    </li>
+                  ))}
+                </ul>
+                <p className="muted text-xs">Dari tag yang Anda pilih saat mengulang soal di Buku Kesalahan.</p>
+              </section>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'topik' && (
+        <section role="tabpanel" aria-labelledby="tab-topik" className="card">
+          <div className="card-head flex-wrap">
+            <h2>Penguasaan topik</h2>
+            <div className="seg" role="group" aria-label="Saring sub-tes">
+              {(['semua', ...SUBTESTS] as const).map((s) => (
+                <button key={s} aria-pressed={only === s} onClick={() => setOnly(s)}>
+                  {s === 'semua' ? 'Semua' : s}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="muted mb-4 text-xs">Rata-rata tertimbang dari ujian dan latihan (yang terbaru lebih berbobot). Di bawah 60% ditandai lemah. Yang terlemah di atas.</p>
+          <ul className="grid gap-x-10 gap-y-3 md:grid-cols-2">
+            {topics
+              .filter((t) => only === 'semua' || t.subtest === only)
+              .map((t) => (
+                <TopicRow key={t.subtest + t.topic} t={t} />
+              ))}
+          </ul>
         </section>
       )}
 
-      <section className="card">
-        <h2>Penguasaan topik</h2>
-        <p className="muted mb-3 text-xs">Rata-rata tertimbang dari ujian dan latihan (yang terbaru lebih berbobot). Di bawah 60% ditandai lemah.</p>
-        <div className="grid gap-x-8 gap-y-2 md:grid-cols-2">
-          {topics.map((t) => (
-            <div key={t.subtest + t.topic}>
-              <div className="flex items-center justify-between gap-2 text-sm">
-                <span className="flex items-center gap-1.5">
-                  <SubtestBadge subtest={t.subtest} /> {t.topic}
-                  {t.pct < 0.6 && <Badge tone="red">lemah</Badge>}
-                </span>
-                <span className="tabular-nums">
-                  {Math.round(t.pct * 100)}% <span className="muted text-xs">({t.n} soal)</span>
-                </span>
-              </div>
-              <ProgressBar value={t.pct} max={1} tone={t.pct < 0.6 ? 'red' : 'green'} />
-            </div>
-          ))}
+      {tab === 'riwayat' && (
+        <div role="tabpanel" aria-labelledby="tab-riwayat" className="space-y-4">
+          {/* One table per exam package: their sub-tests and scales differ. SKD first. */}
+          {packages()
+            .map((pkg) => ({ pkg, list: attempts.filter((a) => packageOf(a.result!.perSubtest[0]?.subtest ?? 'TWK').id === pkg.id) }))
+            .filter((g) => g.list.length)
+            .map(({ pkg, list }) => (
+              <HistoryTable
+                key={pkg.id}
+                title={isSkd(pkg) ? 'Riwayat skor' : `Riwayat skor ${pkg.name}`}
+                attempts={list}
+                subtests={isSkd(pkg) ? SUBTESTS : pkg.subtests.map((x) => x.id)}
+              />
+            ))}
         </div>
-      </section>
-
-      {/* One table per exam package: their sub-tests and scales differ. SKD first. */}
-      {packages()
-        .map((pkg) => ({ pkg, list: attempts.filter((a) => packageOf(a.result!.perSubtest[0]?.subtest ?? 'TWK').id === pkg.id) }))
-        .filter((g) => g.list.length)
-        .map(({ pkg, list }) => (
-          <HistoryTable
-            key={pkg.id}
-            title={isSkd(pkg) ? 'Riwayat skor' : `Riwayat skor ${pkg.name}`}
-            attempts={list}
-            subtests={isSkd(pkg) ? SUBTESTS : pkg.subtests.map((x) => x.id)}
-          />
-        ))}
+      )}
     </div>
+  );
+}
+
+const FOCUS_KEY = 'progress-focus';
+
+function readFocus(): Subtest | null {
+  try {
+    return localStorage.getItem(FOCUS_KEY) as Subtest | null;
+  } catch {
+    return null;
+  }
+}
+
+/** The large chart with the four numbers that matter above it. */
+function HeroChart({
+  subtest,
+  points,
+  t,
+  passing,
+  max,
+  full,
+}: {
+  subtest: Subtest;
+  points: TrendPoint[];
+  t: ReturnType<typeof trend>;
+  passing: number;
+  max: number;
+  full: boolean;
+}) {
+  const average = points.length ? Math.round(points.reduce((n, p) => n + p.value, 0) / points.length) : null;
+  const step = t && t.n >= 2 ? Math.round(t.slope) : null;
+  return (
+    <div className="card lg:col-span-8">
+      <div className="mb-2 flex flex-wrap items-start gap-x-8 gap-y-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <SubtestBadge subtest={subtest} />
+            <span className="text-base font-semibold">{SUBTEST_NAMES[subtest]}</span>
+          </div>
+          <p className="muted mt-0.5 text-xs">
+            Garis putus = ambang {passing}
+            {!full && points.length > 0 && <span className="text-amber-700 dark:text-amber-300"> · sumbu tidak mulai dari 0</span>}
+          </p>
+        </div>
+        <dl className="ml-auto flex flex-wrap gap-x-7 gap-y-2">
+          <Kpi label="Terakhir" value={t ? t.last : '—'} />
+          <Kpi label="Rata-rata" value={average ?? '—'} />
+          <Kpi
+            label="Tren per ujian"
+            value={step === null ? '—' : step === 0 ? '±0' : `${step > 0 ? '▲' : '▼'} ${Math.abs(step)}`}
+            tone={step ? (step > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400') : ''}
+          />
+          <Kpi label="Perkiraan berikutnya" value={t?.projection ? `${t.projection.low}–${t.projection.high}` : '—'} />
+        </dl>
+      </div>
+      <ScoreChart subtest={subtest} points={points} passing={passing} max={max} full={full} />
+    </div>
+  );
+}
+
+function Kpi({ label, value, tone = '' }: { label: string; value: ReactNode; tone?: string }) {
+  return (
+    <div>
+      <dt className="muted text-xs whitespace-nowrap">{label}</dt>
+      <dd className={`text-xl font-bold tabular-nums ${tone}`}>{value}</dd>
+    </div>
+  );
+}
+
+function TopicRow({ t }: { t: { subtest: Subtest; topic: string; pct: number; n: number } }) {
+  return (
+    <li>
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <SubtestBadge subtest={t.subtest} /> <span className="truncate">{t.topic}</span>
+          {t.pct < 0.6 && <Badge tone="red">lemah</Badge>}
+        </span>
+        <span className="shrink-0 tabular-nums">
+          {Math.round(t.pct * 100)}% <span className="muted text-xs">({t.n} soal)</span>
+        </span>
+      </div>
+      <div className="mt-1">
+        <ProgressBar value={t.pct} max={1} tone={t.pct < 0.6 ? 'red' : 'green'} />
+      </div>
+    </li>
   );
 }
 
@@ -233,10 +448,10 @@ function TopicMoves({ title, moves }: { title: string; moves: ReturnType<typeof 
       <ul className="space-y-1">
         {moves.map((m) => (
           <li key={m.subtest + m.topic} className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5">
-              <SubtestBadge subtest={m.subtest} /> {m.topic}
+            <span className="flex min-w-0 items-center gap-1.5" title={m.topic}>
+              <SubtestBadge subtest={m.subtest} /> <span className="truncate">{m.topic}</span>
             </span>
-            <span className={`tabular-nums ${m.delta > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            <span className={`shrink-0 tabular-nums ${m.delta > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {Math.round(m.previousPct * 100)}% → {Math.round(m.latestPct * 100)}%
             </span>
           </li>

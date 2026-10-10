@@ -13,7 +13,7 @@ import { PassageView } from '../components/PassageView';
 import { Explanation } from '../components/QuestionCard';
 import { FeedbackDialog } from '../components/FeedbackDialog';
 import { RichText } from '../components/RichText';
-import { Badge, Empty, SubtestBadge } from '../components/ui';
+import { Badge, Empty, PageHeader, SubtestBadge } from '../components/ui';
 import { inExamOrder } from '../domain/examPackage';
 
 const GRADE_LABEL: Record<Grade, string> = { lupa: 'Lupa', sulit: 'Sulit', baik: 'Baik', mudah: 'Mudah' };
@@ -33,14 +33,11 @@ export default function Review() {
   const dueCount = items.filter((r) => isDue(r, now)).length;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1>Buku Kesalahan</h1>
-        <p className="muted mt-1">
-          Soal yang salah, kosong, atau ditandai ragu-ragu masuk ke sini otomatis setelah ujian atau latihan selesai, lalu dijadwalkan ulang: makin sering Anda ingat, makin jarang
-          soal itu muncul.
-        </p>
-      </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Buku Kesalahan"
+        description="Soal yang salah, kosong, atau ditandai ragu-ragu masuk ke sini otomatis setelah ujian atau latihan selesai, lalu dijadwalkan ulang: makin sering Anda ingat, makin jarang soal itu muncul."
+      />
 
       {items.length === 0 ? (
         <Empty title="Belum ada catatan">
@@ -72,7 +69,7 @@ export default function Review() {
                 role="tab"
                 aria-selected={tab === id}
                 onClick={() => setParams(id === 'ulang' ? {} : { tab: id }, { replace: true })}
-                className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${tab === id ? 'border-brand-500 text-brand-700 dark:text-brand-100' : 'border-transparent text-slate-500 dark:text-slate-400'}`}
+                className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${tab === id ? 'border-brand-500 text-brand-700 dark:text-brand-100' : 'border-transparent text-slate-600 dark:text-slate-400'}`}
               >
                 {label}
               </button>

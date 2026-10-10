@@ -1,0 +1,1912 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>Proposal Redesign UI/UX — CASN Set Builder</title>
+    <style>
+      @page {
+        size: 297mm 210mm;
+        margin: 0;
+      }
+      :root {
+        --brand: #2f6fdb;
+        --brand-d: #1d4a99;
+        --brand-50: #eef6ff;
+        --brand-100: #d9eaff;
+        --ink: #0f172a;
+        --ink2: #475569;
+        --ink3: #64748b;
+        --line: #e2e8f0;
+        --bg: #f6f8fb;
+        --card: #fff;
+        --twk: #e11d48;
+        --tiu: #0284c7;
+        --tkp: #059669;
+        --warn: #d97706;
+        --bad: #dc2626;
+        --ok: #16a34a;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        font-family: 'Inter', system-ui, sans-serif;
+        color: var(--ink);
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .page {
+        width: 297mm;
+        height: 210mm;
+        position: relative;
+        overflow: hidden;
+        page-break-after: always;
+        background: #fff;
+        padding: 13mm 14mm 11mm;
+      }
+      .page:last-child {
+        page-break-after: auto;
+      }
+      .pg-h {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 5mm;
+      }
+      .pg-h .no {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--brand);
+        letter-spacing: 0.08em;
+      }
+      .pg-h h2 {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .pg-h p {
+        font-size: 12px;
+        color: var(--ink2);
+        margin-left: auto;
+        max-width: 48%;
+        text-align: right;
+      }
+      .foot {
+        position: absolute;
+        left: 14mm;
+        right: 14mm;
+        bottom: 5mm;
+        display: flex;
+        justify-content: space-between;
+        font-size: 8.5px;
+        color: var(--ink3);
+      }
+      h3 {
+        font-size: 13px;
+        font-weight: 650;
+        margin-bottom: 4px;
+      }
+      p,
+      li {
+        font-size: 11px;
+        line-height: 1.5;
+        color: var(--ink2);
+      }
+      b {
+        color: var(--ink);
+      }
+      .cols {
+        display: grid;
+        gap: 6mm;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 99px;
+        background: var(--brand-50);
+        color: var(--brand-d);
+      }
+      .tag.red {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .tag.green {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .tag.amber {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: #fff;
+      }
+      .box.soft {
+        background: var(--bg);
+        border-color: transparent;
+      }
+      ul.l {
+        padding-left: 15px;
+      }
+      ul.l li {
+        margin: 2px 0;
+      }
+
+      /* ---- cover ---- */
+      .cover {
+        background: linear-gradient(135deg, #0f2a5e 0%, #1d4a99 55%, #2f6fdb 100%);
+        color: #fff;
+        padding: 0;
+      }
+      .cover .in {
+        position: absolute;
+        left: 22mm;
+        top: 48mm;
+        width: 150mm;
+      }
+      .cover small {
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        font-weight: 600;
+        opacity: 0.8;
+      }
+      .cover h1 {
+        font-size: 44px;
+        line-height: 1.08;
+        letter-spacing: -0.03em;
+        margin: 8px 0 14px;
+        font-weight: 750;
+      }
+      .cover p {
+        color: #dbeafe;
+        font-size: 14px;
+        line-height: 1.55;
+        max-width: 130mm;
+      }
+      .cover .meta {
+        position: absolute;
+        left: 22mm;
+        bottom: 16mm;
+        font-size: 11px;
+        color: #bfdbfe;
+      }
+      .cover .art {
+        position: absolute;
+        right: -8mm;
+        top: 22mm;
+        width: 132mm;
+        transform: rotate(-4deg);
+      }
+
+      /* ---- mockup base: real 1440x900 viewport scaled with zoom ---- */
+      .mkwrap {
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid #cbd5e1;
+        box-shadow: 0 8px 30px rgba(15, 23, 42, 0.14);
+        background: #fff;
+      }
+      .mkbar {
+        height: 20px;
+        background: #e8edf4;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 0 9px;
+        font-size: 8px;
+        color: #64748b;
+      }
+      .mkbar i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #cbd5e1;
+        display: inline-block;
+      }
+      .mkbar span {
+        margin-left: 10px;
+        background: #fff;
+        border-radius: 99px;
+        padding: 1px 10px;
+      }
+      .mk {
+        width: 1440px;
+        height: 800px;
+        zoom: var(--z, 0.68);
+        display: flex;
+        background: var(--bg);
+        font-size: 14px;
+        color: var(--ink);
+        position: relative;
+      }
+      .mk p,
+      .mk li {
+        font-size: inherit;
+        color: inherit;
+        line-height: 1.4;
+      }
+      .mk * {
+        letter-spacing: 0;
+      }
+      .sb {
+        width: 236px;
+        background: #fff;
+        border-right: 1px solid var(--line);
+        padding: 18px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: none;
+      }
+      .sb .brand {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 14px;
+        padding: 0 6px;
+      }
+      .sb .logo {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #2f6fdb, #1d4a99);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        font-size: 15px;
+      }
+      .sb .brand b {
+        font-size: 15px;
+        display: block;
+        line-height: 1.1;
+      }
+      .sb .brand span {
+        font-size: 11px;
+        color: var(--ink3);
+      }
+      .sb .grp {
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.09em;
+        color: #94a3b8;
+        margin: 12px 8px 4px;
+        text-transform: uppercase;
+      }
+      .sb a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 9px;
+        font-size: 14px;
+        color: #475569;
+        font-weight: 500;
+      }
+      .sb a .ic {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        background: #e2e8f0;
+        flex: none;
+      }
+      .sb a.on {
+        background: var(--brand-50);
+        color: var(--brand-d);
+        font-weight: 650;
+      }
+      .sb a.on .ic {
+        background: var(--brand);
+      }
+      .sb a em {
+        margin-left: auto;
+        font-style: normal;
+        font-size: 11px;
+        font-weight: 700;
+        background: var(--brand);
+        color: #fff;
+        border-radius: 99px;
+        padding: 1px 7px;
+      }
+      .sb .ver {
+        margin-top: auto;
+        font-size: 11px;
+        color: #94a3b8;
+        padding: 0 8px;
+      }
+      .main {
+        flex: 1;
+        padding: 22px 28px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 0;
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 46px;
+        flex: none;
+      }
+      .top h1 {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+      }
+      .top .sub {
+        font-size: 13px;
+        color: var(--ink3);
+        margin-top: 2px;
+      }
+      .top .sp {
+        flex: 1;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 13px;
+        border-radius: 99px;
+        background: #fff;
+        border: 1px solid var(--line);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .chip.hot {
+        background: #fff7ed;
+        border-color: #fed7aa;
+        color: #9a3412;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 16px;
+        border-radius: 10px;
+        font-size: 13.5px;
+        font-weight: 600;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        color: #334155;
+      }
+      .btn.p {
+        background: var(--brand);
+        border-color: var(--brand);
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(47, 111, 219, 0.35);
+      }
+      .strip {
+        height: 38px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 14px;
+        border-radius: 10px;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        color: #92400e;
+        font-size: 13px;
+      }
+      .strip b {
+        color: #78350f;
+      }
+      .strip .x {
+        margin-left: auto;
+        font-size: 12px;
+        color: #b45309;
+        font-weight: 600;
+      }
+      .c {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px 18px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        min-width: 0;
+        position: relative;
+      }
+      .c h4 {
+        font-size: 14.5px;
+        font-weight: 650;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .c h4 small {
+        margin-left: auto;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--brand);
+      }
+      .mut {
+        color: var(--ink3);
+        font-size: 12.5px;
+      }
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .pb {
+        height: 8px;
+        border-radius: 99px;
+        background: #e8edf4;
+        overflow: hidden;
+      }
+      .pb i {
+        display: block;
+        height: 100%;
+        border-radius: 99px;
+      }
+      .sbadge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 99px;
+      }
+      .twk {
+        background: #ffe4e6;
+        color: #9f1239;
+      }
+      .tiu {
+        background: #e0f2fe;
+        color: #075985;
+      }
+      .tkp {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      .todo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 0;
+        border-top: 1px solid #f1f5f9;
+        font-size: 13.5px;
+      }
+      .todo:first-of-type {
+        border-top: 0;
+      }
+      .ck {
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        border: 2px solid #cbd5e1;
+        flex: none;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        color: #fff;
+      }
+      .ck.d {
+        background: var(--ok);
+        border-color: var(--ok);
+      }
+      .todo .go {
+        margin-left: auto;
+        font-size: 12.5px;
+        font-weight: 650;
+        color: var(--brand);
+      }
+      .kpi {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .kpi .v {
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+      }
+      .kpi .l {
+        font-size: 12px;
+        color: var(--ink3);
+        white-space: nowrap;
+      }
+      .kpi .h {
+        font-size: 11.5px;
+        font-weight: 600;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 0;
+        border-top: 1px solid #f1f5f9;
+        font-size: 13.5px;
+      }
+      .li:first-of-type {
+        border-top: 0;
+      }
+      .li .m {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--ink3);
+      }
+      .call {
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #f43f5e;
+        color: #fff;
+        font-weight: 800;
+        font-size: 13px;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.25);
+        z-index: 5;
+      }
+      .seg {
+        display: inline-flex;
+        background: #e8edf4;
+        border-radius: 10px;
+        padding: 3px;
+      }
+      .seg span {
+        padding: 6px 13px;
+        border-radius: 8px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #475569;
+      }
+      .seg span.on {
+        background: #fff;
+        color: var(--ink);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+      .tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--line);
+      }
+      .tabs span {
+        padding: 8px 14px;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--ink3);
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+      }
+      .tabs span.on {
+        color: var(--brand-d);
+        border-color: var(--brand);
+      }
+
+      /* annotation list under mock */
+      .notes {
+        display: grid;
+        gap: 5mm;
+        margin-top: 4mm;
+      }
+      .nt {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+      }
+      .nt i {
+        flex: none;
+        width: 17px;
+        height: 17px;
+        border-radius: 50%;
+        background: #f43f5e;
+        color: #fff;
+        font: 700 10px/17px Inter;
+        text-align: center;
+        font-style: normal;
+        margin-top: 1px;
+      }
+      .nt p {
+        font-size: 10.2px;
+        line-height: 1.42;
+      }
+
+      /* schematic "before" blocks */
+      .wf {
+        border: 1px dashed #94a3b8;
+        border-radius: 6px;
+        background: #f8fafc;
+        font-size: 9px;
+        color: #475569;
+        padding: 4px 7px;
+        margin-bottom: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .wf.h1 {
+        height: 22px;
+      }
+      .wf.h2 {
+        height: 34px;
+      }
+      .wf.h3 {
+        height: 52px;
+      }
+      .wf.h4 {
+        height: 86px;
+      }
+      .wf.h5 {
+        height: 70px;
+      }
+      .wf.cond {
+        border-color: #f59e0b;
+        background: #fffbeb;
+      }
+      .screen {
+        border: 2px solid #1e293b;
+        border-radius: 6px;
+        padding: 6px 6px 0;
+        position: relative;
+        background: #fff;
+      }
+      .fold {
+        position: absolute;
+        left: -6px;
+        right: -6px;
+        border-top: 2px dashed #f43f5e;
+        font-size: 8.5px;
+        font-weight: 700;
+        color: #e11d48;
+        text-align: right;
+        padding-right: 6px;
+      }
+      table.cmp {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      table.cmp td,
+      table.cmp th {
+        font-size: 10.2px;
+        padding: 5px 8px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+        line-height: 1.4;
+      }
+      table.cmp th {
+        background: var(--bg);
+        font-weight: 650;
+        color: var(--ink);
+      }
+      .foldl {
+        border-top: 2px dashed #f43f5e;
+        font-size: 8.5px;
+        font-weight: 700;
+        color: #e11d48;
+        text-align: center;
+        padding: 2px 0 4px;
+        margin: 2px -6px 2px;
+      }
+      .sw {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        font-size: 10px;
+        color: var(--ink2);
+      }
+      .sw i {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        display: inline-block;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ============ 1. COVER ============ -->
+    <section class="page cover">
+      <svg class="art" viewBox="0 0 520 340" fill="none">
+        <rect x="10" y="10" width="500" height="320" rx="18" fill="#fff" fill-opacity=".1" stroke="#fff" stroke-opacity=".35" />
+        <rect x="28" y="28" width="120" height="284" rx="10" fill="#fff" fill-opacity=".14" />
+        <rect x="164" y="28" width="196" height="132" rx="10" fill="#fff" fill-opacity=".95" />
+        <rect x="372" y="28" width="120" height="132" rx="10" fill="#fff" fill-opacity=".85" />
+        <rect x="164" y="174" width="328" height="60" rx="10" fill="#fff" fill-opacity=".75" />
+        <rect x="164" y="248" width="196" height="64" rx="10" fill="#fff" fill-opacity=".85" />
+        <rect x="372" y="248" width="120" height="64" rx="10" fill="#fff" fill-opacity=".95" />
+        <polyline points="180,140 220,112 260,124 300,84 340,60" stroke="#2f6fdb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <circle cx="340" cy="60" r="6" fill="#2f6fdb" />
+      </svg>
+      <div class="in">
+        <small>PROPOSAL DESAIN · UNTUK DITINJAU</small>
+        <h1>Redesign UI/UX<br />CASN Set Builder</h1>
+        <p>
+          Beranda satu layar penuh (fit-to-page di laptop) dan halaman Progres Belajar dengan satu grafik besar + dua grafik kecil yang bisa ditukar. Lebih bersih, lebih
+          terstruktur, lebih lega.
+        </p>
+      </div>
+      <div class="meta">Versi aplikasi saat ini 1.4.0 · Disusun 10 Oktober 2026 · Belum ada kode aplikasi yang diubah</div>
+    </section>
+
+    <!-- ============ 2. RINGKASAN & TEMUAN ============ -->
+    <section class="page">
+      <div class="pg-h">
+        <span class="no">01</span>
+        <h2>Ringkasan dan temuan</h2>
+        <p>Hasil membaca kode Beranda, Progres, Layout, dan komponen kartu.</p>
+      </div>
+      <div class="cols" style="grid-template-columns: 1.1fr 1fr">
+        <div>
+          <h3>Yang saya usulkan</h3>
+          <ul class="l">
+            <li><b>Beranda jadi dashboard satu layar.</b> Grid 12 kolom dengan tinggi mengikuti layar (laptop 1366×768 sampai 1920×1080), tanpa scroll untuk kondisi normal.</li>
+            <li>
+              <b>Prioritas jelas:</b> "Apa yang harus saya kerjakan hari ini?" di kiri-atas, kesiapan di tengah, konsistensi di kanan. Statistik pelengkap dan Set terbaru di
+              bawahnya.
+            </li>
+            <li><b>Peringatan digabung jadi satu strip tipis</b> (cadangan, penyimpanan, versi baru) dan bisa ditutup, bukan kartu besar yang mendorong isi ke bawah.</li>
+            <li><b>Progres Belajar: 1 grafik besar + 2 kecil</b> yang bisa ditukar dengan satu klik atau tombol keyboard.</li>
+            <li><b>Sidebar dikelompokkan</b> (Belajar, Latihan, Materi, Sistem) supaya 12 menu tidak terbaca sebagai satu daftar panjang.</li>
+            <li><b>Satu sistem visual</b> untuk seluruh halaman: spasi, radius, tipografi, dan warna sub-tes yang konsisten.</li>
+          </ul>
+          <div class="box soft" style="margin-top: 4mm">
+            <h3>Yang tidak berubah</h3>
+            <p>
+              Semua fitur, data, rute, dan logika perhitungan (rencana belajar, streak, kesiapan, penguasaan topik) tetap sama. Ini perubahan tampilan dan susunan, bukan perubahan
+              perilaku. Warna biru merek dan dukungan mode gelap dipertahankan.
+            </p>
+          </div>
+        </div>
+        <div>
+          <h3>Temuan di versi sekarang</h3>
+          <table class="cmp">
+            <tr>
+              <th style="width: 26%">Area</th>
+              <th>Masalah</th>
+            </tr>
+            <tr>
+              <td><b>Beranda</b><br /><span class="tag red">scroll panjang</span></td>
+              <td>
+                Hingga 11 blok bersusun vertikal: Hal Baru, panduan awal, latihan belum selesai, Rencana belajar, Konsistensi, cadangan, penyimpanan, ulangan, 4 statistik, tombol
+                aksi, Set terbaru. Tombol utama "Buat soal" ada di tengah halaman, bukan di atas.
+              </td>
+            </tr>
+            <tr>
+              <td><b>Beranda</b><br /><span class="tag amber">hierarki</span></td>
+              <td>
+                Semua kartu bobotnya sama (<code>card</code> + <code>space-y-6</code>). Mata tidak tahu mulai dari mana. Rencana belajar dan Konsistensi masing-masing memakai satu
+                baris penuh.
+              </td>
+            </tr>
+            <tr>
+              <td><b>Progres</b><br /><span class="tag red">tidak rapi</span></td>
+              <td>
+                Tiga grafik TWK/TIU/TKP berukuran sama (<code>md:grid-cols-3</code>), masing-masing kecil (viewBox 320×150) sehingga label sulit dibaca. Sesudahnya 5 kartu teks
+                bersusun panjang.
+              </td>
+            </tr>
+            <tr>
+              <td><b>Layout</b><br /><span class="tag amber">ruang</span></td>
+              <td>Konten dibatasi <code>max-w-6xl</code> (1152px). Di layar lebar sisi kiri-kanan kosong, tetapi isi justru diperpanjang ke bawah.</td>
+            </tr>
+            <tr>
+              <td><b>Navigasi</b></td>
+              <td>12 menu rata dalam satu daftar, tanpa ikon dan tanpa kelompok. Menu rutin (Beranda, Latihan) setara dengan menu jarang (API Key, Bantuan).</td>
+            </tr>
+            <tr>
+              <td><b>Gaya</b></td>
+              <td>Fungsional tapi datar: teks <code>text-sm</code> hampir di mana-mana, kartu putih berbingkai tipis semua, tanpa aksen warna selain biru tautan.</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="foot"><span>Proposal Redesign UI/UX · CASN Set Builder</span><span>2</span></div>
+    </section>
+
+    <!-- ============ 3. KONDISI SEKARANG ============ -->
+    <section class="page">
+      <div class="pg-h">
+        <span class="no">02</span>
+        <h2>Kondisi sekarang (gambar skematik)</h2>
+        <p>Susunan blok diambil dari urutan di <code>Dashboard.tsx</code> dan <code>Progress.tsx</code>. Tinggi blok adalah perkiraan, bukan hasil ukur.</p>
+      </div>
+      <div class="cols" style="grid-template-columns: 1fr 1fr 1fr">
+        <div>
+          <h3>Beranda (dibaca dari atas ke bawah)</h3>
+          <div class="screen" style="height: 136mm; padding-bottom: 0; overflow: hidden">
+            <div class="wf h2"><span>Judul "Beranda" + deskripsi</span></div>
+            <div class="wf h2 cond"><span>Hal Baru</span><span>kondisional</span></div>
+            <div class="wf h3 cond"><span>Mulai dalam 3 langkah</span><span>bila belum ada API key</span></div>
+            <div class="wf h2 cond"><span>Latihan belum selesai → Lanjutkan</span></div>
+            <div class="wf h5"><span>Rencana belajar (hitung mundur, target, kesiapan)</span></div>
+            <div class="wf h4"><span>Konsistensi belajar (streak, lencana)</span></div>
+            <div class="wf h1 cond"><span>Pengingat cadangan</span></div>
+            <div class="wf h1 cond"><span>Peringatan penyimpanan</span></div>
+            <div class="foldl">▲ terlihat di laptop 1366×768 · ▼ harus scroll</div>
+            <div class="wf h2 cond"><span>Ulangan hari ini</span></div>
+            <div class="wf h3"><span>4 statistik</span></div>
+            <div class="wf h2"><span>+ Buat soal · Latihan ujian · Bank soal</span></div>
+            <div class="wf h4"><span>Set terbaru × 5 (terpotong di gambar)</span></div>
+          </div>
+          <p style="margin-top: 3mm">
+            <b>Akibatnya:</b> tombol "Buat soal", aksi utama aplikasi, baru terlihat setelah scroll. Statistik dan Set terbaru hampir tidak pernah terlihat tanpa menggulung.
+          </p>
+        </div>
+        <div>
+          <h3>Progres Belajar</h3>
+          <div class="screen" style="height: 136mm; overflow: hidden">
+            <div class="wf h2"><span>Judul + penjelasan panjang</span></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px">
+              <div class="wf h4"><span>TWK</span></div>
+              <div class="wf h4"><span>TIU</span></div>
+              <div class="wf h4"><span>TKP</span></div>
+            </div>
+            <div class="wf h5"><span>Tren (3 baris teks) + membaik/menurun</span></div>
+            <div class="foldl">▲ terlihat di laptop 1366×768 · ▼ harus scroll</div>
+            <div class="wf h2"><span>Alasan salah tersering</span></div>
+            <div class="wf h5"><span>Penguasaan topik (daftar bar, bisa 20+ baris)</span></div>
+            <div class="wf h5"><span>Tabel Riwayat skor</span></div>
+            <div class="wf h5"><span>Tabel Riwayat skor paket lain</span></div>
+          </div>
+          <p style="margin-top: 3mm">
+            <b>Akibatnya:</b> tiga grafik berukuran sama dan kecil, tidak ada yang menjadi fokus. Informasi penting (tren, kelemahan) tersebar di bawah dan harus digulung.
+          </p>
+        </div>
+        <div>
+          <h3>Navigasi</h3>
+          <div class="screen" style="padding: 8px">
+            <div style="font-size: 9px; line-height: 2.15; color: #334155">
+              Beranda<br />Buat Soal<br />Set Saya<br />Bank Soal<br />Latihan Ujian<br />Buku Kesalahan<br />Progres Belajar<br />Kartu Hafalan TWK<br />Kamus Rumus TIU<br />API
+              Key<br />Pengaturan<br />Bantuan
+            </div>
+          </div>
+          <p style="margin-top: 3mm">12 item satu tingkat. Tidak ada kelompok, ikon, atau penanda jumlah (mis. ulangan jatuh tempo).</p>
+          <div class="box soft" style="margin-top: 4mm">
+            <h3>Catatan metode</h3>
+            <p>
+              Saya belum menjalankan aplikasi dengan data isian, jadi gambar kiri adalah rekonstruksi dari kode. Bila Anda ingin, kirim tangkapan layar Beranda dan Progres Anda dan
+              saya selaraskan perbandingannya.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>Proposal Redesign UI/UX · CASN Set Builder</span><span>3</span></div>
+    </section>
+
+    <!-- ============ 4. SISTEM VISUAL ============ -->
+    <section class="page">
+      <div class="pg-h">
+        <span class="no">03</span>
+        <h2>Sistem visual: fresh tapi tetap kalem</h2>
+        <p>Dibangun di atas token Tailwind yang sudah dipakai, jadi tidak perlu mengganti library.</p>
+      </div>
+      <div class="cols" style="grid-template-columns: 1fr 1fr 1fr">
+        <div>
+          <h3>Warna</h3>
+          <div class="sw" style="margin: 5px 0">
+            <i style="background: #2f6fdb"></i><span><b>Brand</b> #2F6FDB — aksi utama, tautan, item menu aktif</span>
+          </div>
+          <div class="sw" style="margin: 5px 0">
+            <i style="background: #f6f8fb"></i><span><b>Kanvas</b> #F6F8FB — latar halaman (lebih terang dan sedikit kebiruan dari slate-50)</span>
+          </div>
+          <div class="sw" style="margin: 5px 0">
+            <i style="background: #fff"></i><span><b>Kartu</b> putih, bingkai #E2E8F0, bayangan sangat tipis</span>
+          </div>
+          <div class="sw" style="margin: 5px 0">
+            <i style="background: #e11d48"></i><span><b>TWK</b> mawar</span> <i style="background: #0284c7; margin-left: 8px"></i><span><b>TIU</b> langit</span>
+            <i style="background: #059669; margin-left: 8px"></i><span><b>TKP</b> zamrud</span>
+          </div>
+          <div class="sw" style="margin: 5px 0">
+            <i style="background: #16a34a"></i><span>Lulus / selesai</span><i style="background: #d97706; margin-left: 8px"></i><span>Perhatian</span
+            ><i style="background: #dc2626; margin-left: 8px"></i><span>Lemah / gagal</span>
+          </div>
+          <p style="margin-top: 6px">
+            <b>Baru:</b> warna sub-tes dipakai konsisten sebagai garis grafik, lencana, dan bar topik, jadi pembaca mengenali TWK/TIU/TKP tanpa membaca label. Warna lulus/lemah
+            selalu disertai teks atau ikon (tidak hanya warna).
+          </p>
+        </div>
+        <div>
+          <h3>Tipografi, spasi, bentuk</h3>
+          <table class="cmp">
+            <tr>
+              <th>Token</th>
+              <th>Nilai</th>
+            </tr>
+            <tr>
+              <td>Font</td>
+              <td>Inter (sudah dipakai)</td>
+            </tr>
+            <tr>
+              <td>Judul halaman</td>
+              <td>24 px / 700, deskripsi 13 px abu</td>
+            </tr>
+            <tr>
+              <td>Judul kartu</td>
+              <td>15 px / 650</td>
+            </tr>
+            <tr>
+              <td>Angka besar (KPI)</td>
+              <td>26–32 px / 700, <code>tabular-nums</code></td>
+            </tr>
+            <tr>
+              <td>Teks isi / pendukung</td>
+              <td>14 px / 12.5 px</td>
+            </tr>
+            <tr>
+              <td>Skala spasi</td>
+              <td>kelipatan 4 px; antar-kartu 16 px; padding kartu 16–20 px</td>
+            </tr>
+            <tr>
+              <td>Radius</td>
+              <td>kartu 14 px, tombol dan input 10 px, lencana penuh</td>
+            </tr>
+            <tr>
+              <td>Bayangan</td>
+              <td>satu level: 0 1 2 rgba(15,23,42,.04)</td>
+            </tr>
+          </table>
+        </div>
+        <div>
+          <h3>Komponen yang diseragamkan</h3>
+          <ul class="l">
+            <li><b>PageHeader</b>: judul + deskripsi satu baris di kiri, aksi utama dan chip konteks di kanan. Dipakai semua halaman.</li>
+            <li>
+              <b>Card</b> dengan header (judul, tautan "lihat semua" di kanan) dan tiga tingkat: <i>standar</i>, <i>fokus</i> (aksen biru tipis, untuk "Target hari ini"),
+              <i>kecil</i> (KPI).
+            </li>
+            <li><b>AlertStrip</b>: satu baris, bisa ditutup, menampung semua peringatan sistem.</li>
+            <li><b>Segmented control</b> dan <b>Tabs</b> untuk filter dan pembagian isi, bukan menumpuk bagian.</li>
+            <li><b>Stat/KPI</b> dengan tren kecil (▲ ▼) dan satu baris keterangan.</li>
+            <li><b>EmptyState</b> berilustrasi ikon + satu tombol tindakan.</li>
+          </ul>
+          <div class="box soft" style="margin-top: 4mm">
+            <p>
+              <b>Aksesibilitas</b> tetap dijaga: kontras teks sekunder ≥ 4.5:1, fokus keyboard terlihat, <code>prefers-reduced-motion</code> dihormati. Sudah ada uji axe di
+              <code>e2e/</code> yang akan dijalankan ulang.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>Proposal Redesign UI/UX · CASN Set Builder</span><span>4</span></div>
+    </section>
+
+    <!-- ============ 5. NAVIGASI ============ -->
+    <section class="page">
+      <div class="pg-h">
+        <span class="no">04</span>
+        <h2>Navigasi: sidebar berkelompok</h2>
+        <p>Menu yang sama, dibuat bisa dipindai. Kelompok mengikuti alur belajar.</p>
+      </div>
+      <div class="cols" style="grid-template-columns: 0.8fr 1.2fr; gap: 10mm">
+        <div>
+          <h3>Pengelompokan</h3>
+          <table class="cmp">
+            <tr>
+              <th>Kelompok</th>
+              <th>Isi</th>
+              <th>Alasan</th>
+            </tr>
+            <tr>
+              <td><b>Beranda</b></td>
+              <td>Beranda</td>
+              <td>Berdiri sendiri di atas</td>
+            </tr>
+            <tr>
+              <td><b>Belajar</b></td>
+              <td>Latihan Ujian · Buku Kesalahan <span class="tag">3 jatuh tempo</span> · Progres Belajar</td>
+              <td>Aktivitas harian</td>
+            </tr>
+            <tr>
+              <td><b>Soal</b></td>
+              <td>Buat Soal · Set Saya · Bank Soal</td>
+              <td>Produksi dan pengelolaan soal</td>
+            </tr>
+            <tr>
+              <td><b>Materi</b></td>
+              <td>Kartu Hafalan TWK · Kamus Rumus TIU</td>
+              <td>Referensi cepat</td>
+            </tr>
+            <tr>
+              <td><b>Sistem</b></td>
+              <td>API Key · Pengaturan · Bantuan</td>
+              <td>Jarang dibuka, diturunkan ke bawah</td>
+            </tr>
+          </table>
+          <ul class="l" style="margin-top: 4mm">
+            <li>Setiap item diberi <b>ikon</b> 18 px untuk dipindai dan untuk mode sidebar ciut.</li>
+            <li><b>Lencana angka</b> pada Buku Kesalahan (ulangan jatuh tempo) sebagai pengingat pasif.</li>
+            <li>Di layar &lt; 1280 px sidebar <b>menciut jadi ikon</b> (72 px) agar konten mendapat ruang; di ponsel tetap menu turun-buka seperti sekarang.</li>
+            <li>Rute dan URL tidak berubah.</li>
+          </ul>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6mm">
+          <div>
+            <div class="tag red" style="margin-bottom: 4px">Sekarang</div>
+            <div class="screen" style="padding: 10px; height: 112mm; font-size: 10.5px; line-height: 2.3; color: #334155">
+              <b style="font-size: 11.5px; line-height: 1.2; display: block">CASN Set Builder</b>
+              Beranda<br />Buat Soal<br />Set Saya<br />Bank Soal<br />Latihan Ujian<br />Buku Kesalahan<br />Progres Belajar<br />Kartu Hafalan TWK<br />Kamus Rumus TIU<br />API
+              Key<br />Pengaturan<br />Bantuan
+            </div>
+          </div>
+          <div>
+            <div class="tag green" style="margin-bottom: 4px">Usulan</div>
+            <div class="screen" style="padding: 10px; height: 112mm; overflow: hidden">
+              <div class="mk" style="zoom: 0.62; width: 240px; height: auto; background: transparent; display: block">
+                <div class="sb" style="width: auto; border: 0; padding: 0">
+                  <div class="brand">
+                    <div class="logo">C</div>
+                    <div><b>CASN Set Builder</b><span>CPNS & PPPK</span></div>
+                  </div>
+                  <a class="on"><span class="ic"></span>Beranda</a>
+                  <div class="grp">Belajar</div>
+                  <a><span class="ic"></span>Latihan Ujian</a><a><span class="ic"></span>Buku Kesalahan<em>3</em></a
+                  ><a><span class="ic"></span>Progres Belajar</a>
+                  <div class="grp">Soal</div>
+                  <a><span class="ic"></span>Buat Soal</a><a><span class="ic"></span>Set Saya</a><a><span class="ic"></span>Bank Soal</a>
+                  <div class="grp">Materi</div>
+                  <a><span class="ic"></span>Kartu Hafalan TWK</a><a><span class="ic"></span>Kamus Rumus TIU</a>
+                  <div class="grp">Sistem</div>
+                  <a><span class="ic"></span>API Key</a><a><span class="ic"></span>Pengaturan</a><a><span class="ic"></span>Bantuan</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>Proposal Redesign UI/UX · CASN Set Builder</span><span>5</span></div>
+    </section>
+
+    <!-- ============ 6. BERANDA MOCK ============ -->
+    <section class="page">
+      <div class="pg-h">
+        <span class="no">05</span>
+        <h2>Beranda usulan: satu layar, tanpa scroll</h2>
+        <p>Mockup pada viewport efektif 1440×800 (layar 1440×900 dikurangi bilah browser). Data contoh.</p>
+      </div>
+      <div class="mkwrap" style="width: fit-content; margin: 0 auto">
+        <div class="mkbar"><i></i><i></i><i></i><span>casn-set-builder / Beranda</span></div>
+        <div class="mk" style="--z: 0.64">
+          <div class="sb">
+            <div class="brand">
+              <div class="logo">C</div>
+              <div><b>CASN Set Builder</b><span>CPNS &amp; PPPK</span></div>
+            </div>
+            <a class="on"><span class="ic"></span>Beranda</a>
+            <div class="grp">Belajar</div>
+            <a><span class="ic"></span>Latihan Ujian</a><a><span class="ic"></span>Buku Kesalahan<em>3</em></a
+            ><a><span class="ic"></span>Progres Belajar</a>
+            <div class="grp">Soal</div>
+            <a><span class="ic"></span>Buat Soal</a><a><span class="ic"></span>Set Saya</a><a><span class="ic"></span>Bank Soal</a>
+            <div class="grp">Materi</div>
+            <a><span class="ic"></span>Kartu Hafalan TWK</a><a><span class="ic"></span>Kamus Rumus TIU</a>
+            <div class="grp">Sistem</div>
+            <a><span class="ic"></span>API Key</a><a><span class="ic"></span>Pengaturan</a><a><span class="ic"></span>Bantuan</a>
+            <div class="ver">Versi 1.4.0</div>
+          </div>
+          <div class="main">
+            <div class="top">
+              <div>
+                <h1>Selamat pagi 👋</h1>
+                <div class="sub">Sabtu, 10 Oktober · lanjutkan target hari ini</div>
+              </div>
+              <div class="sp"></div>
+              <span class="chip hot">⏳ 47 hari menuju ujian</span>
+              <a class="btn">Latihan ujian</a><a class="btn p">+ Buat soal</a>
+            </div>
+            <div class="strip">
+              💾 <span><b>Cadangan terakhir 12 hari lalu.</b> Unduh cadangan agar data aman.</span><span class="x">Cadangkan · Tutup ✕</span>
+            </div>
+            <div class="grid" style="grid-template-columns: 5fr 4fr 3fr; height: 296px; flex: none">
+              <div class="c" style="border-color: #bfdbfe; background: linear-gradient(180deg, #f5f9ff, #fff 40%)">
+                <h4>Target hari ini <span class="mut" style="font-weight: 500">± 60 menit</span><small>Ubah rencana</small></h4>
+                <div class="row" style="gap: 16px; margin-bottom: 6px">
+                  <svg width="74" height="74" viewBox="0 0 74 74">
+                    <circle cx="37" cy="37" r="30" fill="none" stroke="#e2e8f0" stroke-width="9" />
+                    <circle cx="37" cy="37" r="30" fill="none" stroke="#2f6fdb" stroke-width="9" stroke-linecap="round" stroke-dasharray="94 189" transform="rotate(-90 37 37)" />
+                    <text x="37" y="42" text-anchor="middle" font-size="17" font-weight="700" fill="#0f172a">2/4</text>
+                  </svg>
+                  <div>
+                    <div style="font-size: 15px; font-weight: 650">Tinggal 2 target lagi</div>
+                    <div class="mut">Sekitar 35 menit tersisa</div>
+                  </div>
+                </div>
+                <div class="todo"><span class="ck d">✓</span>Ulangan 12 soal Buku Kesalahan<span class="go mut">selesai</span></div>
+                <div class="todo"><span class="ck d">✓</span>Kartu hafalan TWK · 10 kartu<span class="go mut">selesai</span></div>
+                <div class="todo"><span class="ck"></span>Latihan topik lemah: <span class="sbadge tiu">TIU</span> Deret angka<span class="go">Mulai →</span></div>
+                <div class="todo"><span class="ck"></span>Simulasi SKD penuh (hari Sabtu)<span class="go">Mulai →</span></div>
+              </div>
+              <div class="c">
+                <h4>Kesiapan menurut ujian terakhir<small>Progres →</small></h4>
+                <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 4px">
+                  <div>
+                    <div class="row" style="justify-content: space-between; margin-bottom: 5px">
+                      <span><span class="sbadge twk">TWK</span> <b style="font-size: 16px">78</b> <span class="mut">/ ambang 65</span></span
+                      ><span style="color: #16a34a; font-weight: 650; font-size: 12.5px">✓ di atas target</span>
+                    </div>
+                    <div class="pb"><i style="width: 52%; background: var(--twk)"></i></div>
+                  </div>
+                  <div>
+                    <div class="row" style="justify-content: space-between; margin-bottom: 5px">
+                      <span><span class="sbadge tiu">TIU</span> <b style="font-size: 16px">74</b> <span class="mut">/ ambang 80</span></span
+                      ><span style="color: #dc2626; font-weight: 650; font-size: 12.5px">kurang 6 poin</span>
+                    </div>
+                    <div class="pb"><i style="width: 42%; background: var(--tiu)"></i></div>
+                  </div>
+                  <div>
+                    <div class="row" style="justify-content: space-between; margin-bottom: 5px">
+                      <span><span class="sbadge tkp">TKP</span> <b style="font-size: 16px">171</b> <span class="mut">/ ambang 166</span></span
+                      ><span style="color: #16a34a; font-weight: 650; font-size: 12.5px">✓ di atas target</span>
+                    </div>
+                    <div class="pb"><i style="width: 76%; background: var(--tkp)"></i></div>
+                  </div>
+                </div>
+                <div class="mut" style="margin-top: 12px; font-size: 11.5px">Rata-rata 3 ujian terakhir. Bukan peluang kelulusan.</div>
+              </div>
+              <div class="c">
+                <h4>Konsistensi</h4>
+                <div class="row" style="align-items: baseline; gap: 6px">
+                  <span style="font-size: 36px; font-weight: 750; letter-spacing: -0.03em; color: var(--brand-d)">9</span
+                  ><span style="font-size: 14px; font-weight: 600">hari beruntun 🔥</span>
+                </div>
+                <div class="row" style="gap: 6px; margin: 10px 0 12px">
+                  <span style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--ink3)"
+                    ><i class="dot" style="width: 22px; height: 22px; background: var(--brand)"></i>S</span
+                  ><span style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--ink3)"
+                    ><i class="dot" style="width: 22px; height: 22px; background: var(--brand)"></i>S</span
+                  ><span style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--ink3)"
+                    ><i class="dot" style="width: 22px; height: 22px; background: var(--brand)"></i>R</span
+                  ><span style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--ink3)"
+                    ><i class="dot" style="width: 22px; height: 22px; background: var(--brand)"></i>K</span
+                  ><span style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--ink3)"
+                    ><i class="dot" style="width: 22px; height: 22px; background: var(--brand)"></i>J</span
+                  ><span style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--ink3)"
+                    ><i class="dot" style="width: 22px; height: 22px; background: var(--brand)"></i>S</span
+                  ><span style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--ink3)"
+                    ><i class="dot" style="width: 22px; height: 22px; background: #cbd5e1"></i>M</span
+                  >
+                </div>
+                <div class="mut" style="font-size: 11.5px; margin-bottom: 6px">Lencana terbaru</div>
+                <div class="row" style="flex-wrap: wrap; gap: 6px">
+                  <span class="chip" style="padding: 3px 10px; font-size: 11.5px">🏅 7 hari</span
+                  ><span class="chip" style="padding: 3px 10px; font-size: 11.5px">🎯 Simulasi ke-5</span>
+                </div>
+                <div class="row" style="margin-top: 10px"><span class="btn" style="padding: 5px 10px; font-size: 11.5px">Jeda streak</span></div>
+              </div>
+            </div>
+            <div class="grid" style="grid-template-columns: repeat(4, 1fr); flex: none">
+              <div class="c kpi" style="padding: 12px 16px"><span class="l">Set tersimpan</span><span class="v">14</span><span class="h mut">2 dibuat minggu ini</span></div>
+              <div class="c kpi" style="padding: 12px 16px">
+                <span class="l">Soal di bank</span><span class="v">1.230</span><span class="h" style="color: var(--warn)">⚠ 8 perlu dicek</span>
+              </div>
+              <div class="c kpi" style="padding: 12px 16px">
+                <span class="l">Latihan selesai</span><span class="v">37</span><span class="h" style="color: var(--ok)">▲ 5 dibanding minggu lalu</span>
+              </div>
+              <div class="c kpi" style="padding: 12px 16px">
+                <span class="l">Skor ujian terakhir</span><span class="v">323<span class="mut" style="font-size: 15px; font-weight: 500"> / 550</span></span
+                ><span class="h" style="color: var(--bad)">Belum lulus ambang batas</span>
+              </div>
+            </div>
+            <div class="grid" style="grid-template-columns: 7fr 5fr; flex: 1; min-height: 0">
+              <div class="c">
+                <h4>Lanjutkan &amp; set terbaru<small>Semua set →</small></h4>
+                <div class="li" style="background: var(--brand-50); margin: -2px -8px 4px; padding: 9px 8px; border-radius: 9px; border: 0">
+                  <b>Latihan ujian belum selesai</b><span class="mut">· SKD Paket 7 · sisa 41 menit</span
+                  ><span class="btn p" style="margin-left: auto; padding: 5px 12px; font-size: 12.5px">Lanjutkan</span>
+                </div>
+                <div class="li"><b>SKD Paket 7</b><span class="m">110 soal · 8 Okt</span><span class="sbadge" style="background: #dcfce7; color: #166534">siap</span></div>
+                <div class="li">
+                  <b>TIU Deret &amp; Aritmetika</b><span class="m">35 soal · 6 Okt</span><span class="sbadge" style="background: #dcfce7; color: #166534">siap</span>
+                </div>
+              </div>
+              <div class="c">
+                <h4>Ulangan hari ini<small>Buku Kesalahan →</small></h4>
+                <div class="row" style="gap: 14px">
+                  <span style="font-size: 34px; font-weight: 750; letter-spacing: -0.03em">3</span>
+                  <div>
+                    <div style="font-weight: 650">soal jatuh tempo</div>
+                    <div class="mut">dari 41 di Buku Kesalahan · batas harian 20</div>
+                  </div>
+                </div>
+                <div class="row" style="margin-top: 12px"><span class="btn p">Mulai ulangan</span><span class="btn">Lihat semua</span></div>
+              </div>
+            </div>
+          </div>
+          <!-- callouts -->
+          <div class="call" style="left: 250px; top: 12px">1</div>
+          <div class="call" style="left: 250px; top: 74px">2</div>
+          <div class="call" style="left: 250px; top: 128px">3</div>
+          <div class="call" style="left: 731px; top: 128px">4</div>
+          <div class="call" style="left: 1119px; top: 128px">5</div>
+          <div class="call" style="left: 250px; top: 440px">6</div>
+          <div class="call" style="left: 250px; top: 540px">7</div>
+        </div>
+      </div>
+      <div class="notes" style="grid-template-columns: repeat(4, 1fr); margin-top: 3mm">
+        <div class="nt">
+          <i>1</i>
+          <p><b>Header ringkas.</b> Sapaan, hitung mundur ujian, dan dua aksi utama (<em>+ Buat soal</em> primer) selalu di atas. Total ±46 px.</p>
+        </div>
+        <div class="nt">
+          <i>2</i>
+          <p><b>Satu strip peringatan</b> menggantikan 3 kartu (cadangan, penyimpanan, versi baru). Hilang bila tidak ada yang perlu dilaporkan.</p>
+        </div>
+        <div class="nt">
+          <i>3</i>
+          <p><b>Target hari ini</b> adalah kartu fokus: cincin kemajuan + daftar centang yang bisa langsung diklik.</p>
+        </div>
+        <div class="nt">
+          <i>4</i>
+          <p><b>Kesiapan</b> per sub-tes dengan bar berwarna sub-tes dan selisih ke ambang, menggantikan daftar teks.</p>
+        </div>
+        <div class="nt">
+          <i>5</i>
+          <p><b>Konsistensi</b> kompak: streak, 7 hari terakhir, lencana terbaru. Detail lain lewat "Jeda streak".</p>
+        </div>
+        <div class="nt">
+          <i>6</i>
+          <p><b>Empat KPI satu baris</b> dengan keterangan tren (▲ ▼) dan peringatan (⚠) yang bisa diklik ke daftar terkait.</p>
+        </div>
+        <div class="nt">
+          <i>7</i>
+          <p><b>Lanjutkan &amp; Set terbaru</b> digabung; latihan belum selesai disorot di baris pertama. <b>Ulangan hari ini</b> di sampingnya.</p>
+        </div>
+        <div class="nt">
+          <i>≡</i>
+          <p><b>Tinggi total ±770 px</b> dari 800 px viewport efektif, dengan jarak 16 px antar-blok. Rinciannya di halaman berikutnya.</p>
+        </div>
+      </div>
+      <div class="foot"><span>Proposal Redesign UI/UX · CASN Set Builder</span><span>6</span></div>
+    </section>
+
+    <!-- ============ 7. BERANDA ATURAN ============ -->
+    <section class="page">
+      <div class="pg-h">
+        <span class="no">05b</span>
+        <h2>Beranda: bagaimana "fit to page" dijamin</h2>
+        <p>Satu layar bukan hanya soal ukuran; kartu harus tahu kapan tampil dan kapan mengecil.</p>
+      </div>
+      <div class="cols" style="grid-template-columns: 1fr 1fr 1fr; gap: 8mm">
+        <div>
+          <h3>Aturan tata letak</h3>
+          <ul class="l">
+            <li>
+              Wadah halaman: <code>height: 100dvh</code> dikurangi header; <b>grid</b> dengan baris <code>auto auto minmax(0,1fr)</code>. Baris terakhir menyerap sisa tinggi.
+            </li>
+            <li>Lebar konten dinaikkan dari 1152 px ke <b>maks 1440 px</b> dan tetap rata tengah agar tidak melar di monitor 27".</li>
+            <li>Kartu isi panjang (daftar target, set) memakai <b>scroll internal</b>, bukan memanjangkan halaman.</li>
+            <li>Di bawah <b>560 px tinggi</b> atau <b>1024 px lebar</b>, grid turun ke susunan bertumpuk seperti sekarang (aman untuk tablet dan ponsel).</li>
+          </ul>
+          <table class="cmp" style="margin-top: 4mm">
+            <tr>
+              <th>Viewport</th>
+              <th>Perilaku</th>
+            </tr>
+            <tr>
+              <td>1920×1080 <span class="mut">(≈ 950 px tinggi efektif)</span></td>
+              <td>Penuh; KPI diberi grafik mini</td>
+            </tr>
+            <tr>
+              <td>1440×900 <span class="mut">(≈ 780)</span></td>
+              <td>Seperti mockup, tanpa scroll</td>
+            </tr>
+            <tr>
+              <td>1366×768 <span class="mut">(≈ 650)</span></td>
+              <td>Mode ringkas: KPI jadi chip di header, strip peringatan jadi ikon, baris 1 setinggi 250 px</td>
+            </tr>
+            <tr>
+              <td>1280×720 <span class="mut">(≈ 600)</span></td>
+              <td>Mode ringkas + sidebar ikon; Konsistensi digabung ke header</td>
+            </tr>
+            <tr>
+              <td>&lt; 1024</td>
+              <td>Satu kolom, urutan sama</td>
+            </tr>
+          </table>
+        </div>
+        <div>
+          <h3>Kartu muncul sesuai keadaan</h3>
+          <table class="cmp">
+            <tr>
+              <th>Keadaan</th>
+              <th>Tampil</th>
+            </tr>
+            <tr>
+              <td><span class="tag amber">Baru, belum ada API key</span></td>
+              <td>Kartu fokus "Mulai dalam 3 langkah" mengganti <i>Target hari ini</i>; Kesiapan dan Konsistensi menjadi kartu kosong ramah ("Muncul setelah ujian pertama").</td>
+            </tr>
+            <tr>
+              <td><span class="tag">Ada rencana belajar</span></td>
+              <td>Seperti mockup. Hitung mundur di header.</td>
+            </tr>
+            <tr>
+              <td><span class="tag">Tanpa rencana</span></td>
+              <td>Target hari ini diganti ajakan "Buat rencana belajar" + 3 saran cepat; ulangan hari ini naik ke kolom itu.</td>
+            </tr>
+            <tr>
+              <td><span class="tag">Latihan belum selesai</span></td>
+              <td>Baris biru "Lanjutkan" di kartu bawah; bila tidak ada, baris itu hilang.</td>
+            </tr>
+            <tr>
+              <td><span class="tag red">Peringatan sistem</span></td>
+              <td>Strip kuning (cadangan/penyimpanan) atau biru (versi baru). Banyak sekaligus: ditumpuk jadi satu strip "3 pemberitahuan ▾".</td>
+            </tr>
+            <tr>
+              <td><span class="tag green">Hal Baru</span></td>
+              <td>Pindah ke ikon lonceng di header; tidak lagi memakan satu baris penuh.</td>
+            </tr>
+          </table>
+        </div>
+        <div>
+          <h3>Anggaran tinggi (mode normal, ±800 px)</h3>
+          <table class="cmp">
+            <tr>
+              <th>Blok</th>
+              <th style="text-align: right">px</th>
+            </tr>
+            <tr>
+              <td>Padding atas</td>
+              <td style="text-align: right">22</td>
+            </tr>
+            <tr>
+              <td>Header</td>
+              <td style="text-align: right">46</td>
+            </tr>
+            <tr>
+              <td>Strip peringatan (bila ada)</td>
+              <td style="text-align: right">38</td>
+            </tr>
+            <tr>
+              <td>Baris 1: Target · Kesiapan · Konsistensi</td>
+              <td style="text-align: right">296</td>
+            </tr>
+            <tr>
+              <td>Baris 2: 4 KPI</td>
+              <td style="text-align: right">~84</td>
+            </tr>
+            <tr>
+              <td>Baris 3: Lanjutkan · Ulangan (fleksibel)</td>
+              <td style="text-align: right">≥ 200</td>
+            </tr>
+            <tr>
+              <td>Jarak antar-blok 4 × 16</td>
+              <td style="text-align: right">64</td>
+            </tr>
+            <tr>
+              <td>Padding bawah</td>
+              <td style="text-align: right">20</td>
+            </tr>
+            <tr>
+              <th>Total minimum</th>
+              <th style="text-align: right">770</th>
+            </tr>
+          </table>
+          <p style="margin-top: 3mm">
+            Tinggi layar bukan tinggi halaman: bilah browser memakan ±120 px, jadi laptop 1366×768 hanya punya ±650 px. Karena itu ada <b>mode ringkas</b> (di bawah ±720 px
+            tinggi): KPI pindah ke header, jarak dan padding dikecilkan, total ±560 px. Saya akan membuktikannya dengan tangkapan layar Playwright di tiap ukuran sebelum dinyatakan
+            selesai.
+          </p>
+          <div class="box soft" style="margin-top: 3mm">
+            <p>
+              <b>Yang sengaja dipindah keluar Beranda:</b> daftar lencana lengkap (ke halaman Konsistensi di Progres), kesiapan lanjutan, dan panduan panjang. Semua tetap bisa
+              dicapai satu klik.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>Proposal Redesign UI/UX · CASN Set Builder</span><span>7</span></div>
+    </section>
+
+    <!-- ============ 8. PROGRES MOCK ============ -->
+    <section class="page">
+      <div class="pg-h">
+        <span class="no">06</span>
+        <h2>Progres Belajar usulan: 1 grafik besar + 2 kecil</h2>
+        <p>Klik grafik kecil untuk menukarnya jadi grafik besar. Mockup viewport 1440×800, data contoh.</p>
+      </div>
+      <div class="mkwrap" style="width: fit-content; margin: 0 auto">
+        <div class="mkbar"><i></i><i></i><i></i><span>casn-set-builder / Progres Belajar</span></div>
+        <div class="mk" style="--z: 0.64">
+          <div class="sb">
+            <div class="brand">
+              <div class="logo">C</div>
+              <div><b>CASN Set Builder</b><span>CPNS &amp; PPPK</span></div>
+            </div>
+            <a><span class="ic"></span>Beranda</a>
+            <div class="grp">Belajar</div>
+            <a><span class="ic"></span>Latihan Ujian</a><a><span class="ic"></span>Buku Kesalahan<em>3</em></a
+            ><a class="on"><span class="ic"></span>Progres Belajar</a>
+            <div class="grp">Soal</div>
+            <a><span class="ic"></span>Buat Soal</a><a><span class="ic"></span>Set Saya</a><a><span class="ic"></span>Bank Soal</a>
+            <div class="grp">Materi</div>
+            <a><span class="ic"></span>Kartu Hafalan TWK</a><a><span class="ic"></span>Kamus Rumus TIU</a>
+            <div class="grp">Sistem</div>
+            <a><span class="ic"></span>API Key</a><a><span class="ic"></span>Pengaturan</a><a><span class="ic"></span>Bantuan</a>
+            <div class="ver">Versi 1.4.0</div>
+          </div>
+          <div class="main">
+            <div class="top">
+              <div>
+                <h1>Progres Belajar</h1>
+                <div class="sub">6 ujian dan 31 latihan selesai · grafik hanya memakai ujian</div>
+              </div>
+              <div class="sp"></div>
+              <div class="seg"><span>3 terakhir</span><span class="on">Semua ujian</span></div>
+              <a class="btn">⤓ Ekspor</a>
+            </div>
+            <div class="tabs" style="flex: none"><span class="on">Ringkasan</span><span>Topik</span><span>Riwayat</span></div>
+            <div class="grid" style="grid-template-columns: 8fr 4fr; height: 370px; flex: none">
+              <!-- HERO -->
+              <div class="c" style="padding: 18px 22px">
+                <div class="row" style="margin-bottom: 6px; align-items: flex-start">
+                  <div>
+                    <div class="row" style="gap: 8px"><span class="sbadge tiu" style="font-size: 12px">TIU</span><b style="font-size: 17px">Tes Intelegensia Umum</b></div>
+                    <div class="mut" style="margin-top: 3px">Skor per ujian · garis putus = ambang 80 · <span style="color: #b45309">skala fokus 40–100</span></div>
+                  </div>
+                  <div style="margin-left: auto; display: flex; gap: 26px">
+                    <div class="kpi"><span class="l">Terakhir</span><span class="v" style="font-size: 24px">74</span></div>
+                    <div class="kpi"><span class="l">Rata-rata</span><span class="v" style="font-size: 24px">69</span></div>
+                    <div class="kpi"><span class="l">Tren</span><span class="v" style="font-size: 24px; color: var(--ok)">▲ 4</span><span class="h mut">poin / ujian</span></div>
+                    <div class="kpi"><span class="l">Perkiraan berikutnya</span><span class="v" style="font-size: 24px">74–82</span></div>
+                  </div>
+                </div>
+                <div id="hero" style="margin: 0 -4px"></div>
+              </div>
+              <!-- SMALLS -->
+              <div style="display: grid; grid-template-rows: 1fr 1fr; gap: 16px">
+                <div class="c" style="padding: 12px 16px; cursor: pointer; display: flex; flex-direction: column">
+                  <div class="row">
+                    <span class="sbadge twk">TWK</span><b>Wawasan Kebangsaan</b><span class="mut" style="margin-left: auto; font-size: 11.5px">⇄ jadikan besar</span>
+                  </div>
+                  <div class="row" style="margin-top: 4px">
+                    <span style="font-size: 24px; font-weight: 700">78</span><span class="mut">ambang 65</span
+                    ><span style="margin-left: auto; color: var(--ok); font-weight: 650; font-size: 12.5px">▲ 3</span>
+                  </div>
+                  <div id="sm1" style="margin: 0 -2px; flex: 1"></div>
+                </div>
+                <div class="c" style="padding: 12px 16px; cursor: pointer; display: flex; flex-direction: column">
+                  <div class="row">
+                    <span class="sbadge tkp">TKP</span><b>Karakteristik Pribadi</b><span class="mut" style="margin-left: auto; font-size: 11.5px">⇄ jadikan besar</span>
+                  </div>
+                  <div class="row" style="margin-top: 4px">
+                    <span style="font-size: 24px; font-weight: 700">171</span><span class="mut">ambang 166</span
+                    ><span style="margin-left: auto; color: var(--ok); font-weight: 650; font-size: 12.5px">▲ 6</span>
+                  </div>
+                  <div id="sm2" style="margin: 0 -2px; flex: 1"></div>
+                </div>
+              </div>
+            </div>
+            <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; flex: 1; min-height: 0">
+              <div class="c">
+                <h4>Topik terlemah<small>Semua topik →</small></h4>
+                <div style="display: flex; flex-direction: column; gap: 11px">
+                  <div>
+                    <div class="row" style="justify-content: space-between; font-size: 13px; margin-bottom: 4px">
+                      <span><span class="sbadge tiu">TIU</span> Deret angka <span class="sbadge" style="background: #fee2e2; color: #991b1b">lemah</span></span
+                      ><b>48%</b>
+                    </div>
+                    <div class="pb"><i style="width: 48%; background: var(--bad)"></i></div>
+                  </div>
+                  <div>
+                    <div class="row" style="justify-content: space-between; font-size: 13px; margin-bottom: 4px">
+                      <span><span class="sbadge tiu">TIU</span> Silogisme <span class="sbadge" style="background: #fee2e2; color: #991b1b">lemah</span></span
+                      ><b>55%</b>
+                    </div>
+                    <div class="pb"><i style="width: 55%; background: var(--bad)"></i></div>
+                  </div>
+                  <div>
+                    <div class="row" style="justify-content: space-between; font-size: 13px; margin-bottom: 4px">
+                      <span><span class="sbadge twk">TWK</span> Pilar negara</span><b>64%</b>
+                    </div>
+                    <div class="pb"><i style="width: 64%; background: var(--ok)"></i></div>
+                  </div>
+                </div>
+              </div>
+              <div class="c">
+                <h4>Berubah paling banyak</h4>
+                <div class="li">
+                  <span style="color: var(--ok); font-weight: 700">▲</span><span><span class="sbadge tiu">TIU</span> Perbandingan</span
+                  ><span class="m" style="color: var(--ok); font-weight: 650">52% → 71%</span>
+                </div>
+                <div class="li">
+                  <span style="color: var(--ok); font-weight: 700">▲</span><span><span class="sbadge twk">TWK</span> UUD 1945</span
+                  ><span class="m" style="color: var(--ok); font-weight: 650">60% → 74%</span>
+                </div>
+                <div class="li">
+                  <span style="color: var(--bad); font-weight: 700">▼</span><span><span class="sbadge tiu">TIU</span> Deret angka</span
+                  ><span class="m" style="color: var(--bad); font-weight: 650">61% → 48%</span>
+                </div>
+              </div>
+              <div class="c">
+                <h4>Alasan salah tersering<small>Buku Kesalahan →</small></h4>
+                <div style="display: flex; flex-direction: column; gap: 9px; font-size: 13px">
+                  <div class="row">
+                    <span style="width: 110px">Salah hitung</span>
+                    <div class="pb" style="flex: 1"><i style="width: 80%; background: #64748b"></i></div>
+                    <b>12</b>
+                  </div>
+                  <div class="row">
+                    <span style="width: 110px">Kurang teliti</span>
+                    <div class="pb" style="flex: 1"><i style="width: 60%; background: #64748b"></i></div>
+                    <b>9</b>
+                  </div>
+                  <div class="row">
+                    <span style="width: 110px">Tidak paham</span>
+                    <div class="pb" style="flex: 1"><i style="width: 40%; background: #64748b"></i></div>
+                    <b>6</b>
+                  </div>
+                  <div class="row">
+                    <span style="width: 110px">Kehabisan waktu</span>
+                    <div class="pb" style="flex: 1"><i style="width: 20%; background: #64748b"></i></div>
+                    <b>3</b>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="call" style="left: 250px; top: 124px">1</div>
+          <div class="call" style="left: 748px; top: 130px">2</div>
+          <div class="call" style="left: 1021px; top: 124px">3</div>
+          <div class="call" style="left: 1086px; top: 14px">4</div>
+          <div class="call" style="left: 250px; top: 512px">5</div>
+        </div>
+      </div>
+      <div class="notes" style="grid-template-columns: repeat(5, 1fr); margin-top: 3mm">
+        <div class="nt">
+          <i>1</i>
+          <p><b>Grafik utama</b> 2/3 lebar, tinggi ±370 px. Skala fokus + sakelar skala penuh, label 12–13 px, tooltip besar, area di bawah ambang diberi arsiran halus.</p>
+        </div>
+        <div class="nt">
+          <i>2</i>
+          <p><b>Empat angka kunci</b> di atas grafik (terakhir, rata-rata, tren, perkiraan) menggantikan paragraf "Tren" di bagian bawah.</p>
+        </div>
+        <div class="nt">
+          <i>3</i>
+          <p><b>Dua grafik kecil</b> bertumpuk di kanan, berisi sparkline. Klik / Enter menukar dengan yang besar (animasi singkat; tanpa animasi bila reduced-motion).</p>
+        </div>
+        <div class="nt">
+          <i>4</i>
+          <p><b>Filter rentang</b> (3 terakhir / semua) dan ekspor di header. Penjelasan panjang dipindah ke tooltip ⓘ.</p>
+        </div>
+        <div class="nt">
+          <i>5</i>
+          <p><b>Tiga kartu insight</b> sejajar, tinggi sama, sehingga seluruh Ringkasan muat satu layar. Daftar lengkap ada di tab Topik dan Riwayat.</p>
+        </div>
+      </div>
+      <div class="foot"><span>Proposal Redesign UI/UX · CASN Set Builder</span><span>8</span></div>
+    </section>
+
+    <!-- ============ 9. PROGRES INTERAKSI ============ -->
+    <section class="page">
+      <div class="pg-h">
+        <span class="no">06b</span>
+        <h2>Progres: tukar grafik, tab, dan jalur data</h2>
+        <p>Memakai data dan fungsi yang sudah ada (<code>examSeries</code>, <code>trend</code>, <code>topicMovers</code>, <code>reasonSummary</code>).</p>
+      </div>
+      <div class="cols" style="grid-template-columns: 1fr 1fr 1fr; gap: 8mm">
+        <div>
+          <h3>Cara menukar grafik</h3>
+          <svg viewBox="0 0 300 150" style="width: 100%; margin: 2mm 0">
+            <rect x="4" y="8" width="190" height="130" rx="10" fill="#eef6ff" stroke="#2f6fdb" />
+            <text x="18" y="30" font-size="11" font-weight="700" fill="#1d4a99">TIU (besar)</text>
+            <polyline points="20,110 60,95 100,102 140,70 180,60" fill="none" stroke="#0284c7" stroke-width="3" />
+            <rect x="204" y="8" width="92" height="60" rx="8" fill="#fff" stroke="#cbd5e1" />
+            <text x="214" y="28" font-size="10" font-weight="700">TWK</text>
+            <rect x="204" y="78" width="92" height="60" rx="8" fill="#fff" stroke="#cbd5e1" />
+            <text x="214" y="98" font-size="10" font-weight="700">TKP</text>
+            <path d="M250 74 q10 -8 0 -16" stroke="#f43f5e" stroke-width="2" fill="none" marker-end="url(#a)" />
+            <defs>
+              <marker id="a" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0 0L6 3L0 6z" fill="#f43f5e" /></marker>
+            </defs>
+          </svg>
+          <ul class="l">
+            <li>Klik kartu kecil → ia menjadi besar, yang besar turun ke slot kecil tersebut. Urutan terakhir diingat di <code>localStorage</code> (sekadar kenyamanan).</li>
+            <li>Kartu kecil adalah <code>&lt;button aria-pressed&gt;</code>; Enter/Spasi menukar, dan pembaca layar mengumumkan "TKP ditampilkan besar".</li>
+            <li>Pintasan: tombol <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> memilih TWK/TIU/TKP.</li>
+            <li><b>Default:</b> sub-tes yang paling jauh dari ambangnya, karena itu yang paling perlu dilihat.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Isi tiga tab</h3>
+          <table class="cmp">
+            <tr>
+              <th>Tab</th>
+              <th>Isi</th>
+            </tr>
+            <tr>
+              <td><b>Ringkasan</b></td>
+              <td>Grafik 1+2, topik terlemah (3), perubahan terbesar (3), alasan salah (4). Satu layar.</td>
+            </tr>
+            <tr>
+              <td><b>Topik</b></td>
+              <td>Penguasaan topik lengkap dalam 2 kolom, bisa diurut dan disaring per sub-tes; kolom jumlah soal; tanda lemah &lt; 60%.</td>
+            </tr>
+            <tr>
+              <td><b>Riwayat</b></td>
+              <td>Tabel skor per paket ujian (SKD, lainnya), baris bergaris tipis, lulus/belum sebagai lencana, kolom sub-tes diberi aksen warna.</td>
+            </tr>
+          </table>
+          <div class="box soft" style="margin-top: 4mm">
+            <p>
+              <b>Opsional:</b> pilihan keempat "Total SKD" di grafik besar (gabungan TWK+TIU+TKP dengan ambang total). Saya tidak memasukkannya ke mockup agar sesuai permintaan
+              1+2, tetapi datanya sudah tersedia di <code>result.total</code>.
+            </p>
+          </div>
+        </div>
+        <div>
+          <h3>Detail grafik besar</h3>
+          <div id="heroDetail" style="margin: 2mm 0 3mm"></div>
+          <ul class="l">
+            <li>
+              <b>Skala fokus</b> (bawaan) memperbesar rentang data supaya naik-turun terlihat; sakelar kecil "Skala penuh 0–175" mengembalikan sumbu seperti sekarang. Sumbu yang
+              dipotong selalu diberi tanda.
+            </li>
+            <li>Garis ambang putus-putus + label "ambang 80"; zona di bawah ambang diarsir halus.</li>
+            <li>Titik terakhir diberi label nilai; hover/fokus menampilkan tanggal, nama set, nilai, lulus/belum.</li>
+            <li>Bila data &lt; 2 ujian: satu titik besar dan teks "Perkiraan muncul setelah 3 ujian".</li>
+            <li>Warna garis = warna sub-tes, plus pola marker berbeda agar tidak hanya bergantung warna.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot"><span>Proposal Redesign UI/UX · CASN Set Builder</span><span>9</span></div>
+    </section>
+
+    <!-- ============ 10. HALAMAN LAIN ============ -->
+    <section class="page">
+      <div class="pg-h">
+        <span class="no">07</span>
+        <h2>Halaman lain: pola yang sama, pekerjaan kecil</h2>
+        <p>Setelah Beranda dan Progres, sisa halaman cukup memakai komponen yang sama.</p>
+      </div>
+      <div class="cols" style="grid-template-columns: 1fr 1fr; gap: 8mm">
+        <div>
+          <table class="cmp">
+            <tr>
+              <th style="width: 22%">Halaman</th>
+              <th>Usulan</th>
+              <th style="width: 14%">Usaha</th>
+            </tr>
+            <tr>
+              <td><b>Buat Soal</b></td>
+              <td>Form dibagi dua kolom: pengaturan di kiri (bertahap/stepper), ringkasan + tombol "Buat Soal" tetap menempel di kanan.</td>
+              <td><span class="tag amber">sedang</span></td>
+            </tr>
+            <tr>
+              <td><b>Set Saya</b></td>
+              <td>Daftar jadi tabel kartu dengan pencarian, filter status, dan aksi cepat (Kerjakan, Unduh) yang muncul saat hover.</td>
+              <td><span class="tag green">kecil</span></td>
+            </tr>
+            <tr>
+              <td><b>Bank Soal</b></td>
+              <td>Toolbar filter sticky di atas (sub-tes, topik, tanda ⚠), daftar dengan kepadatan yang bisa dipilih (nyaman/ringkas).</td>
+              <td><span class="tag amber">sedang</span></td>
+            </tr>
+            <tr>
+              <td><b>Latihan Ujian</b></td>
+              <td>Kartu paket ujian dengan lencana durasi dan jumlah soal; satu tombol primer per kartu. Layar ujian CAT tidak diubah.</td>
+              <td><span class="tag green">kecil</span></td>
+            </tr>
+            <tr>
+              <td><b>Buku Kesalahan</b></td>
+              <td>Ringkasan jatuh tempo di atas (angka besar + tombol mulai), tab Hari ini / Semua.</td>
+              <td><span class="tag green">kecil</span></td>
+            </tr>
+            <tr>
+              <td><b>Kartu &amp; Kamus</b></td>
+              <td>Pencarian di header, daftar kategori sebagai chip, kartu belajar lebih besar.</td>
+              <td><span class="tag green">kecil</span></td>
+            </tr>
+            <tr>
+              <td><b>Pengaturan, API Key</b></td>
+              <td>Pengaturan dipisah ke tab (Umum, Ujian, Rencana, Data); satu kartu per topik, dengan teks bantuan konsisten.</td>
+              <td><span class="tag amber">sedang</span></td>
+            </tr>
+          </table>
+        </div>
+        <div>
+          <h3>Pola tata letak halaman (semua halaman)</h3>
+          <svg viewBox="0 0 330 190" style="width: 100%; margin: 2mm 0">
+            <rect x="2" y="2" width="326" height="186" rx="10" fill="#f6f8fb" stroke="#cbd5e1" />
+            <rect x="2" y="2" width="60" height="186" rx="10" fill="#fff" stroke="#cbd5e1" />
+            <rect x="74" y="14" width="110" height="12" rx="4" fill="#0f172a" />
+            <rect x="74" y="31" width="170" height="7" rx="3" fill="#cbd5e1" />
+            <rect x="262" y="12" width="56" height="18" rx="6" fill="#2f6fdb" />
+            <rect x="74" y="48" width="244" height="14" rx="5" fill="#fff" stroke="#e2e8f0" />
+            <text x="82" y="58" font-size="7" fill="#64748b">toolbar: pencarian · filter · segmented</text>
+            <rect x="74" y="72" width="156" height="104" rx="8" fill="#fff" stroke="#e2e8f0" />
+            <text x="82" y="86" font-size="7" fill="#64748b">isi utama</text>
+            <rect x="238" y="72" width="80" height="104" rx="8" fill="#fff" stroke="#e2e8f0" />
+            <text x="246" y="86" font-size="7" fill="#64748b">panel samping</text>
+          </svg>
+          <ul class="l">
+            <li><b>PageHeader</b> → <b>Toolbar</b> → <b>isi</b>. Jarak dan ukuran sama di semua halaman.</li>
+            <li>Aksi utama selalu satu tombol biru di kanan-atas; aksi sekunder berupa tombol putih.</li>
+            <li>Filter yang sering dipakai tersimpan di URL/ingatan agar tidak hilang saat kembali.</li>
+            <li>Mode gelap diperiksa untuk setiap komponen baru (token warna ganda di CSS).</li>
+            <li><b>Tidak diubah:</b> layar ujian CAT, tampilan cetak/PDF soal, dan alur ekspor.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot"><span>Proposal Redesign UI/UX · CASN Set Builder</span><span>10</span></div>
+    </section>
+
+    <!-- ============ 11. RENCANA ============ -->
+    <section class="page">
+      <div class="pg-h">
+        <span class="no">08</span>
+        <h2>Rencana pengerjaan dan keputusan Anda</h2>
+        <p>Dikerjakan bertahap, tiap tahap bisa Anda lihat dan setujui sebelum lanjut.</p>
+      </div>
+      <div class="cols" style="grid-template-columns: 1.25fr 0.9fr; gap: 8mm">
+        <div>
+          <table class="cmp">
+            <tr>
+              <th style="width: 9%">Tahap</th>
+              <th>Cakupan</th>
+              <th style="width: 20%">File utama</th>
+            </tr>
+            <tr>
+              <td><b>1</b></td>
+              <td><b>Fondasi:</b> token warna/spasi di <code>index.css</code>, komponen PageHeader, Card (3 tingkat), AlertStrip, Stat dengan tren, Segmented, Tabs.</td>
+              <td><code>index.css</code>, <code>ui.tsx</code></td>
+            </tr>
+            <tr>
+              <td><b>2</b></td>
+              <td><b>Layout &amp; sidebar:</b> kelompok menu, ikon, lencana, mode ikon, lebar konten 1440 px.</td>
+              <td><code>Layout.tsx</code></td>
+            </tr>
+            <tr>
+              <td><b>3</b></td>
+              <td><b>Beranda satu layar:</b> grid 12 kolom, versi ringkas kartu Rencana, Konsistensi, Kesiapan; strip peringatan; keadaan kosong.</td>
+              <td><code>Dashboard.tsx</code>, <code>StudyPlanCard</code>, <code>StreakCard</code></td>
+            </tr>
+            <tr>
+              <td><b>4</b></td>
+              <td><b>Progres:</b> grafik utama + 2 kecil bisa ditukar, tab Ringkasan/Topik/Riwayat, kartu insight.</td>
+              <td><code>Progress.tsx</code>, <code>ScoreTrend.tsx</code></td>
+            </tr>
+            <tr>
+              <td><b>5</b></td>
+              <td><b>Halaman lain</b> sesuai halaman 10, satu per satu.</td>
+              <td>pages/*</td>
+            </tr>
+            <tr>
+              <td><b>6</b></td>
+              <td><b>Uji:</b> tangkapan layar Playwright 1366×768 / 1440×900 / 1920×1080 / ponsel, axe a11y, mode gelap, <code>npm run lint/typecheck/test/test:e2e</code>.</td>
+              <td><code>e2e/</code></td>
+            </tr>
+          </table>
+          <p style="margin-top: 3mm">
+            <b>Risiko dan mitigasi:</b> (1) pengujian e2e yang bergantung pada teks/urutan elemen Beranda perlu disesuaikan; (2) kartu yang dipadatkan harus tetap menampilkan semua
+            informasi penting, jadi detail dipindah satu klik, bukan dihapus; (3) bundel tidak bertambah berarti (tanpa library baru, grafik tetap SVG buatan sendiri), dicek dengan
+            <code>npm run check:bundle</code>.
+          </p>
+        </div>
+        <div>
+          <div class="box" style="border-color: #bfdbfe; background: var(--brand-50)">
+            <h3>Yang saya perlukan dari Anda</h3>
+            <ul class="l">
+              <li><b>Arah visual:</b> setuju dengan gaya "kalem-segar" di halaman 4 (biru merek, kanvas terang, warna sub-tes)? Atau ingin lebih berani/berwarna?</li>
+              <li><b>Sidebar:</b> setuju pengelompokan di halaman 5? Ada menu yang ingin dipindah?</li>
+              <li><b>Beranda:</b> kartu mana yang paling wajib terlihat tanpa scroll di laptop Anda? (Mockup memprioritaskan Target hari ini, Kesiapan, Konsistensi.)</li>
+              <li><b>Layar laptop Anda:</b> resolusinya berapa (mis. 1366×768 atau 1920×1080)? Itu menentukan tingkat kepadatan.</li>
+              <li><b>Progres:</b> grafik besar default ke sub-tes terlemah, atau ingat pilihan terakhir?</li>
+              <li><b>Mode gelap:</b> tetap dipertahankan penuh?</li>
+            </ul>
+          </div>
+          <div class="box soft" style="margin-top: 4mm">
+            <h3>Langkah berikutnya</h3>
+            <p>
+              Setelah Anda memberi masukan, saya mulai dari Tahap 1–4 (fondasi, sidebar, Beranda, Progres) dalam satu cabang, dengan tangkapan layar sebelum/sesudah dari aplikasi
+              yang berjalan agar bisa Anda cek sebelum digabung.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span>Proposal Redesign UI/UX · CASN Set Builder</span><span>11</span></div>
+    </section>
+
+    <script>
+      const COL = { TWK: '#e11d48', TIU: '#0284c7', TKP: '#059669' };
+      function chart(el, o) {
+        const W = o.w,
+          H = o.h,
+          p = o.pad || { l: 40, r: 56, t: 14, b: 26 };
+        const iw = W - p.l - p.r,
+          ih = H - p.t - p.b,
+          n = o.data.length;
+        const x = (i) => p.l + (n <= 1 ? iw / 2 : (i / (n - 1)) * iw),
+          mn = o.min || 0,
+          y = (v) => p.t + ih - ((v - mn) / (o.max - mn)) * ih;
+        let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">`;
+        (o.ticks || [mn, (mn + o.max) / 2, o.max]).forEach((t) => {
+          s += `<line x1="${p.l}" x2="${W - p.r}" y1="${y(t)}" y2="${y(t)}" stroke="#e8edf4"/>`;
+          if (!o.mini) s += `<text x="${p.l - 8}" y="${y(t) + 4}" text-anchor="end" font-size="${o.fs || 12}" fill="#64748b">${t}</text>`;
+        });
+        // below-passing zone
+        s += `<rect x="${p.l}" y="${y(o.pass)}" width="${iw}" height="${y(mn) - y(o.pass)}" fill="#f43f5e" opacity=".05"/>`;
+        s += `<line x1="${p.l}" x2="${W - p.r}" y1="${y(o.pass)}" y2="${y(o.pass)}" stroke="#475569" stroke-dasharray="5 4"/>`;
+        if (!o.mini) s += `<text x="${W - p.r + 6}" y="${y(o.pass) + 4}" font-size="${o.fs || 12}" fill="#475569" font-weight="600">ambang ${o.pass}</text>`;
+        const pts = o.data.map((v, i) => `${x(i)},${y(v)}`);
+        if (!o.mini) {
+          s += `<path d="M${pts.join('L')}L${x(n - 1)},${y(mn)}L${x(0)},${y(mn)}Z" fill="${o.color}" opacity=".10"/>`;
+        }
+        s += `<polyline points="${pts.join(' ')}" fill="none" stroke="${o.color}" stroke-width="${o.mini ? 2.5 : 3.5}" stroke-linejoin="round" stroke-linecap="round"/>`;
+        o.data.forEach((v, i) => {
+          const last = i === n - 1;
+          s += `<circle cx="${x(i)}" cy="${y(v)}" r="${o.mini ? (last ? 4.5 : 0) : last ? 7 : 5}" fill="${o.color}" stroke="#fff" stroke-width="2.5"/>`;
+          if (!o.mini)
+            s += `<text x="${x(i)}" y="${y(v) - 12}" text-anchor="middle" font-size="${o.fs || 12}" font-weight="${last ? 700 : 500}" fill="${last ? '#0f172a' : '#64748b'}">${v}</text>`;
+        });
+        if (o.labels && !o.mini)
+          o.labels.forEach((l, i) => {
+            s += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle" font-size="${o.fs || 12}" fill="#64748b">${l}</text>`;
+          });
+        if (o.tip !== undefined) {
+          const i = o.tip,
+            tx = x(i),
+            ty = y(o.data[i]);
+          s += `<line x1="${tx}" x2="${tx}" y1="${p.t}" y2="${p.t + ih}" stroke="#94a3b8" stroke-dasharray="2 3"/>`;
+          s += `<g transform="translate(${tx - 70},${ty + 14})"><rect width="140" height="44" rx="8" fill="#0f172a"/><text x="10" y="18" font-size="11" fill="#cbd5e1">28 Sep · SKD Paket 5</text><text x="10" y="35" font-size="13" font-weight="700" fill="#fff">${o.data[i]} / ${o.full || o.max} · belum lulus</text></g>`;
+        }
+        el.innerHTML = s + '</svg>';
+      }
+      const L = ['12 Agu', '26 Agu', '9 Sep', '21 Sep', '28 Sep', '8 Okt'];
+      const TIU = [58, 62, 66, 63, 70, 74],
+        TWK = [62, 66, 70, 69, 75, 78],
+        TKP = [158, 160, 163, 165, 169, 171];
+      const h = document.getElementById('hero');
+      if (h)
+        chart(h, {
+          full: 175,
+          w: 760,
+          h: 262,
+          min: 40,
+          max: 100,
+          ticks: [40, 60, 80, 100],
+          pass: 80,
+          data: TIU,
+          color: COL.TIU,
+          labels: L,
+          tip: 4,
+          fs: 12,
+          pad: { l: 42, r: 78, t: 16, b: 26 },
+        });
+      const s1 = document.getElementById('sm1');
+      if (s1) chart(s1, { w: 340, h: 96, min: 50, max: 90, pass: 65, data: TWK, color: COL.TWK, mini: true, pad: { l: 6, r: 10, t: 6, b: 6 } });
+      const s2 = document.getElementById('sm2');
+      if (s2) chart(s2, { w: 340, h: 96, min: 150, max: 180, pass: 166, data: TKP, color: COL.TKP, mini: true, pad: { l: 6, r: 10, t: 6, b: 6 } });
+      const hd = document.getElementById('heroDetail');
+      if (hd)
+        chart(hd, {
+          full: 175,
+          w: 340,
+          h: 170,
+          min: 40,
+          max: 100,
+          ticks: [40, 60, 80, 100],
+          pass: 80,
+          data: TIU,
+          color: COL.TIU,
+          labels: L,
+          fs: 10,
+          pad: { l: 30, r: 50, t: 14, b: 20 },
+          tip: 3,
+        });
+    </script>
+  </body>
+</html>

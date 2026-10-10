@@ -11,7 +11,7 @@ import { QuestionCard, type CardMode } from '../components/QuestionCard';
 import { QuestionEditor } from '../components/QuestionEditor';
 import { FeedbackDialog } from '../components/FeedbackDialog';
 import { answerStats, isReported } from '../domain/quality';
-import { Empty } from '../components/ui';
+import { Empty, PageHeader } from '../components/ui';
 import { DownloadDialog } from '../components/DownloadDialog';
 import { inExamOrder, inSubtestOrder, packageOf, subtestsIn } from '../domain/examPackage';
 
@@ -111,27 +111,28 @@ export default function QuestionBank() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1>Bank Soal</h1>
-          <p className="muted mt-1">Semua soal yang pernah Anda buat ({all.length} soal). Centang soal untuk diunduh atau dijadikan set baru.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link className="btn" to="/bank/import">
-            📷 Impor dari foto/PDF
-          </Link>
-          <button className="btn btn-primary" disabled={!toDownload.length} onClick={() => setDownloading(true)}>
-            ⬇ Unduh {selectedQs.length ? `${selectedQs.length} soal terpilih` : `${filtered.length} soal`}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Bank Soal"
+        description={`Semua soal yang pernah Anda buat (${all.length} soal). Centang soal untuk diunduh atau dijadikan set baru.`}
+        actions={
+          <>
+            <Link className="btn" to="/bank/import">
+              📷 Impor dari foto/PDF
+            </Link>
+            <button className="btn btn-primary" disabled={!toDownload.length} onClick={() => setDownloading(true)}>
+              ⬇ Unduh {selectedQs.length ? `${selectedQs.length} soal terpilih` : `${filtered.length} soal`}
+            </button>
+          </>
+        }
+      />
       {notice && (
         <p role="status" className="card text-sm">
           {notice}
         </p>
       )}
 
-      <div className="card space-y-3">
+      {/* The filters stay in reach while scrolling a long bank. */}
+      <div className="card space-y-3 md:sticky md:top-2 md:z-10">
         <input className="input" placeholder="Cari soal…" value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="flex flex-wrap items-center gap-1.5">
           {['', ...bankSubtests].map((s) => (

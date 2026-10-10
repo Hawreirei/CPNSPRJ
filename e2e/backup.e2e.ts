@@ -46,7 +46,7 @@ test('the dashboard reminds after three new sets, and a download clears it', asy
   await expect(page.getByText('set belum dicadangkan')).toHaveCount(0);
   await createSetFromBank(page);
   await page.goto('#/');
-  const card = page.locator('.card', { hasText: '3 set belum dicadangkan' });
+  const card = page.locator('.strip', { hasText: '3 set belum dicadangkan' });
   await expect(card).toBeVisible();
   await Promise.all([page.waitForEvent('download'), card.getByRole('button', { name: 'Unduh cadangan' }).click()]);
   await expect(card).toHaveCount(0);
@@ -116,7 +116,7 @@ test.describe('saving to a file automatically', () => {
     await brand.fill('Bimbel Izin');
     await page.clock.runFor(5_000);
     await page.goto('#/');
-    const pending = page.locator('.card', { hasText: 'Cadangan otomatis tertunda' });
+    const pending = page.locator('.strip', { hasText: 'Cadangan otomatis tertunda' });
     await expect(pending).toBeVisible();
     expect((await savedFile(page)).settings?.brandName).toBe('Bimbel Otomatis');
     await pending.getByRole('button', { name: 'Izinkan lagi' }).click();
