@@ -7,6 +7,7 @@ Perubahan yang terasa bagi pengguna, per versi. Berkas ini dibuat dari `src/data
 - Tampilan baru yang lebih lega. Beranda kini muat satu layar di laptop: target hari ini, kesiapan per sub-tes, dan konsistensi di baris atas, lalu angka ringkas, set terbaru, dan pintasan. Pengingat cadangan dan penyimpanan tampil sebagai satu baris tipis.
 - Progres Belajar: satu grafik besar dan dua grafik kecil. Klik grafik kecil untuk menukarnya jadi besar; skala fokus memperjelas naik-turun skor, Skala penuh menampilkan sumbu dari 0. Daftar topik dan riwayat skor pindah ke tab Topik dan Riwayat.
 - Menu samping dikelompokkan (Belajar, Soal, Materi, Sistem) dengan ikon, dan Buku Kesalahan menampilkan jumlah soal yang perlu diulang hari ini.
+- Latihan Ujian menampilkan pengaturan dan riwayat berdampingan; Set Saya bisa disaring menurut status; bilah filter Bank Soal tetap terlihat saat digulir; Pengaturan punya daftar isi di layar lebar.
 
 ## 1.4.0 (2026-10-10)
 
