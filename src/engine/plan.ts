@@ -108,7 +108,7 @@ export function takeGroup(queue: PlanBatch[], cap: number): PlanBatch[] {
   if (!cap || solo(first)) return [first];
   const group = [first];
   let n = first.count;
-  for (let i = 0; i < queue.length;) {
+  for (let i = 0; i < queue.length; ) {
     const b = queue[i];
     if (!solo(b) && n + b.count <= cap) {
       group.push(b);

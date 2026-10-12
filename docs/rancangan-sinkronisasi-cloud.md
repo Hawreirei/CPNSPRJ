@@ -103,51 +103,33 @@ Kolom `settings` yang **tidak** ikut disinkronkan: `lastSeenVersion` (kartu "Apa
 
 Satu tabel generik berisi dokumen JSON. Pilihan ini sengaja: semua logika aplikasi ada di klien, jadi server cukup menyimpan dan mengembalikan baris dengan aman. Menambah tabel lokal baru nanti tidak memerlukan migrasi server.
 
-```sql
-create table public.sync_rows (
-  user_id    uuid        not null default auth.uid() references auth.users(id) on delete cascade,
-  tbl        text        not null check (tbl in ('sets','questions','attempts','reviews','cards','meta')),
-  id         text        not null check (length(id) between 1 and 200),
-  data       jsonb,                                   -- null bila dihapus
-  deleted    boolean     not null default false,
-  mtime      bigint      not null,                    -- cap waktu perubahan dari klien (ms)
-  device_id  text,                                    -- perangkat yang terakhir menulis
-  updated_at timestamptz not null default now(),      -- waktu server, untuk kursor pull
-  primary key (user_id, tbl, id),
-  constraint row_size check (data is null or pg_column_size(data) < 1500000)
-);
-create index sync_rows_pull on public.sync_rows (user_id, updated_at);
+SQL yang terpasang di Project 2 ada di repo, bukan disalin di sini:
 
-alter table public.sync_rows enable row level security;
-create policy "own rows: select" on public.sync_rows for select to authenticated using (user_id = (select auth.uid()));
-create policy "own rows: insert" on public.sync_rows for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "own rows: update" on public.sync_rows for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
--- Tidak ada policy delete: penghapusan selalu lewat tombstone (deleted = true).
-```
+| Berkas | Isi |
+|---|---|
+| `supabase/migrations/20261012140453_sync_rows.sql` | Tabel `sync_rows` dan indeks pull. RLS aktif sejak awal (#93) |
+| `supabase/migrations/20261012140524_sync_rows_access.sql` | Hak akses, policy, trigger penjaga, `sync_push`, `sync_pull` (#94) |
+| `supabase/tests/sync_rows.sql` | 15 pemeriksaan keamanan dan aturan versi (#95) |
 
-Penulisan lewat satu fungsi agar aturan "versi lebih baru menang" dijaga server, bukan hanya klien:
+**Tabel `sync_rows`**: `user_id` (default `auth.uid()`), `tbl` (hanya `sets`, `questions`, `attempts`, `reviews`, `cards`, `meta`), `id`, `data jsonb` (null untuk tombstone), `deleted`, `mtime` (cap waktu klien), `device_id`, `updated_at` (waktu server). Primary key `(user_id, tbl, id)`. Batasan: tombstone selalu `data = null`, dan ukuran `data` di bawah 1,5 MB.
 
-```sql
-create function public.sync_push(rows jsonb) returns table (tbl text, id text, applied boolean, mtime bigint)
-language sql security invoker set search_path = '' as $$
-  insert into public.sync_rows as s (user_id, tbl, id, data, deleted, mtime, device_id, updated_at)
-  select (select auth.uid()), r.tbl, r.id, r.data, coalesce(r.deleted, false), r.mtime, r.device_id, now()
-  from jsonb_to_recordset(rows) as r(tbl text, id text, data jsonb, deleted boolean, mtime bigint, device_id text)
-  on conflict (user_id, tbl, id) do update
-    set data = excluded.data, deleted = excluded.deleted, mtime = excluded.mtime,
-        device_id = excluded.device_id, updated_at = now()
-    where excluded.mtime >= s.mtime
-  returning s.tbl, s.id, true, s.mtime;
-$$;
-```
+**Akses**
+- `anon` tidak punya hak apa pun. `authenticated` hanya boleh `select`, `insert`, `update`, dan RLS membatasinya ke baris milik sendiri.
+- Tidak ada hak `delete`. Penghapusan selalu lewat tombstone, dan tombstone disimpan selamanya agar data yang dihapus tidak muncul lagi dari perangkat yang lama offline.
 
-Pull memakai query biasa (RLS membatasi ke baris milik sendiri):
-`select * from sync_rows where updated_at > :cursor - interval '2 minutes' order by updated_at limit 500`.
-Jendela tumpang-tindih 2 menit menutup celah transaksi yang selesai tidak berurutan. Baris yang terunduh dua kali aman karena penggabungan bersifat idempoten.
+**Trigger `sync_rows_guard`** berlaku untuk **semua** jalur penulisan:
+- Mengisi `updated_at` dengan waktu server. Klien tidak bisa memilih nilainya sendiri.
+- Melewati update yang membawa `mtime` lebih lama dari yang tersimpan. Versi lama tidak pernah menimpa versi baru, juga bila klien menulis langsung tanpa `sync_push`.
 
-Tombstone (baris terhapus) disimpan selamanya. Ukurannya kecil, dan ini mencegah data yang sudah dihapus muncul lagi dari perangkat yang lama offline.
+**`sync_push(rows jsonb)`**
+- Mengunggah hingga 500 baris sekali panggil, sebagai upsert.
+- Bila satu baris muncul dua kali dalam satu kiriman, hanya versi terbaru yang dipakai.
+- Mengembalikan baris yang benar-benar tertulis. Baris yang tidak dikembalikan kalah oleh versi lebih baru di server.
 
----
+**`sync_pull(after_at, after_tbl, after_id, max_rows)`**
+- Mengembalikan satu halaman perubahan milik pengguna, urut `(updated_at, tbl, id)`, maksimal 1.000 baris.
+- Kursornya berupa tiga nilai, karena semua baris dari satu push berbagi `updated_at` yang sama. Dengan begitu tidak ada baris yang terlewat di batas halaman.
+- Klien memulai setiap pull 2 menit sebelum kursor terakhirnya. Ini menutup celah transaksi yang selesai tidak berurutan. Baris yang terunduh dua kali aman, karena penggabungan bersifat idempoten.
 
 ## 6. Mesin sinkronisasi
 
@@ -289,7 +271,7 @@ Setiap fase menjadi satu PR (Fase 0 tanpa PR). Ukuran: **S** kecil, **M** sedang
 ### Fase 1: Skema server dan keamanan
 
 **Issue 1.1 (#93): Migrasi tabel `sync_rows`** · S
-- Migrasi `apply_migration` sesuai bagian 5, disimpan juga di repo (`supabase/migrations/0001_sync_rows.sql`) agar bisa dibuat ulang.
+- Migrasi `apply_migration` sesuai bagian 5, disimpan juga di repo (`supabase/migrations/`, nama berkas sama dengan versi yang tercatat di server) agar bisa dibuat ulang.
 - *Selesai bila:* tabel, indeks, dan batas ukuran ada.
 
 **Issue 1.2 (#94): RLS dan fungsi `sync_push`** · M
@@ -298,7 +280,7 @@ Setiap fase menjadi satu PR (Fase 0 tanpa PR). Ukuran: **S** kecil, **M** sedang
 
 **Issue 1.3 (#95): Uji keamanan di server** · S
 - Dengan dua pengguna uji: A tidak bisa membaca atau menulis baris B. Versi lama tidak menimpa versi baru. Tombstone tersimpan. Baris > 1,5 MB ditolak.
-- Skrip uji disimpan di `supabase/tests/`. Pengguna uji dihapus setelahnya.
+- Skrip uji disimpan di `supabase/tests/`. Semua tulisan uji, termasuk pengguna uji, dibatalkan di akhir.
 - *Selesai bila:* semua skenario lulus.
 
 ### Fase 2: Fondasi klien

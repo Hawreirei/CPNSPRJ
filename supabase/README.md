@@ -8,8 +8,17 @@ Rancangan lengkap: [`docs/rancangan-sinkronisasi-cloud.md`](../docs/rancangan-si
 | URL | `https://aehnismvyxgihmsftane.supabase.co` |
 | Publishable key | `sb_publishable_09va7LfWS5CqOngbFLUgPw_ypLulcHe` (publik; data dijaga RLS) |
 
-- `migrations/`: SQL yang diterapkan ke project, berurutan (#93, #94).
+- `migrations/`: SQL yang diterapkan ke project, berurutan (#93, #94). Nama berkas sama dengan versi di `supabase_migrations`.
 - `tests/`: uji RLS dan aturan versi di server (#95).
+
+## Menjalankan uji server
+
+Jalankan isi `tests/sync_rows.sql` di SQL Editor (sebagai `postgres`). Uji membuat dua pengguna sementara, mencoba setiap aturan, lalu selalu berakhir dengan galat agar semuanya dibatalkan:
+
+- `SYNC_ROWS TESTS PASSED: 15 checks` berarti lulus. Tidak ada data yang tertinggal.
+- `FAIL: ...` menyebut aturan pertama yang rusak.
+
+Setelah mengubah migrasi, jalankan juga advisor security dan performance. Hasil yang diharapkan: tanpa temuan, kecuali "unused index" selama tabel belum dipakai.
 - `templates/`: templat email Auth.
 
 ## Pengaturan Auth (#92)
