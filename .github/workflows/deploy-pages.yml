@@ -26,6 +26,10 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          # Cloud sync (#90). Both are public: the publishable key only reaches rows its user owns (RLS).
+          VITE_SUPABASE_URL: https://aehnismvyxgihmsftane.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_09va7LfWS5CqOngbFLUgPw_ypLulcHe
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

@@ -57,8 +57,8 @@ Catatan jujur: data yang sudah hilang sebelum fitur ini ada **tidak bisa dipulih
 │   │ hook creating/updating/deleting       │          │   sync_push() / sync_pull()     │
 │   ▼                                       │  HTTPS   │                                 │
 │ Mesin sinkronisasi (src/sync/)            │◀────────▶│                                 │
-│   • cap waktu _mtime per baris            │  (JWT)   │                                 │
-│   • antrean hapus (syncDeletes)           │          │                                 │
+│   • cap per baris (tabel syncStamps)      │  (JWT)   │                                 │
+│   • hapus dicatat sebagai cap deleted     │          │                                 │
 │   • push berkala, pull saat buka/online   │          │                                 │
 │   • aturan gabung per tabel               │          │                                 │
 └──────────────────────────────────────────┘          └─────────────────────────────────┘
@@ -72,7 +72,7 @@ Komponen baru di klien:
 | `src/sync/client.ts` | Memuat `@supabase/supabase-js` **secara on-demand** (tidak masuk bundle awal) |
 | `src/sync/auth.ts` | Kirim kode, verifikasi kode, sesi, keluar |
 | `src/sync/tables.ts` | Daftar tabel yang disinkronkan, cara membaca id, dan aturan gabung per tabel |
-| `src/sync/track.ts` | Hook Dexie: cap `_mtime`, catat penghapusan |
+| `src/sync/track.ts` | Middleware Dexie: cap per baris di `syncStamps`, termasuk penghapusan |
 | `src/sync/engine.ts` | Push, pull, gabung, jadwal, status |
 | `src/sync/status.ts` | Status untuk UI (tersinkron, menunggu, offline, gagal) |
 | `src/components/SyncCard.tsx`, `SyncBadge.tsx` | Kartu Akun & Sinkronisasi di Pengaturan, ikon status di header |
@@ -133,20 +133,24 @@ SQL yang terpasang di Project 2 ada di repo, bukan disalin di sini:
 
 ## 6. Mesin sinkronisasi
 
-### 6.1 Pelacakan perubahan (Dexie versi 5)
+### 6.1 Pelacakan perubahan (Dexie versi 5, `src/sync/track.ts`)
 
-- Setiap tabel yang disinkronkan mendapat kolom `_mtime` yang terindeks. Hook `creating` dan `updating` mengisinya otomatis, jadi **tidak ada satu pun pemanggilan `put`/`update`/`modify` di halaman yang perlu diubah**. Hook seperti ini sudah dipakai untuk cadangan otomatis (`src/lib/autoBackup.ts`).
-- `_mtime = max(Date.now(), _mtime terakhir + 1)`, sehingga tetap naik walau jam perangkat mundur.
-- Upgrade ke versi 5 mengisi `_mtime` untuk semua baris lama. Dengan begitu, data yang sudah ada ikut terunggah pada login pertama.
-- Tabel baru `syncDeletes` (`[tbl+id]`, `at`) mencatat penghapusan. Hook `deleting` tidak bisa menulis ke tabel lain di dalam transaksi yang sama, jadi pencatatan dilakukan saat transaksi selesai. Bila tab tertutup tepat di celah itu, akibat terburuknya baris yang dihapus muncul lagi. Arah kesalahannya aman: data tidak pernah hilang.
-- Baris `meta` hanya dicap bila key-nya termasuk yang disinkronkan (`settings`, `reviewDays`).
+- Tabel baru **`syncStamps`** (`[tbl+id]`, indeks `dirty`) berisi satu cap per baris yang disinkronkan: `mtime` (waktu perubahan terakhir), `dirty` (1 sampai server menerimanya), dan `deleted` (1 bila baris dihapus).
+- Cap ditulis oleh **middleware DBCore Dexie**, di **transaksi yang sama** dengan penulisan datanya. Setiap transaksi baca-tulis pada tabel tersinkron otomatis ikut membuka `syncStamps`. Hasilnya:
+  - Data dan capnya tersimpan bersama atau gagal bersama. Tidak ada celah, termasuk untuk penghapusan.
+  - Semua jalur tulis tertangkap (`put`, `add`, `update`, `modify`, `delete`, `where().delete()`, `clear()`). **Tidak ada satu pun pemanggilan di halaman yang perlu diubah.**
+  - Objek data aplikasi, berkas cadangan, dan berkas bagikan **tidak berubah bentuk**, karena cap disimpan di tabel terpisah, bukan sebagai kolom di dalam data.
+- `mtime = max(Date.now(), cap terakhir di perangkat + 1, cap baris itu sebelumnya + 1)`. Cap baru sebuah baris selalu lebih besar dari cap lamanya, walau jam perangkat mundur, sehingga server tidak pernah mengabaikan editan baru.
+- Upgrade ke versi 5 membuat cap untuk semua baris lama dengan waktu perubahan baris itu sendiri (`updatedAt`, `finishedAt`, `lastReviewedAt`, dan seterusnya). Bila dua perangkat lama sama-sama login, versi yang benar-benar diubah terakhir yang menang.
+- Baris `meta` hanya dicap bila key-nya `settings` atau `reviewDays`. Tabel `keys` dan `requests` tidak pernah dicap.
+- Versi aplikasi lama yang masih ter-cache tetap bisa membuka database v5 (teruji). Tulisannya tidak tercatat, jadi sebelum unggahan pertama mesin sinkronisasi mencatat baris yang belum punya cap (#99).
 
 ### 6.2 Push (unggah)
 
-1. Ambil baris dengan `_mtime > pushedUpTo` per tabel, ditambah isi `syncDeletes`.
+1. Catat baris yang belum punya cap (lihat 6.1). Lalu ambil cap dengan `dirty = 1`, beserta datanya.
 2. Kirim per kelompok, maksimal 200 baris atau ±2 MB per permintaan, lewat `sync_push`.
-3. Setelah berhasil, majukan `pushedUpTo` dan kosongkan `syncDeletes` yang sudah terkirim.
-4. Kolom `_mtime` dan kolom khusus perangkat dibuang dari `data` sebelum dikirim.
+3. Setelah berhasil, set `dirty = 0`, tetapi hanya bila `mtime` belum berubah selama pengiriman. Bila baris berubah lagi, cap barunya tetap `dirty` dan ikut dikirim berikutnya.
+4. Kolom khusus perangkat (`settings.lastSeenVersion`) dibuang dari `data` sebelum dikirim.
 
 Gagal karena offline, sesi habis, atau server dijeda: antrean tetap tersimpan di IndexedDB dan dicoba lagi dengan jeda bertambah (5 detik, 30 detik, 2 menit, 10 menit).
 
@@ -160,9 +164,9 @@ Untuk setiap baris dari server, bandingkan dengan baris lokal:
 | `attempts` | Seperti umum, **kecuali** latihan yang sudah selesai (`finishedAt` ada) tidak pernah ditimpa versi yang belum selesai |
 | `reviewDays` | **Digabung** (gabungan himpunan tanggal), tidak pernah ditimpa |
 | `questions.notes` | Catatan dari kedua sisi digabung berdasarkan `at`, supaya catatan tutor tidak hilang |
-| Tombstone | Menghapus baris lokal bila `mtime` tombstone ≥ `_mtime` lokal |
+| Tombstone | Menghapus baris lokal bila `mtime` tombstone ≥ `mtime` cap lokal |
 
-Baris hasil pull ditulis dengan penanda "dari server", sehingga hook tidak mencapnya ulang dan tidak mengunggahnya kembali (tidak ada pantulan tanpa akhir).
+Baris hasil pull ditulis bersama capnya sendiri (`mtime` dari server, `dirty = 0`) di transaksi yang sama, setelah datanya. Cap itu menggantikan cap yang baru saja ditulis middleware, sehingga baris itu tidak diunggah kembali (tidak ada pantulan tanpa akhir).
 
 Setelah menulis baris dari server, `setCustomPackages` dijalankan ulang bila `settings` berubah, sama seperti saat memulihkan cadangan.
 
@@ -285,10 +289,10 @@ Setiap fase menjadi satu PR (Fase 0 tanpa PR). Ukuran: **S** kecil, **M** sedang
 
 ### Fase 2: Fondasi klien
 
-**Issue 2.1 (#96): Dexie versi 5: `_mtime` dan `syncDeletes`** · M
-- Skema v5 menambah indeks `_mtime` dan tabel `syncDeletes`. Upgrade mengisi `_mtime` semua baris lama.
+**Issue 2.1 (#96): Dexie versi 5: tabel cap `syncStamps`** · M
+- Skema v5 menambah tabel `syncStamps`; middleware DBCore mencatat cap setiap tulisan. Upgrade membuat cap untuk semua baris lama.
 - Hook cap waktu monoton dan pencatatan hapus (`src/sync/track.ts`). Penanda "tulisan dari server" agar tidak dicap ulang.
-- Ekspor cadangan dan impor cadangan membuang `_mtime` agar format berkas tetap sama.
+- Format berkas cadangan tidak berubah, karena cap tidak disimpan di dalam data.
 - *Selesai bila:* semua uji lama lulus, uji baru membuktikan setiap `put`/`update`/`modify`/`delete` di tabel tersinkron menghasilkan cap atau tombstone, dan `keys`/`requests` tidak tersentuh.
 
 **Issue 2.2 (#97): Konfigurasi dan klien Supabase on-demand** · S
@@ -305,7 +309,7 @@ Setiap fase menjadi satu PR (Fase 0 tanpa PR). Ukuran: **S** kecil, **M** sedang
 ### Fase 3: Mesin sinkronisasi
 
 **Issue 3.1 (#99): Push** · M
-- Kelompokkan baris, kirim lewat `sync_push`, majukan `pushedUpTo`, kosongkan `syncDeletes`. Coba ulang dengan jeda bertambah.
+- Kelompokkan baris berstatus `dirty`, kirim lewat `sync_push`, tandai terkirim bila tidak berubah selama pengiriman. Coba ulang dengan jeda bertambah.
 - *Selesai bila:* uji dengan server tiruan membuktikan tidak ada perubahan yang terlewat, termasuk saat gagal di tengah kelompok.
 
 **Issue 3.2 (#100): Pull dan aturan gabung** · L

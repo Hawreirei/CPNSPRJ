@@ -9,6 +9,8 @@ import { ExamPackages } from '../components/ExamPackages';
 import { CrossCheckEditor } from '../components/CrossCheckEditor';
 import { StudyPlanEditor } from '../components/StudyPlanEditor';
 import { StorageCard } from '../components/StorageCard';
+import { SyncCard } from '../components/SyncCard';
+import { syncAvailable } from '../sync/config';
 import { autoBackupNow, chooseBackupFile, downloadBackup, isAutoBackupSupported, stopAutoBackup } from '../lib/autoBackup';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
@@ -25,12 +27,16 @@ const SECTIONS = [
   ['pemeriksa', 'Pemeriksa silang'],
   ['kisi', 'Profil kisi-kisi'],
   ['paket', 'Paket ujian'],
+  ['akun', 'Akun & sinkronisasi'],
   ['cadangan', 'Cadangan data'],
   ['penyimpanan', 'Penyimpanan'],
   ['log', 'Log galat'],
   ['tentang', 'Tentang aplikasi'],
   ['lanjutan', 'Lanjutan'],
 ] as const;
+
+/** The account section exists only in builds with cloud sync (#98). */
+const SHOWN = SECTIONS.filter(([id]) => id !== 'akun' || syncAvailable());
 
 export default function SettingsPage() {
   const s = useSettings();
@@ -48,7 +54,7 @@ export default function SettingsPage() {
         {/* Wide screens: a table of contents that stays in view. */}
         <nav aria-label="Bagian pengaturan" className="hidden xl:sticky xl:top-5 xl:block">
           <ul className="space-y-0.5 text-sm">
-            {SECTIONS.map(([id, label]) => (
+            {SHOWN.map(([id, label]) => (
               <li key={id}>
                 <button
                   className="w-full rounded-lg px-3 py-1.5 text-left text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white"
@@ -171,6 +177,13 @@ export default function SettingsPage() {
             <h2>Paket ujian</h2>
             <ExamPackages settings={s} />
           </section>
+
+          {syncAvailable() && (
+            <section id="atur-akun" className="card space-y-3 scroll-mt-4">
+              <h2>Akun & sinkronisasi (beta)</h2>
+              <SyncCard />
+            </section>
+          )}
 
           <section id="atur-cadangan" className="card space-y-3 scroll-mt-4">
             <h2>Cadangan data</h2>

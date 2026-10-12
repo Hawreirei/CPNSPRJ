@@ -12,6 +12,7 @@ import { applyTextSize, applyTheme, watchSystemTheme } from './lib/theme';
 import { setupErrorLog } from './lib/errorLog';
 import { noteFirstVersion } from './lib/whatsNew';
 import { retireRemovedProfiles } from './lib/retiredProfiles';
+import { wasSignedIn } from './sync/config';
 
 applyTheme();
 applyTextSize();
@@ -25,6 +26,8 @@ void pruneRequestLog();
 setupErrorLog();
 setupPwa();
 setupAutoBackup();
+// A browser signed in to cloud sync gets its session back once the first screen is up (#98).
+if (wasSignedIn()) whenIdle(() => void import('./sync/auth').then((m) => m.startAccount()).catch(() => undefined));
 
 function whenIdle(fn: () => void) {
   if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 5000 });

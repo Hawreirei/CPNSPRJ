@@ -19,8 +19,8 @@ const csp = [
   "base-uri 'self'",
 ].join('; ');
 
-/** Package → chunk name for libraries kept out of the startup bundle (numeric.ts, RichText.tsx, providers/index.ts). */
-const LAZY_LIBS: Record<string, string> = { mathjs: 'mathjs', katex: 'katex', '@anthropic-ai/sdk': 'anthropic', 'pdfjs-dist': 'pdfjs' };
+/** Package → chunk name for libraries kept out of the startup bundle (numeric.ts, RichText.tsx, providers/index.ts, sync/client.ts). */
+const LAZY_LIBS: Record<string, string> = { mathjs: 'mathjs', katex: 'katex', '@anthropic-ai/sdk': 'anthropic', 'pdfjs-dist': 'pdfjs', '@supabase': 'supabase' };
 
 /**
  * pdf.js decodes scanned pages (JBIG2, JPEG 2000) and colour profiles with WebAssembly it fetches

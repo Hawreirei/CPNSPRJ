@@ -1,8 +1,9 @@
-import Dexie, { type EntityTable } from 'dexie';
+import Dexie, { type EntityTable, type Table } from 'dexie';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
 import { setCustomPackages } from '../domain/examPackage';
 import type { ApiKeyRecord, Attempt, CardState, QSet, Question, RequestLog, ReviewItem, Settings } from '../domain/types';
+import { STAMPS, STAMPS_SCHEMA, stampExisting, syncTracking, type SyncStamp } from '../sync/track';
 
 interface MetaRow {
   key: string;
@@ -18,12 +19,13 @@ export class AppDB extends Dexie {
   requests!: EntityTable<RequestLog, 'id'>;
   reviews!: EntityTable<ReviewItem, 'questionId'>;
   cards!: EntityTable<CardState, 'cardId'>;
+  syncStamps!: Table<SyncStamp, [string, string]>;
 
-  constructor() {
+  constructor(name = 'cpns-skd-builder') {
     // Dexie's query cache served a page it had already shown a stale list: an exam finished
     // elsewhere still read as unfinished on the dashboard until a reload. Every query reads
     // IndexedDB instead; the data here is small enough that this costs nothing visible.
-    super('cpns-skd-builder', { cache: 'disabled' });
+    super(name, { cache: 'disabled' });
     this.version(1).stores({
       questions: 'id, subtest, topic, difficulty, hash, starred, originSetId, createdAt',
       sets: 'id, updatedAt, status',
@@ -37,6 +39,11 @@ export class AppDB extends Dexie {
     this.version(3).stores({ reviews: 'questionId, due, lastReviewedAt' });
     // v4: flashcards being learned (Kartu Hafalan TWK), one row per card.
     this.version(4).stores({ cards: 'cardId, due, lastReviewedAt' });
+    // v5: a change stamp per synced row for cloud sync (#96); existing rows are stamped once here.
+    this.version(5)
+      .stores({ [STAMPS]: STAMPS_SCHEMA })
+      .upgrade(stampExisting);
+    this.use(syncTracking);
   }
 }
 

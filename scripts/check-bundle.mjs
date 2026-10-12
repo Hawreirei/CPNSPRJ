@@ -1,5 +1,5 @@
 // Fails when the JavaScript and CSS a first visit downloads grows past the budget, or when a library
-// meant to load on demand (mathjs, KaTeX, the Anthropic SDK, pdf.js) ends up in it. Run after `npm run build`.
+// meant to load on demand (mathjs, KaTeX, the Anthropic SDK, pdf.js, Supabase) ends up in it. Run after `npm run build`.
 import { readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
@@ -7,7 +7,7 @@ import { gzipSync } from 'node:zlib';
 // dashboard did too (with shared app code kept in one chunk). Budget: that plus about 10%. It had crept back
 // to 205 KB by Phase 5; 148 KB once code only the other pages share left the startup chunk (#57).
 const BUDGET_KB = 210;
-const LAZY = /^assets\/(mathjs|katex|anthropic|pdfjs)-/;
+const LAZY = /^assets\/(mathjs|katex|anthropic|pdfjs|supabase)-/;
 
 const html = readFileSync('dist/index.html', 'utf8');
 // Vite lists every startup file in index.html: the entry script, its modulepreloads and the stylesheet.
