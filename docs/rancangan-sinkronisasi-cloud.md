@@ -6,7 +6,7 @@
 | **Tanggal** | 12 Oktober 2026 |
 | **Basis** | Kode di `main` setelah PR #89 (versi 1.9.0) |
 | **Keputusan pemilik** | Supabase project **Hawreirei's Project 2** (`aehnismvyxgihmsftane`, region Singapura), login **email saja** |
-| **Status** | Usulan untuk ditinjau. Belum ada kode, database, atau pengaturan Supabase yang diubah |
+| **Status** | Disetujui 12 Oktober 2026. Epic: [#90](https://github.com/Hawreirei/CPNSPRJ/issues/90), issue #91–#116 |
 
 ---
 
@@ -273,13 +273,13 @@ Setiap fase menjadi satu PR (Fase 0 tanpa PR). Ukuran: **S** kecil, **M** sedang
 
 ### Fase 0: Persiapan Supabase (tanpa kode)
 
-**Issue 0.1: Aktifkan dan periksa Hawreirei's Project 2** · S
+**Issue 0.1 (#91): Aktifkan dan periksa Hawreirei's Project 2** · S
 - Pulihkan project yang berstatus INACTIVE.
 - Periksa isinya (`list_tables`, `list_migrations`, `list_extensions`). Bila ternyata sudah ada tabel atau data lain, **berhenti dan tanyakan ke pemilik** sebelum mengubah apa pun.
 - Catat URL project dan publishable key.
 - *Selesai bila:* project berstatus ACTIVE_HEALTHY, isinya diketahui, pemilik setuju melanjutkan.
 
-**Issue 0.2: Konfigurasi Auth email OTP** · S
+**Issue 0.2 (#92): Konfigurasi Auth email OTP** · S
 - Aktifkan email provider dengan OTP 6 digit dan masa berlaku 10 menit. Matikan metode lain.
 - Ubah templat email ke bahasa Indonesia dengan `{{ .Token }}`.
 - Isi Site URL. Pastikan email pemilik terdaftar sebagai anggota tim (syarat email bawaan).
@@ -288,73 +288,73 @@ Setiap fase menjadi satu PR (Fase 0 tanpa PR). Ukuran: **S** kecil, **M** sedang
 
 ### Fase 1: Skema server dan keamanan
 
-**Issue 1.1: Migrasi tabel `sync_rows`** · S
+**Issue 1.1 (#93): Migrasi tabel `sync_rows`** · S
 - Migrasi `apply_migration` sesuai bagian 5, disimpan juga di repo (`supabase/migrations/0001_sync_rows.sql`) agar bisa dibuat ulang.
 - *Selesai bila:* tabel, indeks, dan batas ukuran ada.
 
-**Issue 1.2: RLS dan fungsi `sync_push`** · M
+**Issue 1.2 (#94): RLS dan fungsi `sync_push`** · M
 - Policy select, insert, dan update. Fungsi `sync_push` dengan aturan "mtime lebih baru menang".
 - *Selesai bila:* advisor security dan performance bersih.
 
-**Issue 1.3: Uji keamanan di server** · S
+**Issue 1.3 (#95): Uji keamanan di server** · S
 - Dengan dua pengguna uji: A tidak bisa membaca atau menulis baris B. Versi lama tidak menimpa versi baru. Tombstone tersimpan. Baris > 1,5 MB ditolak.
 - Skrip uji disimpan di `supabase/tests/`. Pengguna uji dihapus setelahnya.
 - *Selesai bila:* semua skenario lulus.
 
 ### Fase 2: Fondasi klien
 
-**Issue 2.1: Dexie versi 5: `_mtime` dan `syncDeletes`** · M
+**Issue 2.1 (#96): Dexie versi 5: `_mtime` dan `syncDeletes`** · M
 - Skema v5 menambah indeks `_mtime` dan tabel `syncDeletes`. Upgrade mengisi `_mtime` semua baris lama.
 - Hook cap waktu monoton dan pencatatan hapus (`src/sync/track.ts`). Penanda "tulisan dari server" agar tidak dicap ulang.
 - Ekspor cadangan dan impor cadangan membuang `_mtime` agar format berkas tetap sama.
 - *Selesai bila:* semua uji lama lulus, uji baru membuktikan setiap `put`/`update`/`modify`/`delete` di tabel tersinkron menghasilkan cap atau tombstone, dan `keys`/`requests` tidak tersentuh.
 
-**Issue 2.2: Konfigurasi dan klien Supabase on-demand** · S
+**Issue 2.2 (#97): Konfigurasi dan klien Supabase on-demand** · S
 - Pasang `@supabase/supabase-js`. `src/sync/config.ts` dan `src/sync/client.ts`.
 - Variabel `VITE_SUPABASE_URL` dan `VITE_SUPABASE_PUBLISHABLE_KEY` diisi di workflow deploy.
 - Tambahkan supabase ke `LAZY` di `scripts/check-bundle.mjs`.
 - *Selesai bila:* `npm run build && npm run check:bundle` lulus. Tanpa variabel, UI sinkronisasi tidak tampil.
 
-**Issue 2.3: Login dengan kode email** · M
+**Issue 2.3 (#98): Login dengan kode email** · M
 - `src/sync/auth.ts` dan formulir dua langkah (email → kode) di kartu Akun & Sinkronisasi.
 - Pesan galat jelas: kode salah, kode kedaluwarsa, terlalu sering meminta kode, offline.
 - *Selesai bila:* bisa login, menutup tab, membuka lagi dalam keadaan tetap login, lalu keluar.
 
 ### Fase 3: Mesin sinkronisasi
 
-**Issue 3.1: Push** · M
+**Issue 3.1 (#99): Push** · M
 - Kelompokkan baris, kirim lewat `sync_push`, majukan `pushedUpTo`, kosongkan `syncDeletes`. Coba ulang dengan jeda bertambah.
 - *Selesai bila:* uji dengan server tiruan membuktikan tidak ada perubahan yang terlewat, termasuk saat gagal di tengah kelompok.
 
-**Issue 3.2: Pull dan aturan gabung** · L
+**Issue 3.2 (#100): Pull dan aturan gabung** · L
 - Kursor `updated_at` dengan tumpang-tindih 2 menit. Aturan gabung per tabel sesuai bagian 6.3.
 - Registrasi ulang paket ujian setelah `settings` berubah.
 - *Selesai bila:* uji membuktikan setiap aturan pada tabel di bagian 6.3, termasuk tidak ada pantulan unggah.
 
-**Issue 3.3: Penjadwal dan status** · M
+**Issue 3.3 (#101): Penjadwal dan status** · M
 - Debounce push, pemicu pull (buka, online, tab aktif, 5 menit), satu tab aktif lewat Web Locks, status untuk UI.
 - *Selesai bila:* dua tab terbuka tidak menyinkronkan bersamaan. Status berubah benar saat offline lalu online.
 
-**Issue 3.4: Login pertama, perangkat kosong, dan pergantian akun** · M
+**Issue 3.4 (#102): Login pertama, perangkat kosong, dan pergantian akun** · M
 - `syncOwner`, layar ringkasan dan "Gabungkan", unduh penuh dengan indikator kemajuan, konfirmasi bila akun berbeda.
 - *Selesai bila:* tiga skenario di bagian 6.5 teruji. Tidak ada jalur yang menghapus data tanpa konfirmasi.
 
-**Issue 3.5: Keluar** · S
+**Issue 3.5 (#103): Keluar** · S
 - Dua pilihan keluar sesuai bagian 6.6. "Hapus dari perangkat" dikunci selama masih ada antrean.
 - *Selesai bila:* teruji, termasuk upaya keluar dengan antrean tersisa.
 
 ### Fase 4: Tampilan dan teks
 
-**Issue 4.1: Ikon status di header** · S
-**Issue 4.2: Kartu Akun & Sinkronisasi lengkap di Pengaturan** · M (waktu sinkron terakhir, antrean, "Sinkronkan sekarang", perkiraan ruang terpakai di server)
-**Issue 4.3: Kartu ajakan login di Beranda dan penyesuaian pengingat cadangan** · S
-**Issue 4.4: Bantuan, privasi, CHANGELOG, dan "Apa yang baru" versi 2.0.0** · S
+**Issue 4.1 (#104): Ikon status di header** · S
+**Issue 4.2 (#105): Kartu Akun & Sinkronisasi lengkap di Pengaturan** · M (waktu sinkron terakhir, antrean, "Sinkronkan sekarang", perkiraan ruang terpakai di server)
+**Issue 4.3 (#106): Kartu ajakan login di Beranda dan penyesuaian pengingat cadangan** · S
+**Issue 4.4 (#107): Bantuan, privasi, CHANGELOG, dan "Apa yang baru" versi 2.0.0** · S
 
 *Selesai bila (seluruh fase):* tampilan benar di layar HP 360 px dan desktop, mode terang dan gelap, dan lulus pemeriksaan aksesibilitas e2e yang sudah ada (axe).
 
 ### Fase 5: Pengujian menyeluruh dan rilis
 
-**Issue 5.1: Uji unit mesin sinkronisasi** · M
+**Issue 5.1 (#108): Uji unit mesin sinkronisasi** · M
 - `fake-indexeddb` dan server tiruan di memori yang meniru `sync_push` dan pull.
 - Skenario wajib:
   1. Perangkat baru memulihkan semua data.
@@ -366,24 +366,24 @@ Setiap fase menjadi satu PR (Fase 0 tanpa PR). Ukuran: **S** kecil, **M** sedang
   7. Pergantian akun.
   8. Payload tidak pernah memuat API key.
 
-**Issue 5.2: Uji e2e Playwright** · M
+**Issue 5.2 (#109): Uji e2e Playwright** · M
 - Alur login dan sinkronisasi dengan server Supabase tiruan (route interception). Uji yang ada tetap lulus tanpa login.
 
-**Issue 5.3: Uji nyata di Project 2** · S
+**Issue 5.3 (#110): Uji nyata di Project 2** · S
 - Login dari laptop dan HP Anda. Buat set di satu perangkat, kerjakan latihan, lihat muncul di perangkat lain. Hapus data situs di browser, login lagi, pastikan semuanya kembali.
 
-**Issue 5.4: Rilis bertahap** · S
+**Issue 5.4 (#111): Rilis bertahap** · S
 - Saklar fitur di Pengaturan ("Sinkronisasi cloud (beta)") selama satu–dua minggu pemakaian Anda sendiri. Setelah stabil, saklar dihapus dan versi 2.0.0 dirilis.
 
 ### Fase 6: Lanjutan (opsional, sesuai kebutuhan)
 
 | Issue | Isi | Kapan perlu |
 |---|---|---|
-| 6.1 Hapus akun dan data cloud | Edge Function `delete-account` (butuh service role, tidak bisa dari browser) dan tombol di Pengaturan | Sebelum dibuka untuk orang lain |
-| 6.2 Penjaga project tetap aktif | GitHub Action terjadwal yang memanggil server tiap 3 hari | Bila Anda sering tidak belajar lebih dari seminggu |
-| 6.3 Gambar soal ke Storage | Bucket privat `question-images/{user_id}/…`, baris hanya menyimpan referensi | Bila ruang database mendekati 400 MB |
-| 6.4 Realtime | Perubahan muncul di perangkat lain tanpa menunggu | Bila sering memakai dua perangkat bersamaan |
-| 6.5 SMTP sendiri (misalnya Resend) | Email kode bisa terkirim ke siapa saja | **Wajib** sebelum pembeli bundel memakai login |
+| 6.1 (#112) Hapus akun dan data cloud | Edge Function `delete-account` (butuh service role, tidak bisa dari browser) dan tombol di Pengaturan | Sebelum dibuka untuk orang lain |
+| 6.2 (#113) Penjaga project tetap aktif | GitHub Action terjadwal yang memanggil server tiap 3 hari | Bila Anda sering tidak belajar lebih dari seminggu |
+| 6.3 (#114) Gambar soal ke Storage | Bucket privat `question-images/{user_id}/…`, baris hanya menyimpan referensi | Bila ruang database mendekati 400 MB |
+| 6.4 (#115) Realtime | Perubahan muncul di perangkat lain tanpa menunggu | Bila sering memakai dua perangkat bersamaan |
+| 6.5 (#116) SMTP sendiri (misalnya Resend) | Email kode bisa terkirim ke siapa saja | **Wajib** sebelum pembeli bundel memakai login |
 
 ---
 
@@ -416,7 +416,7 @@ Fase 2.1 dan 2.2 tidak bergantung pada server, jadi bisa dikerjakan bersamaan de
 3. Di Issue 5.3: mencoba di HP dan laptop Anda sendiri.
 4. Bila nanti ingin pembeli bundel ikut login: mendaftar layanan SMTP (Issue 6.5).
 
-## 15. Pertanyaan terbuka
+## 15. Keputusan atas pertanyaan terbuka
 
-1. Apakah ujian yang **sedang berjalan** perlu bisa dilanjutkan di perangkat lain? Rancangan ini menjawab ya. Bila tidak, latihan yang belum selesai bisa dikecualikan agar sinkronisasi lebih hemat.
-2. Untuk saat ini, apakah login hanya untuk Anda sendiri, atau langsung ingin dibuka untuk pembeli bundel? Jawabannya menentukan apakah Issue 6.1 dan 6.5 masuk sebelum rilis.
+1. **Login untuk siapa:** untuk pemilik dulu (12 Oktober 2026). Issue 6.1 (#112) dan 6.5 (#116) baru wajib sebelum login dibuka untuk pembeli bundel.
+2. **Ujian yang sedang berjalan ikut disinkronkan:** ya (bawaan rancangan, tidak ada keberatan).
