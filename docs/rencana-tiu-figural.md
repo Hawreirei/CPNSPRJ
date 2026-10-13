@@ -2,6 +2,8 @@
 
 Status: rencana, belum dikerjakan. Ukuran pekerjaan memakai skala S/M/L seperti di [PROPOSAL-PENGEMBANGAN-FITUR.md](PROPOSAL-PENGEMBANGAN-FITUR.md).
 
+Rancangan mesinnya, disusun dari contoh soal bergaya SKD (deret orbit, kotak berdiagonal, figur garis, jaring kubus), ada di [rancangan-figural-v2.md](rancangan-figural-v2.md). Model "sel komposit" di §3.1 digantikan oleh model adegan di sana.
+
 ## Ringkasan
 
 Soal figural dibuat aplikasi dari aturan pasti (`src/domain/figural.ts`), jadi kuncinya selalu benar. Masalahnya ada di tiga hal:
