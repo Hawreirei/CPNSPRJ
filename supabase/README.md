@@ -32,23 +32,26 @@ Pengaturan ini tidak tersimpan di SQL; diatur di dashboard Supabase (`supabase.c
    - Email OTP Length: **6**.
    - Simpan.
 2. **Authentication → Sign In / Providers**: semua penyedia lain (Google, GitHub, Phone, dan lainnya) **mati**. Anonymous sign-ins **mati**.
-3. **Authentication → Sign In / Providers → User Signups**: "Allow new users to sign up" **aktif untuk sementara**, supaya akun pemilik bisa dibuat pada login pertama. Setelah pemilik berhasil login (#98), **matikan** agar orang lain tidak bisa membuat akun selama login hanya untuk pemilik.
-4. **SMTP sendiri (wajib untuk login dengan kode).** Supabase hanya mengizinkan templat email diubah bila project memakai SMTP sendiri, dan templat bawaan hanya berisi link, bukan kode. Untuk pemakaian pribadi, cara termudah adalah Gmail dengan *App Password*:
-   1. Di akun Google: **myaccount.google.com → Keamanan → Verifikasi 2 Langkah**, aktifkan bila belum.
-   2. Buka **myaccount.google.com/apppasswords**, buat sandi aplikasi bernama `Supabase CASN`, lalu salin 16 hurufnya (tanpa spasi). Sandi ini hanya untuk mengirim email dan bisa dicabut kapan saja dari halaman yang sama.
-   3. Di Supabase: **Authentication → Emails → SMTP Settings**, aktifkan **Enable custom SMTP**, lalu isi:
+3. **Authentication → Sign In / Providers → User Signups**: "Allow new users to sign up" **tetap aktif**. Aplikasi dijual, dan pembeli harus bisa membuat akun. Menyimpan data di cloud tetap hanya untuk akun yang sudah memasukkan kode akses (#117).
+4. **SMTP sendiri dengan Brevo (wajib).** Supabase hanya mengizinkan templat email diubah bila project memakai SMTP sendiri, dan templat bawaan hanya berisi link, bukan kode. Aplikasi dijual, jadi dipakai layanan email aplikasi (Brevo), bukan Gmail (#116):
+   1. Daftar di **brevo.com** (paket gratis: 300 email/hari).
+   2. **Senders, Domains & Dedicated IPs → Senders → Add a sender**: isi nama `CASN Set Builder` dan alamat Gmail Anda, lalu klik link verifikasi yang dikirim Brevo ke Gmail itu.
+   3. **SMTP & API → SMTP**: catat **Login** (bentuknya seperti `xxxxxx@smtp-brevo.com`), lalu **Generate a new SMTP key** dan salin kuncinya.
+   4. Di Supabase: **Authentication → Emails → SMTP Settings**, aktifkan **Enable custom SMTP**, lalu isi:
 
       | Kolom | Isi |
       |---|---|
-      | Sender email | alamat Gmail Anda (harus sama dengan Username) |
+      | Sender email | alamat Gmail yang sudah diverifikasi di Brevo |
       | Sender name | `CASN Set Builder` |
-      | Host | `smtp.gmail.com` |
-      | Port number | `465` |
+      | Host | `smtp-relay.brevo.com` |
+      | Port number | `587` |
       | Minimum interval between emails | `60` (bawaan) |
-      | Username | alamat Gmail Anda |
-      | Password | 16 huruf App Password dari langkah 2 |
+      | Username | Login Brevo dari langkah 3 |
+      | Password | SMTP key dari langkah 3 |
 
-   4. Simpan. Setelah itu batas email menjadi 30 per jam (bisa diubah di **Authentication → Rate Limits**), dan email tidak lagi dibatasi hanya untuk anggota tim.
+   5. Simpan. Lalu **Authentication → Rate Limits**: batas email sekitar `60` per jam.
+
+   Tanpa domain sendiri, email kode lebih sering masuk folder spam. Bila nanti banyak keluhan, beli domain dan verifikasi di Brevo; kode aplikasi tidak perlu diubah.
 5. **Authentication → Emails → Templates**: untuk **Magic Link** dan **Confirm signup**, ganti:
    - Subject: `Kode masuk CASN Set Builder: {{ .Token }}`
    - Body: isi `templates/kode-masuk.html`.

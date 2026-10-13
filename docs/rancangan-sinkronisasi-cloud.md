@@ -6,7 +6,7 @@
 | **Tanggal** | 12 Oktober 2026 |
 | **Basis** | Kode di `main` setelah PR #89 (versi 1.9.0) |
 | **Keputusan pemilik** | Supabase project **Hawreirei's Project 2** (`aehnismvyxgihmsftane`, region Singapura), login **email saja** |
-| **Status** | Disetujui 12 Oktober 2026. Epic: [#90](https://github.com/Hawreirei/CPNSPRJ/issues/90), issue #91–#116 |
+| **Status** | Disetujui 12 Oktober 2026; diperluas untuk penjualan 13 Oktober 2026 (bagian 16). Epic: [#90](https://github.com/Hawreirei/CPNSPRJ/issues/90), issue #91–#123 |
 
 ---
 
@@ -417,3 +417,47 @@ Fase 2.1 dan 2.2 tidak bergantung pada server, jadi bisa dikerjakan bersamaan de
 
 1. **Login untuk siapa:** untuk pemilik dulu (12 Oktober 2026). Issue 6.1 (#112) dan 6.5 (#116) baru wajib sebelum login dibuka untuk pembeli bundel.
 2. **Ujian yang sedang berjalan ikut disinkronkan:** ya (bawaan rancangan, tidak ada keberatan).
+
+---
+
+## 16. Perubahan untuk penjualan (13 Oktober 2026)
+
+Pemilik memutuskan aplikasi **dijual**, bukan hanya untuk pemakaian pribadi. Keputusannya:
+
+| Pertanyaan | Keputusan |
+|---|---|
+| Siapa yang boleh sinkronisasi | **Hanya pembeli, lewat kode akses.** Login email tetap terbuka, tetapi menyimpan data di cloud mensyaratkan keanggotaan. Aplikasi tetap bisa dipakai penuh tanpa login |
+| Pengirim email kode | **Brevo tanpa domain sendiri**: pengirim Gmail terverifikasi, gratis 300 email/hari. Risikonya, email lebih sering masuk spam |
+| Paket Supabase | **Tetap gratis.** Tanpa cadangan otomatis, database 500 MB untuk semua pembeli, dan project bisa dijeda bila sepi |
+
+Akibatnya, pekerjaan berikut menjadi **wajib sebelum dijual**:
+
+| Issue | Isi | Mengapa |
+|---|---|---|
+| #117 (J1) | Kode akses pembeli: tabel `access_codes` dan `members`, RPC `redeem_access_code`, policy `sync_rows` mensyaratkan keanggotaan, pembatasan percobaan kode | Server gratis dipakai bersama; hanya pembeli yang boleh memakainya |
+| #118 (J2) | Alat pemilik: membuat kode, melihat pembeli aktif, menonaktifkan kode bocor | Mengelola penjualan tanpa menulis SQL |
+| #119 (J3) | Batas penyimpanan 20 MB per akun | Satu akun tidak boleh menghabiskan 500 MB milik semua pembeli |
+| #120 (J4) | CAPTCHA Cloudflare Turnstile saat meminta kode | Pendaftaran terbuka; kuota Brevo dan reputasi pengirim harus dilindungi |
+| #121 (J5) | Kebijakan privasi, ketentuan layanan, persetujuan | UU No. 27/2022 (PDP); data di Singapura |
+| #112 (6.1) | Hapus akun dan data cloud | Hak penghapusan (UU PDP) |
+| #116 (6.5) | SMTP Brevo | Email bawaan hanya untuk anggota tim, dan Gmail tidak cocok untuk email ke banyak pembeli |
+| #122 (J6) | Cadangan database terenkripsi mingguan lewat GitHub Actions, sekaligus menjaga project tetap aktif (menggantikan #113) | Paket gratis tidak punya cadangan; repo publik, jadi cadangan harus terenkripsi |
+| #123 (J7) | Panduan pembeli dan teks Lynk | Janji penjualan sesuai kenyataan |
+
+### Alur pembeli
+
+1. Membeli di Lynk dan menerima **kode akses**: satu per pembeli, atau satu kode per batch yang bisa dipakai beberapa kali.
+2. Membuka aplikasi → Pengaturan → Akun & sinkronisasi → email → menyetujui privasi dan ketentuan → CAPTCHA (biasanya tanpa teka-teki) → kode dari email (periksa spam).
+3. Memasukkan kode akses sekali. Sejak itu data tersinkron di semua perangkat yang login dengan email yang sama.
+
+### Risiko paket gratis yang diterima pemilik
+
+- **Tanpa cadangan Supabase.** Dimitigasi oleh salinan lokal di setiap perangkat pembeli dan cadangan mingguan terenkripsi (#122). Data yang berubah sejak cadangan terakhir bisa hilang bila server rusak dan perangkat pembeli juga kosong.
+- **Project dijeda setelah sekitar 7 hari sepi.** Dicegah oleh workflow #122. Bila tetap terjeda, sinkronisasi semua pembeli berhenti sampai pemilik memulihkannya, tetapi data lokal tetap aman.
+- **Database 500 MB untuk semua pembeli.** Dengan batas 20 MB per akun, cukup untuk sedikitnya 25 pembeli yang memakai penuh kuotanya. Pemakaian biasa (soal teks) jauh lebih kecil. Ukuran database dipantau dari #118; naik ke Pro bila mendekati 400 MB.
+- **Tanpa jaminan ketersediaan.** Disebut jujur di Ketentuan Layanan (#121).
+
+### Urutan baru
+
+Fase 4 (tampilan, #104–#107) dikerjakan **bersama** J1 (#117) dan J5 (#121), karena keduanya mengubah kartu Akun. Lalu J3, J4, J2, #112, J6, J7, dan Fase 5 (pengujian dan rilis). Rilis kepada pembeli baru setelah semua issue di tabel atas selesai.
+
