@@ -33,12 +33,27 @@ Pengaturan ini tidak tersimpan di SQL; diatur di dashboard Supabase (`supabase.c
    - Simpan.
 2. **Authentication → Sign In / Providers**: semua penyedia lain (Google, GitHub, Phone, dan lainnya) **mati**. Anonymous sign-ins **mati**.
 3. **Authentication → Sign In / Providers → User Signups**: "Allow new users to sign up" **aktif untuk sementara**, supaya akun pemilik bisa dibuat pada login pertama. Setelah pemilik berhasil login (#98), **matikan** agar orang lain tidak bisa membuat akun selama login hanya untuk pemilik.
-4. **Authentication → Emails → Templates**: untuk **Magic Link** dan **Confirm signup**, ganti:
+4. **SMTP sendiri (wajib untuk login dengan kode).** Supabase hanya mengizinkan templat email diubah bila project memakai SMTP sendiri, dan templat bawaan hanya berisi link, bukan kode. Untuk pemakaian pribadi, cara termudah adalah Gmail dengan *App Password*:
+   1. Di akun Google: **myaccount.google.com → Keamanan → Verifikasi 2 Langkah**, aktifkan bila belum.
+   2. Buka **myaccount.google.com/apppasswords**, buat sandi aplikasi bernama `Supabase CASN`, lalu salin 16 hurufnya (tanpa spasi). Sandi ini hanya untuk mengirim email dan bisa dicabut kapan saja dari halaman yang sama.
+   3. Di Supabase: **Authentication → Emails → SMTP Settings**, aktifkan **Enable custom SMTP**, lalu isi:
+
+      | Kolom | Isi |
+      |---|---|
+      | Sender email | alamat Gmail Anda (harus sama dengan Username) |
+      | Sender name | `CASN Set Builder` |
+      | Host | `smtp.gmail.com` |
+      | Port number | `465` |
+      | Minimum interval between emails | `60` (bawaan) |
+      | Username | alamat Gmail Anda |
+      | Password | 16 huruf App Password dari langkah 2 |
+
+   4. Simpan. Setelah itu batas email menjadi 30 per jam (bisa diubah di **Authentication → Rate Limits**), dan email tidak lagi dibatasi hanya untuk anggota tim.
+5. **Authentication → Emails → Templates**: untuk **Magic Link** dan **Confirm signup**, ganti:
    - Subject: `Kode masuk CASN Set Builder: {{ .Token }}`
    - Body: isi `templates/kode-masuk.html`.
 
    Aplikasi memakai kode, bukan link, karena link sering terbuka di browser lain sehingga login tersimpan di tempat yang salah.
-5. **Authentication → URL Configuration**: Site URL `https://hawreirei.github.io/CPNSPRJ/`.
-6. **Organization → Team**: pastikan email yang dipakai untuk login terdaftar sebagai anggota tim. Email bawaan Supabase hanya mengirim ke anggota tim; untuk pengguna lain perlu SMTP sendiri (#116).
+6. **Authentication → URL Configuration**: Site URL `https://hawreirei.github.io/CPNSPRJ/`.
 
-Email bawaan dibatasi beberapa email per jam. Bila kode tidak datang, tunggu beberapa menit dan periksa folder spam.
+Bila kode tidak datang, periksa folder spam, lalu **Authentication → Logs** di Supabase untuk pesan galat SMTP (misalnya App Password salah).
