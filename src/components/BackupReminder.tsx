@@ -141,7 +141,7 @@ function PersistTipCard({ hasData, now }: { hasData: boolean; now: number }) {
   };
   return (
     <div className="strip">
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-64">
         <b>Browser ini bisa menghapus data aplikasi sendiri.</b>{' '}
         <span>
           Agar set, riwayat, dan Buku Kesalahan lebih aman, pasang aplikasi ke layar utama dan tetap cadangkan secara berkala.{' '}

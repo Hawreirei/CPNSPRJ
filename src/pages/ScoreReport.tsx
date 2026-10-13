@@ -245,7 +245,7 @@ function BackupNudge({ finishedAt }: { finishedAt?: number }) {
   if (state.auto && !state.auto.error) return null;
   return (
     <div className="strip" role="region" aria-label="Cadangan">
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-64">
         <b>Hasil ini baru tersimpan di browser ini.</b> Simpan cadangan agar riwayat, progres, dan Buku Kesalahan tidak hilang bila data browser terhapus.
       </div>
       <div className="flex flex-wrap gap-2">
