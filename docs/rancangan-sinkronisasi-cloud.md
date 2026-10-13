@@ -154,39 +154,50 @@ SQL yang terpasang di Project 2 ada di repo, bukan disalin di sini:
 
 Gagal karena offline, sesi habis, atau server dijeda: antrean tetap tersimpan di IndexedDB dan dicoba lagi dengan jeda bertambah (5 detik, 30 detik, 2 menit, 10 menit).
 
-### 6.3 Pull (unduh) dan aturan gabung
+### 6.3 Pull (unduh) dan aturan gabung (`src/sync/merge.ts`, `src/sync/engine.ts`)
 
-Untuk setiap baris dari server, bandingkan dengan baris lokal:
+Untuk setiap baris dari server, bandingkan dengan baris lokal (fungsi murni `decide`):
 
 | Tabel | Aturan |
 |---|---|
 | Umum (`sets`, `questions`, `reviews`, `cards`, `settings`) | **Versi terbaru menang** menurut `mtime`. Bila sama, tidak ada perubahan |
-| `attempts` | Seperti umum, **kecuali** latihan yang sudah selesai (`finishedAt` ada) tidak pernah ditimpa versi yang belum selesai |
-| `reviewDays` | **Digabung** (gabungan himpunan tanggal), tidak pernah ditimpa |
-| `questions.notes` | Catatan dari kedua sisi digabung berdasarkan `at`, supaya catatan tutor tidak hilang |
-| Tombstone | Menghapus baris lokal bila `mtime` tombstone ≥ `mtime` cap lokal |
+| `attempts` | Seperti umum, **kecuali** bila hanya satu salinan yang sudah selesai (`finishedAt`): salinan yang selesai selalu menang, **ke dua arah**. Tab ujian lama yang masih terbuka di perangkat lain bisa menulis belakangan, dan tulisannya tidak boleh membatalkan hasil |
+| `reviewDays` | **Digabung** (gabungan himpunan tanggal), ke dua arah. Hasil gabungan yang berbeda dari server dikirim kembali |
+| `questions.notes` | Catatan kedua sisi digabung berdasarkan `at`, ke dua arah, supaya catatan tutor tidak hilang |
+| `settings.lastSeenVersion` | Tetap milik perangkat masing-masing. Tidak pernah dikirim, dan tidak ditimpa dari server |
+| Tombstone | Menghapus baris lokal bila `mtime` tombstone lebih baru dari cap lokal |
 
-Baris hasil pull ditulis bersama capnya sendiri (`mtime` dari server, `dirty = 0`) di transaksi yang sama, setelah datanya. Cap itu menggantikan cap yang baru saja ditulis middleware, sehingga baris itu tidak diunggah kembali (tidak ada pantulan tanpa akhir).
+Perbandingan isi memakai JSON dengan kunci terurut, sehingga isi yang sama tidak dianggap berbeda hanya karena urutan kolomnya.
 
-Setelah menulis baris dari server, `setCustomPackages` dijalankan ulang bila `settings` berubah, sama seperti saat memulihkan cadangan.
+Setiap halaman (500 baris) dibaca dan ditulis massal dalam satu transaksi: `bulkGet` cap dan baris, lalu `bulkPut`/`bulkDelete` per tabel, dan **cap ditulis terakhir** (`mtime` dari server, `dirty = 0`). Cap itu menggantikan cap yang baru saja ditulis middleware, sehingga baris itu tidak diunggah kembali (tidak ada pantulan tanpa akhir). Baris dari server yang tabel atau kuncinya tidak dikenal, atau yang kunci datanya tidak cocok dengan `id`, diabaikan.
 
-### 6.4 Jadwal
+Setelah menulis baris dari server, `getSettings()` dijalankan ulang bila `settings` berubah, supaya paket ujian impor terdaftar lagi.
 
-- **Push:** beberapa detik setelah perubahan terakhir (debounce 5 detik, paling lama 60 detik saat AI sedang menulis soal). Juga saat tab disembunyikan (`visibilitychange`) agar perubahan terakhir sempat terkirim sebelum aplikasi ditutup.
-- **Pull:** saat aplikasi dibuka, saat kembali online, saat tab aktif lagi, dan setiap 5 menit selama tab terbuka.
-- Hanya satu tab yang menjalankan sinkronisasi, dikoordinasi dengan Web Locks API. Tab lain cukup membaca IndexedDB yang sama.
+### 6.4 Jadwal (`src/sync/runner.ts`)
+
+- Setiap putaran: catat baris tanpa cap (hanya di putaran pertama sesi), **pull**, lalu **push**. Pull lebih dulu supaya perubahan lama di sini yang sudah kalah oleh versi lebih baru tidak dikirim percuma.
+- **Kapan putaran berjalan:**
+  - saat masuk;
+  - 5 detik setelah perubahan terakhir (paling lama 60 detik saat AI sedang menulis soal);
+  - saat tab disembunyikan, bila ada perubahan yang menunggu;
+  - saat kembali online dan saat tab aktif lagi;
+  - setiap 5 menit selama tab terbuka.
+- Satu putaran pada satu waktu. Permintaan yang datang selama putaran berjalan memicu satu putaran lagi sesudahnya. Antartab dikoordinasi dengan Web Locks (`casn-sync`).
+- **Gagal:** status `offline` (koneksi putus, antrean tetap) atau `error` (sesi habis, server dijeda). Putaran dicoba lagi setelah 5 detik, 30 detik, 2 menit, lalu tiap 10 menit.
+- Status untuk tampilan: fase, waktu sinkron terakhir, jumlah perubahan menunggu, pesan galat, dan data yang terlalu besar.
 
 ### 6.5 Login pertama dan pergantian akun
 
-- Perangkat menyimpan `syncOwner` (id pengguna yang datanya ada di perangkat ini).
-- **Login pertama di perangkat yang sudah berisi data:** tampilkan ringkasan "Di perangkat ini: 12 set, 340 soal, 25 latihan. Di akun: 0 set". Satu-satunya tindakan yang ditawarkan adalah **Gabungkan**. Tidak ada pilihan yang menghapus data.
-- **Perangkat kosong (misalnya setelah browser menghapus data):** langsung unduh semuanya, tampilkan kemajuan.
-- **Login dengan akun lain** di perangkat yang berisi data milik akun sebelumnya: tanyakan dulu. Pilihannya: gabungkan ke akun baru, atau keluar dan batalkan. Data tidak pernah otomatis berpindah akun.
+- `meta: sync` (key yang tidak disinkronkan) menyimpan `owner` (akun pemilik data di perangkat ini), kursor pull, dan waktu sinkron terakhir.
+- **Perangkat kosong** (tanpa set, soal, atau latihan; misalnya setelah browser menghapus data): langsung diikat ke akun. Cap pengaturan dan hari belajarnya diturunkan menjadi paling lama, supaya pengaturan bawaan perangkat baru tidak menimpa pengaturan di akun. Lalu semua data diunduh.
+- **Login pertama di perangkat berisi data:** tampilkan ringkasan "Perangkat ini sudah berisi 1 set, 30 soal, 0 latihan. Akun Anda di cloud berisi …". Tindakan yang tersedia hanya **Gabungkan dan sinkronkan** atau **Keluar**. Tidak ada pilihan yang menghapus data.
+- **Data milik akun lain:** tanyakan dulu, "Gabungkan ke akun ini" atau "Keluar". Bila digabung, tanda hapus milik akun lama dibuang. Tanda itu tidak boleh menghapus baris ber-id sama di akun baru, misalnya soal dari bundel yang sama.
+- Selama beta, sebelum penggabungan disimpan cadangan lengkap perangkat (`meta: syncSnapshot`), yang bisa diunduh dari kartu Akun.
 
 ### 6.6 Keluar
 
-- "Keluar, data tetap di perangkat ini" (bawaan).
-- "Keluar dan hapus data dari perangkat ini", hanya bisa dipilih setelah semua perubahan terunggah. Bila masih ada antrean, tombol ini dikunci dan diberi penjelasan.
+- "Keluar, data tetap di perangkat ini". Keluar hanya dari browser ini (`scope: local`); perangkat lain tetap masuk.
+- "Keluar dan hapus data dari perangkat ini" hanya aktif bila tidak ada perubahan yang menunggu. Data tersinkron dan cap dihapus dalam satu transaksi, dengan cap dihapus terakhir. Karena itu penghapusan lokal **tidak** ikut terkirim sebagai penghapusan ke cloud. API key tidak ikut terhapus.
 
 ---
 
