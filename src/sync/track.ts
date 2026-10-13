@@ -58,12 +58,20 @@ function writtenKeys(req: DBCoreMutateRequest, res: DBCoreMutateResponse, table:
   return keys.filter((_, i) => !res.failures[i]);
 }
 
+const listeners = new Set<() => void>();
+/** Called whenever a synced row changed here (before its transaction commits); the scheduler waits a few seconds anyway. */
+export function onLocalChange(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => void listeners.delete(fn);
+}
+
 async function stamp(stamps: DBCoreTable, trans: DBCoreTransaction, tbl: SyncTable, keys: unknown[], deleted: boolean) {
   const ids = keys.filter((k) => k != null && isSynced(tbl, k)).map(String);
   if (!ids.length) return;
   const prev: (SyncStamp | undefined)[] = await stamps.getMany({ trans, keys: ids.map((id) => [tbl, id]) });
   const values: SyncStamp[] = ids.map((id, i) => ({ tbl, id, mtime: nextStamp(prev[i]?.mtime), dirty: 1, deleted: deleted ? 1 : 0 }));
   await stamps.mutate({ type: 'put', trans, values });
+  listeners.forEach((l) => l());
 }
 
 export const syncTracking: Middleware<DBCore> = {

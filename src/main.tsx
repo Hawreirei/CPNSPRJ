@@ -26,8 +26,8 @@ void pruneRequestLog();
 setupErrorLog();
 setupPwa();
 setupAutoBackup();
-// A browser signed in to cloud sync gets its session back once the first screen is up (#98).
-if (wasSignedIn()) whenIdle(() => void import('./sync/auth').then((m) => m.startAccount()).catch(() => undefined));
+// A browser signed in to cloud sync gets its session back and syncs once the first screen is up (#98, #101).
+if (wasSignedIn()) whenIdle(() => void import('./sync').then((m) => m.resumeSync()).catch(() => undefined));
 
 function whenIdle(fn: () => void) {
   if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 5000 });

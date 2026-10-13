@@ -26,6 +26,13 @@ function set(next: Account) {
 
 export const getAccount = () => account;
 
+/** Follow sign-in and sign-out (the sync runner starts and stops with them). */
+export function subscribeAccount(fn: (a: Account) => void): () => void {
+  const l = () => fn(account);
+  listeners.add(l);
+  return () => void listeners.delete(l);
+}
+
 export function useAccount(): Account {
   return useSyncExternalStore(
     (l) => (listeners.add(l), () => void listeners.delete(l)),
