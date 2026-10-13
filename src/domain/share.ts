@@ -19,6 +19,13 @@ export const SHARE_VERSION = 1;
  * version makes them say "perbarui aplikasi" instead of failing on an unknown sub-test.
  */
 export const SHARE_VERSION_PACKAGES = 2;
+/**
+ * Sets with figural pictures older versions cannot draw (scenes, cubes, folds, new shapes). Older
+ * versions would reject them on validation with an unclear error; this makes them ask for an update.
+ */
+export const SHARE_VERSION_FIGURAL = 3;
+/** The newest file version this app reads. */
+const SHARE_VERSION_MAX = SHARE_VERSION_FIGURAL;
 /** Imported packages a set may carry (a set is normally one package). */
 const MAX_PACKAGES = 3;
 
@@ -33,12 +40,64 @@ export const SHARED_FLAG_KINDS = new Set<FlagKind>(['cross-check-mismatch', 'cro
 
 const label = z.enum(['A', 'B', 'C', 'D', 'E']);
 const finite = z.number().finite();
-const cell = z.object({
+/** The first kind of figural picture, as versions before SHARE_VERSION_FIGURAL know it. */
+const oldCell = z.object({
   shape: z.enum(['circle', 'square', 'triangle', 'diamond', 'star', 'arrow', 'pentagon']),
   fill: z.enum(['solid', 'empty', 'striped']),
   rotation: finite.min(-720).max(720),
   count: z.number().int().min(1).max(4),
 });
+const OLD_LAYOUTS = ['series', 'analogy', 'matrix', 'transform', 'odd-one-out'] as const;
+const fill = z.enum(['solid', 'empty', 'striped', 'dotted']);
+const deg = finite.min(-720).max(720);
+const face = z.strictObject({
+  sym: z.enum(['white', 'black', 'dot', 'circle', 'cross', 'xcross', 'arrow', 'half', 'corner', 'bar', 'star', 'diamond']),
+  rot: z.number().int().min(-8).max(8),
+});
+const hole = z.number().int().min(0).max(15);
+const foldKind = z.enum(['R>L', 'L>R', 'T>B', 'B>T', 'TR>BL', 'TL>BR']);
+// New kinds are strict: an unknown field means a newer app made the picture, so it would be drawn wrong.
+const cell = z.union([
+  z.object({
+    shape: z.enum(['circle', 'square', 'triangle', 'diamond', 'star', 'arrow', 'pentagon', 'hexagon']),
+    fill,
+    rotation: deg,
+    count: z.number().int().min(1).max(6),
+  }),
+  z.strictObject({
+    kind: z.literal('scene'),
+    frame: z.enum(['plain', 'diag4', 'quad4', 'ring8', 'pie8']),
+    objects: z
+      .array(
+        z.strictObject({
+          glyph: z.enum(['arrow', 'dblarrow', 'pin', 'tab', 'dot', 'ring', 'square', 'rect', 'cross', 'star', 'triangle', 'eq', 'L', 'flag', 'half', 'wedge', 'swedge']),
+          slot: z.number().int().min(0).max(15),
+          anchor: z.enum(['in', 'out']).optional(),
+          dir: deg.optional(),
+          mirrored: z.boolean().optional(),
+          fill: fill.optional(),
+          span: z.number().int().min(1).max(8).optional(),
+        }),
+      )
+      .max(6),
+  }),
+  z.strictObject({
+    kind: z.literal('strokes'),
+    strands: z.number().int().min(2).max(4),
+    apex: deg,
+    attached: z.boolean(),
+    dots: z.number().int().min(0).max(4),
+    dotSide: deg,
+  }),
+  z.strictObject({ kind: z.literal('lines'), segs: z.array(z.number().int().min(0).max(19)).max(20) }),
+  z.strictObject({ kind: z.literal('cube'), front: face, top: face, right: face }),
+  z.strictObject({
+    kind: z.literal('net'),
+    squares: z.array(z.strictObject({ x: z.number().int().min(0).max(6), y: z.number().int().min(0).max(6), face })).length(6),
+  }),
+  z.strictObject({ kind: z.literal('holes'), holes: z.array(hole).max(16) }),
+  z.strictObject({ kind: z.literal('fold'), folds: z.array(foldKind).max(4), holes: z.array(hole).max(16).optional() }),
+]);
 // Any package's sub-test id; whether it is known is checked after parsing (parseShared).
 const subtest = z.string().regex(/^[A-Z][A-Z0-9-]{1,23}$/, 'id sub-tes tidak valid');
 const difficulty = z.enum(['mudah', 'sedang', 'sulit']);
@@ -66,7 +125,19 @@ const questionSchema = z.object({
   reference: text(500).optional(),
   confidence: z.enum(['high', 'low']).optional(),
   mathExpression: text(300).optional(),
-  figure: z.object({ layout: z.enum(['series', 'analogy', 'matrix', 'transform', 'odd-one-out']), cells: z.array(cell.nullable()).max(9) }).optional(),
+  figure: z.object({ layout: z.enum([...OLD_LAYOUTS, 'single', 'views', 'sum', 'fold']), cells: z.array(cell.nullable()).max(9) }).optional(),
+  figureMeta: z
+    .strictObject({
+      archetype: text(40),
+      families: z.array(text(40)).max(8),
+      signature: text(300),
+      complexity: z.number().int().min(0).max(30),
+      tracks: z
+        .array(z.strictObject({ label: text(120), values: z.array(text(120)).max(12) }))
+        .max(8)
+        .optional(),
+    })
+    .optional(),
   data: z
     .object({
       kind: z.enum(['table', 'bar', 'line', 'pie']),
@@ -148,7 +219,7 @@ export function toShared(name: string, blueprint: Blueprint, questions: Question
   return {
     app: 'cpns-skd-builder',
     kind: 'set',
-    version: skd ? SHARE_VERSION : SHARE_VERSION_PACKAGES,
+    version: shared.some(newFigural) ? SHARE_VERSION_FIGURAL : skd ? SHARE_VERSION : SHARE_VERSION_PACKAGES,
     exportedAt: new Date().toISOString(),
     set: { name, blueprint },
     ...(carried.length ? { packages: carried } : {}),
@@ -165,6 +236,7 @@ export function toShared(name: string, blueprint: Blueprint, questions: Question
       ...(q.confidence ? { confidence: q.confidence } : {}),
       ...(q.mathExpression ? { mathExpression: q.mathExpression } : {}),
       ...(q.figure ? { figure: q.figure } : {}),
+      ...(q.figureMeta ? { figureMeta: q.figureMeta } : {}),
       ...(q.data ? { data: q.data } : {}),
       ...(q.passage ? { passage: q.passage } : {}),
       ...(q.image ? { image: q.image } : {}),
@@ -187,7 +259,7 @@ export function parseShared(raw: unknown): SharedSet {
     );
   }
   const version = (raw as { version?: unknown }).version;
-  if (typeof version === 'number' && version > SHARE_VERSION_PACKAGES) throw new Error('Set ini dibuat oleh versi aplikasi yang lebih baru. Perbarui aplikasi lalu coba lagi.');
+  if (typeof version === 'number' && version > SHARE_VERSION_MAX) throw new Error('Set ini dibuat oleh versi aplikasi yang lebih baru. Perbarui aplikasi lalu coba lagi.');
   const r = fileSchema.safeParse(raw);
   if (!r.success) {
     const i = r.error.issues[0];
@@ -210,6 +282,14 @@ export function parseShared(raw: unknown): SharedSet {
 }
 
 const isSkdSubtest = (s: Subtest) => (SKD_SUBTESTS as string[]).includes(s);
+
+/** Whether a question has figural pictures that versions before SHARE_VERSION_FIGURAL cannot read. */
+export function newFigural(q: Question): boolean {
+  const pics = [...(q.figure?.cells ?? []), ...q.options.map((o) => o.figure)].filter((c) => !!c);
+  if (q.figure && !(OLD_LAYOUTS as readonly string[]).includes(q.figure.layout)) return true;
+  if ((q.figure?.cells.length ?? 0) > 9) return true;
+  return pics.some((c) => !oldCell.safeParse(c).success);
+}
 
 /* ------------------------------------------------------------ bundles */
 
@@ -240,7 +320,7 @@ const bundleSchema = z.object({
 /** Validate a bundle: every set in it is checked like a set received alone. Throws, in Indonesian; stores nothing. */
 export function parseBundle(raw: unknown): SharedBundle {
   const version = (raw as { version?: unknown } | null)?.version;
-  if (typeof version === 'number' && version > SHARE_VERSION_PACKAGES) throw new Error('Bundel ini dibuat oleh versi aplikasi yang lebih baru. Perbarui aplikasi lalu coba lagi.');
+  if (typeof version === 'number' && version > SHARE_VERSION_MAX) throw new Error('Bundel ini dibuat oleh versi aplikasi yang lebih baru. Perbarui aplikasi lalu coba lagi.');
   const r = bundleSchema.safeParse(raw);
   if (!r.success) {
     const i = r.error.issues[0];

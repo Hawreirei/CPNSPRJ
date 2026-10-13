@@ -18,22 +18,140 @@ export type OptionLabel = 'A' | 'B' | 'C' | 'D' | 'E';
 export const OPTION_LABELS: OptionLabel[] = ['A', 'B', 'C', 'D', 'E'];
 
 /** Figural cell used by in-app SVG rendering for TIU figural questions. */
-export type ShapeKind = 'circle' | 'square' | 'triangle' | 'diamond' | 'star' | 'arrow' | 'pentagon';
-export type Fill = 'solid' | 'empty' | 'striped';
+export type ShapeKind = 'circle' | 'square' | 'triangle' | 'diamond' | 'star' | 'arrow' | 'pentagon' | 'hexagon';
+export type Fill = 'solid' | 'empty' | 'striped' | 'dotted';
+/** One shape drawn 1–6 times (the first figural questions, still made for simple rules). */
 export interface FigureCell {
   shape: ShapeKind;
   fill: Fill;
   rotation: number; // degrees
-  count: number; // 1-4 copies of the shape
+  count: number; // 1-6 copies of the shape
 }
+
+/*
+ * Scenes (#figural v2, docs/rancangan-figural-v2.md): a frame with numbered places and a few
+ * objects placed in them, each moving by its own rule. An object is told apart by its glyph, so a
+ * scene never holds two objects with the same glyph.
+ */
+export type GlyphKind =
+  | 'arrow' // panah
+  | 'dblarrow' // panah ganda
+  | 'pin' // pentol
+  | 'tab' // segitiga tempel pada sisi persegi tengah (in: di dalam, out: di luar)
+  | 'dot'
+  | 'ring'
+  | 'square'
+  | 'rect'
+  | 'cross'
+  | 'star'
+  | 'triangle'
+  | 'eq'
+  | 'L'
+  | 'flag'
+  | 'half'
+  | 'wedge' // juring hitam (pie8)
+  | 'swedge'; // juring arsir (pie8)
+/**
+ * plain: a square in the middle, places 0–7 clockwise around it from the top (even: sides,
+ * odd: corners); diag4: four triangles split by the diagonals (0 top, clockwise); quad4: four
+ * quadrants (0 top-left, clockwise); ring8: eight places on a circle; pie8: eight slices.
+ */
+export type FrameKind = 'plain' | 'diag4' | 'quad4' | 'ring8' | 'pie8';
+export interface SceneObject {
+  glyph: GlyphKind;
+  slot: number;
+  /** plain frame: inside or outside the middle square. */
+  anchor?: 'in' | 'out';
+  /** Degrees clockwise from pointing up. */
+  dir?: number;
+  mirrored?: boolean;
+  fill?: Fill;
+  /** pie8 wedges: how many slices. */
+  span?: number;
+}
+export interface SceneCell {
+  kind: 'scene';
+  frame: FrameKind;
+  objects: SceneObject[];
+}
+/** Lines from one point (apex) and dots: attached at the line ends, or in a row along one side. */
+export interface StrokeCell {
+  kind: 'strokes';
+  strands: number; // 2–4
+  /** Where the apex points, degrees (0 up). */
+  apex: number;
+  attached: boolean;
+  dots: number; // 0–4
+  /** Side the detached dots line up on, degrees (0 top). */
+  dotSide: number;
+}
+/** Segments on a 3×3 grid of points (ids from LATTICE_SEGMENTS, 0–19). */
+export interface LinesCell {
+  kind: 'lines';
+  segs: number[];
+}
+/** What is drawn on one face of a cube; `rot` is in quarter turns clockwise. */
+export type FaceSymbol = 'white' | 'black' | 'dot' | 'circle' | 'cross' | 'xcross' | 'arrow' | 'half' | 'corner' | 'bar' | 'star' | 'diamond';
+export interface Face {
+  sym: FaceSymbol;
+  rot: number;
+}
+/** A cube seen from the front-right-top: three faces. */
+export interface CubeCell {
+  kind: 'cube';
+  front: Face;
+  top: Face;
+  right: Face;
+}
+/** A cube net: six squares at grid positions, each with a face. */
+export interface NetCell {
+  kind: 'net';
+  squares: { x: number; y: number; face: Face }[];
+}
+/** A square sheet with holes, on a 4×4 grid of places (0–15, row by row). */
+export interface HolesCell {
+  kind: 'holes';
+  holes: number[];
+}
+/** A folding step: which folds were made so far (each "kanan-ke-kiri" and so on), and holes punched in the last. */
+export interface FoldCell {
+  kind: 'fold';
+  folds: FoldKind[];
+  holes?: number[];
+}
+export type FoldKind = 'R>L' | 'L>R' | 'T>B' | 'B>T' | 'TR>BL' | 'TL>BR';
+/** Any figural picture: a stem cell or an option. The first kind has no `kind`. */
+export type Pic = FigureCell | SceneCell | StrokeCell | LinesCell | CubeCell | NetCell | HolesCell | FoldCell;
+
 export interface Figure {
   /**
    * series: a row of steps; analogy: a : b :: c : ?; matrix: 3×3, row by row; transform: a figure
-   * and its rotated or mirrored result; odd-one-out: no stem figure, the five options are the puzzle.
+   * and its rotated or mirrored result; odd-one-out: no stem figure, the five options are the puzzle;
+   * single: one picture (a cube net, a cube); views: several pictures side by side (cubes);
+   * sum: rows of "a ⊕ b = c", the last ending in "?"; fold: folding steps, the last one punched.
    */
-  layout: 'series' | 'analogy' | 'matrix' | 'transform' | 'odd-one-out';
+  layout: 'series' | 'analogy' | 'matrix' | 'transform' | 'odd-one-out' | 'single' | 'views' | 'sum' | 'fold';
   /** `null` marks the "?" cell. */
-  cells: (FigureCell | null)[];
+  cells: (Pic | null)[];
+}
+
+/** One rule of a figural question, step by step, for "Telusuri pola". */
+export interface FigureTrack {
+  label: string;
+  /** What the rule gives at each step, the "?" step included. */
+  values: string[];
+}
+/** How a figural question was made: for variety across a set, the trace, and practice by rule kind. */
+export interface FigureMeta {
+  /** Recipe, e.g. "orbit", "regions", "cube-net". */
+  archetype: string;
+  /** Kinds of rule used, e.g. "orbit", "alternate", "rotate". */
+  families: string[];
+  /** Archetype and rules without the random looks; equal signatures are the same pattern. */
+  signature: string;
+  /** docs/rancangan-figural-v2.md §3.4. */
+  complexity: number;
+  tracks?: FigureTrack[];
 }
 
 export interface QuestionNote {
@@ -74,7 +192,7 @@ export interface QuestionOption {
   score: number;
   /** TKP: why this option earns its score (asked for on hard questions). */
   rationale?: string;
-  figure?: FigureCell;
+  figure?: Pic;
 }
 
 export type FlagKind =
@@ -136,6 +254,8 @@ export interface Question {
   /** TIU numerical: expression that mathjs evaluates to the correct answer. */
   mathExpression?: string;
   figure?: Figure;
+  /** Procedural figural questions: how they were made (absent on older ones). */
+  figureMeta?: FigureMeta;
   /** TIU data analysis: the numbers the question is about, shown as a table or a chart. */
   data?: DataFigure;
   /**

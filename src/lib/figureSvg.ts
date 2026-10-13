@@ -1,4 +1,6 @@
-import type { Figure, FigureCell, ShapeKind } from '../domain/types';
+import { isLegacy } from '../domain/pic';
+import type { Figure, FigureCell, Pic, ShapeKind } from '../domain/types';
+import { cubeSvg, foldSvg, holesSvg, linesSvg, netSvg, sceneSvg, strokesSvg } from './picSvg';
 
 const pts = (arr: [number, number][]) => arr.map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`).join(' ');
 
@@ -30,6 +32,7 @@ const SHAPES: Record<ShapeKind, string> = {
   ])}"/>`,
   star: `<polygon points="${pts(star())}"/>`,
   pentagon: `<polygon points="${pts(regular(5, 0.95))}"/>`,
+  hexagon: `<polygon points="${pts(regular(6, 0.95))}"/>`,
   arrow: `<polygon points="${pts([
     [0, -1],
     [0.65, -0.15],
@@ -58,20 +61,57 @@ const POSITIONS: Record<number, [number, number][]> = {
     [-0.5, 0.5],
     [0.5, 0.5],
   ],
+  5: [
+    [-0.55, -0.55],
+    [0.55, -0.55],
+    [0, 0],
+    [-0.55, 0.55],
+    [0.55, 0.55],
+  ],
+  6: [
+    [-0.55, -0.6],
+    [0.55, -0.6],
+    [-0.55, 0],
+    [0.55, 0],
+    [-0.55, 0.6],
+    [0.55, 0.6],
+  ],
 };
 
 let seq = 0;
 
-/** SVG markup for one figural cell (used in-app and for exports). */
-export function cellSvg(cell: FigureCell | null, size = 96, color = 'currentColor'): string {
+/** SVG markup for one figural picture (used in-app and for exports); `null` draws the "?". */
+export function cellSvg(cell: Pic | null, size = 96, color = 'currentColor'): string {
+  if (cell && !isLegacy(cell)) {
+    switch (cell.kind) {
+      case 'scene':
+        return sceneSvg(cell, size, color);
+      case 'strokes':
+        return strokesSvg(cell, size, color);
+      case 'lines':
+        return linesSvg(cell, size, color);
+      case 'cube':
+        return cubeSvg(cell, size, color);
+      case 'net':
+        return netSvg(cell, size, color);
+      case 'holes':
+        return holesSvg(cell, size, color);
+      case 'fold':
+        return foldSvg(cell, size, color);
+    }
+  }
+  return legacySvg(cell, size, color);
+}
+
+function legacySvg(cell: FigureCell | null, size: number, color: string): string {
   const id = `h${++seq}`;
   const frame = `<rect x="2" y="2" width="${size - 4}" height="${size - 4}" rx="8" fill="none" stroke="${color}" stroke-opacity="0.25"/>`;
   if (!cell) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${frame}<text x="${size / 2}" y="${size * 0.54}" dominant-baseline="middle" text-anchor="middle" font-size="${size * 0.45}" font-family="sans-serif" fill="${color}">?</text></svg>`;
   }
-  const count = Math.min(4, Math.max(1, cell.count));
-  const scale = count === 1 ? size * 0.32 : size * 0.17;
-  const fill = cell.fill === 'solid' ? color : cell.fill === 'striped' ? `url(#${id})` : 'none';
+  const count = Math.min(6, Math.max(1, cell.count));
+  const scale = count === 1 ? size * 0.32 : count <= 4 ? size * 0.17 : size * 0.13;
+  const fill = cell.fill === 'solid' ? color : cell.fill === 'striped' ? `url(#${id})` : cell.fill === 'dotted' ? `url(#${id}d)` : 'none';
   const shapes = POSITIONS[count]
     .map(([px, py]) => {
       const cx = size / 2 + px * size * 0.5 * 0.8;
@@ -81,41 +121,56 @@ export function cellSvg(cell: FigureCell | null, size = 96, color = 'currentColo
     .join('');
   // The pattern lives in each shape's scaled coordinate space, so express a ~5px hatch in those units.
   const p = 5 / scale;
-  const pattern = `<defs><pattern id="${id}" width="${p.toFixed(3)}" height="${p.toFixed(3)}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="${p.toFixed(3)}" stroke="${color}" stroke-width="${(1.6 / scale).toFixed(3)}"/></pattern></defs>`;
+  const pattern = `<defs><pattern id="${id}" width="${p.toFixed(3)}" height="${p.toFixed(3)}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="${p.toFixed(3)}" stroke="${color}" stroke-width="${(1.6 / scale).toFixed(3)}"/></pattern><pattern id="${id}d" width="${p.toFixed(3)}" height="${p.toFixed(3)}" patternUnits="userSpaceOnUse"><circle cx="${(p / 2).toFixed(3)}" cy="${(p / 2).toFixed(3)}" r="${(1 / scale).toFixed(3)}" fill="${color}"/></pattern></defs>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${pattern}${frame}${shapes}</svg>`;
 }
 
-const inner = (svg: string) => svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
+/** A cell's SVG placed at (x, y) inside a larger drawing. */
+const place = (svg: string, x: number, y: number) => svg.replace(/^<svg /, `<svg x="${x}" y="${y}" `);
+const sign = (t: string, x: number, y: number, color: string, size = 26) =>
+  `<text x="${x}" y="${y}" font-size="${size}" font-family="sans-serif" text-anchor="middle" dominant-baseline="middle" fill="${color}">${t}</text>`;
 
-/** Whole stem figure as one SVG: cells in a row ("::" between analogy pairs, "→" for a transform), or a 3×3 grid. */
+/**
+ * Whole stem figure as one SVG: cells in a row ("::" between analogy pairs, "→" after a transform's
+ * figure and between folding steps), a 3×3 grid, or rows of "a + b = c".
+ */
 export function figureSvg(fig: Figure, cellSize = 96, color = 'currentColor'): string {
   const gap = 16;
   const parts: string[] = [];
+  const svg = (w: number, h: number) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${parts.join('')}</svg>`;
   if (fig.layout === 'matrix') {
     const g = 8;
-    fig.cells.forEach((c, i) => {
-      const x = (i % 3) * (cellSize + g);
-      const y = Math.floor(i / 3) * (cellSize + g);
-      parts.push(`<g transform="translate(${x} ${y})">${inner(cellSvg(c, cellSize, color))}</g>`);
-    });
+    fig.cells.forEach((c, i) => parts.push(place(cellSvg(c, cellSize, color), (i % 3) * (cellSize + g), Math.floor(i / 3) * (cellSize + g))));
     const side = 3 * cellSize + 2 * g;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 ${side} ${side}">${parts.join('')}</svg>`;
+    return svg(side, side);
   }
+  if (fig.layout === 'sum') {
+    // Rows of three: a, b and their combination; the signs sit in 32px gutters.
+    const rows = Math.ceil(fig.cells.length / 3);
+    const w = 3 * cellSize + 64;
+    fig.cells.forEach((c, i) => {
+      const col = i % 3;
+      const y = Math.floor(i / 3) * (cellSize + 12);
+      parts.push(place(cellSvg(c, cellSize, color), col * (cellSize + 32), y));
+      if (col < 2) parts.push(sign(col === 0 ? '+' : '=', col * (cellSize + 32) + cellSize + 16, y + cellSize / 2, color));
+    });
+    return svg(w, rows * (cellSize + 12) - 12);
+  }
+  const size = fig.layout === 'single' ? Math.round(cellSize * 1.8) : cellSize;
   let x = 0;
   fig.cells.forEach((c, i) => {
     if (fig.layout === 'analogy' && i === 2) {
-      parts.push(`<text x="${x + 6}" y="${cellSize / 2 + 8}" font-size="24" font-family="sans-serif" fill="${color}">::</text>`);
+      parts.push(sign('::', x + 12, size / 2, color, 24));
       x += 28;
     }
-    if (fig.layout === 'transform' && i === 1) {
-      parts.push(`<text x="${x + 4}" y="${cellSize / 2 + 9}" font-size="28" font-family="sans-serif" fill="${color}">→</text>`);
+    if ((fig.layout === 'transform' && i === 1) || (fig.layout === 'fold' && i > 0)) {
+      parts.push(sign('→', x + 14, size / 2, color, 28));
       x += 36;
     }
-    parts.push(`<g transform="translate(${x} 0)">${inner(cellSvg(c, cellSize, color))}</g>`);
-    x += cellSize + gap;
+    parts.push(place(cellSvg(c, size, color), x, 0));
+    x += size + gap;
   });
-  const width = x - gap;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${cellSize}" viewBox="0 0 ${width} ${cellSize}">${parts.join('')}</svg>`;
+  return svg(x - gap, size);
 }
 
 /** Whether a question has a figure in its stem (odd-one-out puzzles show theirs in the options only). */

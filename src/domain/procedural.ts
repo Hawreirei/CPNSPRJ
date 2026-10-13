@@ -1,10 +1,10 @@
 import { DATA_TOPIC, generateDataAnalysis } from './dataAnalysis';
-import { generateFigural } from './figural';
+import { generateFigural, type FiguralOptions } from './figural';
 import type { Difficulty, Question } from './types';
 
 /** Questions the app draws itself (figural and data analysis): no AI, and keys that are always right. */
-export function generateProcedural(topic: string, difficulty: Difficulty, count: number): Question[] {
-  if (topic !== DATA_TOPIC) return generateFigural(topic, difficulty, count);
+export function generateProcedural(topic: string, difficulty: Difficulty, count: number, opts: FiguralOptions = {}): Question[] {
+  if (topic !== DATA_TOPIC) return generateFigural(topic, difficulty, count, opts);
   const out: Question[] = [];
   const seen = new Set<string>();
   for (let tries = 0; out.length < count && tries < count * 10; tries++) {

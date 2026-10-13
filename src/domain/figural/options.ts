@@ -48,7 +48,7 @@ export function pickOptions<T>(answer: T, preferred: T[], pool: T[], r: Rand, p:
   const all = [answer, ...list.map((c) => c.x)];
   const d = all.map((a) => all.map((b) => (a === b ? 0 : p.distance(a, b))));
   const target = Math.floor(r() * 5);
-  const wantPref = Math.min(2, prefs.length);
+  const wantPref = Math.min(3, prefs.length);
   let best: number[][] = [];
   let bestCost = Infinity;
   for (let a = 0; a < n; a++)
@@ -61,7 +61,8 @@ export function pickOptions<T>(answer: T, preferred: T[], pool: T[], r: Rand, p:
           const ties = tot.filter((t) => t === tot[0]).length - 1;
           const rankCost = target < less ? less - target : target > less + ties ? target - less - ties : 0;
           const prefCount = [a, b, c, e].filter((i) => list[i].pref).length;
-          const cost = rankCost * 10 + Math.max(0, wantPref - prefCount);
+          // The key's rank comes first; within one step of it, keep the lures a learner would fall for.
+          const cost = rankCost * 4 + Math.max(0, wantPref - prefCount) * 3;
           if (cost < bestCost) {
             bestCost = cost;
             best = [idx];

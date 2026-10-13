@@ -3,6 +3,7 @@ import { computeResult, scoreQuestion, weakTopics } from '../domain/scoring';
 import { loadMath, parseNumeric, evaluateExpression } from '../domain/numeric';
 import { checkTkp, explainedOption, validateQuestion } from '../domain/validators';
 import { generateFigural, generateFiguralAnalogy, generateFiguralSeries } from '../domain/figural';
+import { picKey } from '../domain/pic';
 import { extractJson, parseAiQuestions } from '../domain/schemas';
 import { buildPrompt } from '../domain/prompts';
 import { planBatches, estimatePlan, isProcedural } from '../engine/plan';
@@ -161,7 +162,7 @@ describe('figural generator', () => {
     for (let i = 0; i < 200; i++) {
       for (const q of [generateFiguralSeries(['mudah', 'sedang', 'sulit'][i % 3] as 'mudah'), generateFiguralAnalogy(['mudah', 'sedang', 'sulit'][i % 3] as 'mudah')]) {
         expect(q.options).toHaveLength(5);
-        const keys = new Set(q.options.map((o) => JSON.stringify({ ...o.figure, rotation: ((o.figure!.rotation % 360) + 360) % 360 })));
+        const keys = new Set(q.options.map((o) => picKey(o.figure!)));
         expect(keys.size).toBe(5);
         expect(q.options.filter((o) => o.score === 5)).toHaveLength(1);
         expect(q.options.find((o) => o.score === 5)?.label).toBe(q.answer);

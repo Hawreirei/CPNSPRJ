@@ -111,6 +111,16 @@ async function recentStems(subtest: string, topics: string[]): Promise<string[]>
 // The figural and data generators are only needed while questions are being made.
 const procedural = () => import('../domain/procedural');
 
+/** Patterns of the latest figural questions of a topic in the bank, newest first, so new ones differ. */
+async function recentFigural(topic: string): Promise<string[]> {
+  const rows = await db.questions.where('topic').equals(topic).toArray();
+  return rows
+    .filter((q) => q.figureMeta)
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, 200)
+    .map((q) => q.figureMeta!.signature);
+}
+
 /**
  * Where the next question of a reply goes: its sub-test (named by the question, or the first
  * one still short when it names none), the batch it fills, and the planned slot (topic and
@@ -225,7 +235,10 @@ async function fetchGroup(
   const onUsage = (i: number, o: number) => addUsage(set.id, i, o);
   if (group.length === 1) {
     const batch = group[0];
-    if (isProcedural(batch)) return { questions: [(await procedural()).generateProcedural(batch.items[0].topic, batch.items[0].difficulty, batch.count)], stored: false };
+    if (isProcedural(batch)) {
+      const topic = batch.items[0].topic;
+      return { questions: [(await procedural()).generateProcedural(topic, batch.items[0].difficulty, batch.count, { recent: await recentFigural(topic) })], stored: false };
+    }
     if (!session) throw new Error('Belum ada API key.');
     if (isPassageBatch(batch)) {
       // A passage and its questions are checked together, so they are stored together.
@@ -489,7 +502,12 @@ export async function moreLikeThis(setId: string, q: Question, count: number, ke
   let questions: Question[];
   const difficulty = opts.easier ? easier(q.difficulty) : q.difficulty;
   if (q.source === 'procedural') {
-    questions = (await procedural()).generateProcedural(q.topic, difficulty, count);
+    // The same recipe and kinds of rule, with new settings and looks.
+    const meta = q.figureMeta;
+    questions = (await procedural()).generateProcedural(q.topic, difficulty, count, {
+      recent: [...(meta ? [meta.signature] : []), ...(await recentFigural(q.topic))],
+      ...(meta ? { archetypes: [meta.archetype] } : {}),
+    });
   } else {
     const session = await openSession(keyId);
     const items = Array.from({ length: count }, () => ({ topic: q.topic, difficulty }));

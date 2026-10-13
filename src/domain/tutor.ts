@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { describeCell, describeData, describeFigure } from './describe';
+import { describeData, describeFigure, describePic } from './describe';
 import { extractJson } from './schemas';
 import type { OptionLabel, Question } from './types';
 import { isGraded } from './examPackage';
@@ -46,7 +46,7 @@ export function tutorContext(q: Question, userAnswer?: OptionLabel): string {
       q.options
         .map(
           (o) =>
-            `${o.label}. ${o.figure ? `[gambar: ${describeCell(o.figure)}]` : o.text}${isGraded(q.subtest) ? ` (skor ${o.score}${o.rationale ? `: ${o.rationale}` : ''})` : ''}`,
+            `${o.label}. ${o.figure ? `[gambar: ${describePic(o.figure)}]` : o.text}${isGraded(q.subtest) ? ` (skor ${o.score}${o.rationale ? `: ${o.rationale}` : ''})` : ''}`,
         )
         .join('\n'),
   );
