@@ -9,7 +9,8 @@ import { ExamPackages } from '../components/ExamPackages';
 import { CrossCheckEditor } from '../components/CrossCheckEditor';
 import { StudyPlanEditor } from '../components/StudyPlanEditor';
 import { StorageCard } from '../components/StorageCard';
-import { autoBackupNow, chooseBackupFile, downloadBackup, isAutoBackupSupported, stopAutoBackup } from '../lib/autoBackup';
+import { BackupButtons } from '../components/BackupButtons';
+import { autoBackupNow, chooseBackupFile, isAutoBackupSupported, stopAutoBackup } from '../lib/autoBackup';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
 import { SUBTESTS } from '../domain/types';
 import { DEFAULT_PRICES } from '../providers/types';
@@ -179,16 +180,14 @@ export default function SettingsPage() {
             </p>
             <LastBackup />
             <div className="flex flex-wrap gap-2">
-              <button className="btn btn-primary" onClick={() => void downloadBackup()}>
-                Unduh cadangan
-              </button>
+              <BackupButtons />
               <button className="btn" onClick={() => fileRef.current?.click()}>
                 Pulihkan dari file
               </button>
               <input
                 ref={fileRef}
                 type="file"
-                accept="application/json,.json"
+                accept="application/json,.json,text/plain,.txt"
                 className="hidden"
                 onChange={async (e) => {
                   const f = e.target.files?.[0];

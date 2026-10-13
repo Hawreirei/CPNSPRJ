@@ -42,3 +42,55 @@ export function setupPwa() {
     },
   });
 }
+
+/** The browser's install offer (Chrome, Edge, Samsung Internet), kept for an "install" button. */
+interface InstallPrompt extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+let installPrompt: InstallPrompt | null = null;
+const installListeners = new Set<() => void>();
+
+/** Opened from the home screen or as an installed app: browsers keep such an app's data longer, and Safari never clears it after a week. */
+export function isInstalled(): boolean {
+  try {
+    return window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Keep the install offer instead of the browser's own banner, so the storage tip can make it. */
+export function setupInstallPrompt() {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    installPrompt = e as InstallPrompt;
+    installListeners.forEach((l) => l());
+  });
+  window.addEventListener('appinstalled', () => {
+    installPrompt = null;
+    installListeners.forEach((l) => l());
+  });
+}
+
+/** Whether "Pasang aplikasi" can open the browser's install dialog right now. */
+export function useCanInstall(): boolean {
+  return useSyncExternalStore(
+    (l) => {
+      installListeners.add(l);
+      return () => installListeners.delete(l);
+    },
+    () => installPrompt !== null,
+  );
+}
+
+/** Show the browser's install dialog; true when the learner installed the app. */
+export async function promptInstall(): Promise<boolean> {
+  const p = installPrompt;
+  if (!p) return false;
+  await p.prompt();
+  const { outcome } = await p.userChoice;
+  installPrompt = null;
+  installListeners.forEach((l) => l());
+  return outcome === 'accepted';
+}

@@ -1,10 +1,10 @@
 import 'fake-indexeddb/auto';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db, saveSettings } from '../db';
 import { exportBackup, getBackupState, importBackup, markBackedUp, snoozeBackupReminder, updateBackupState } from '../db/backup';
-import { backupReminder, fmtAgo, REMIND_AFTER_DAYS } from '../domain/backupReminder';
+import { backupReminder, fmtAgo, PERSIST_TIP_HIDE_DAYS, persistTip, REMIND_AFTER_DAYS, SNOOZE_DAYS } from '../domain/backupReminder';
 import type { Attempt } from '../domain/types';
-import { isAutoBackupSupported, lastChangeAt, recordAutoResult, setupAutoBackup, writeBackupTo } from '../lib/autoBackup';
+import { canShareBackup, isAutoBackupSupported, lastChangeAt, recordAutoResult, setupAutoBackup, shareBackup, writeBackupTo } from '../lib/autoBackup';
 
 const DAY = 86_400_000;
 const NOW = new Date(2026, 9, 8, 12).getTime();
@@ -40,12 +40,47 @@ describe('backup reminder rule', () => {
     expect(r({ ...due, snoozedUntil: NOW - 1 })).not.toBeNull();
   });
 
+  it('reminds as soon as an exam or practice is finished after the last backup', () => {
+    const backedUp = { lastBackupAt: NOW - DAY, setCreatedAt: [NOW - 30 * DAY] };
+    expect(r({ ...backedUp, finishedAt: [NOW - 2 * DAY] })).toBeNull();
+    expect(r({ ...backedUp, finishedAt: [NOW - 2 * DAY, NOW - 3600] })).toMatchObject({ reason: 'attempts', newAttempts: 1 });
+    expect(r({ ...backedUp, finishedAt: [NOW - 7200, NOW - 3600] })).toMatchObject({ reason: 'attempts', newAttempts: 2 });
+    // Never backed up: the first finished exam is enough, even right after the first set.
+    expect(r({ setCreatedAt: [NOW - 3600], finishedAt: [NOW - 60] })).toMatchObject({ reason: 'attempts', newAttempts: 1 });
+    // Three new sets still say so first.
+    expect(r({ lastBackupAt: NOW - DAY, setCreatedAt: [NOW - 3, NOW - 2, NOW - 1], finishedAt: [NOW] })).toMatchObject({ reason: 'sets', newAttempts: 1 });
+  });
+
+  it('lets a finished exam end a snooze early, but nothing else', () => {
+    const snoozedUntil = NOW + (SNOOZE_DAYS - 1) * DAY; // "Nanti" pressed a day ago
+    const due = { lastBackupAt: NOW - 30 * DAY, setCreatedAt: [NOW - 40 * DAY], snoozedUntil };
+    expect(r({ ...due, finishedAt: [NOW - 2 * DAY] })).toBeNull();
+    expect(r({ ...due, finishedAt: [NOW - 3600] })).toMatchObject({ reason: 'attempts' });
+  });
+
   it('formats elapsed time', () => {
     expect(fmtAgo(NOW - 10_000, NOW)).toBe('baru saja');
     expect(fmtAgo(NOW - 5 * 60_000, NOW)).toBe('5 menit lalu');
     expect(fmtAgo(NOW - 3 * 3_600_000, NOW)).toBe('3 jam lalu');
     expect(fmtAgo(NOW - DAY, NOW)).toBe('kemarin');
     expect(fmtAgo(NOW - 4 * DAY, NOW)).toBe('4 hari lalu');
+  });
+});
+
+describe('tip to install the app when storage is not persistent', () => {
+  const tip = (o: Partial<Parameters<typeof persistTip>[0]>) => persistTip({ persisted: false, installed: false, hasData: true, now: NOW, ...o });
+
+  it('shows only when the browser says it may clear the data, there is data, and the app is not installed', () => {
+    expect(tip({})).toBe(true);
+    expect(tip({ persisted: true })).toBe(false);
+    expect(tip({ persisted: null })).toBe(false);
+    expect(tip({ installed: true })).toBe(false);
+    expect(tip({ hasData: false })).toBe(false);
+  });
+
+  it('stays hidden for a while after "Mengerti", then comes back', () => {
+    expect(tip({ dismissedAt: NOW - DAY })).toBe(false);
+    expect(tip({ dismissedAt: NOW - PERSIST_TIP_HIDE_DAYS * DAY })).toBe(true);
   });
 });
 
@@ -202,5 +237,65 @@ describe('change tracking', () => {
     store.clear();
     await db.reviews.add({ questionId: 'q1', due: 0, interval: 0, ease: 2.5, reps: 0, lapses: 0, reasonTags: [], addedAt: 0 });
     expect(lastChangeAt()).toBeGreaterThan(0);
+  });
+});
+
+describe('sending a backup through the share sheet', () => {
+  /** A phone browser's share sheet: which file types it takes, and what the learner does with it. */
+  function fakeShare({ types = ['application/json', 'text/plain'], outcome = 'shared' }: { types?: string[]; outcome?: 'shared' | 'closed' | 'broken' } = {}) {
+    const shared: File[] = [];
+    vi.stubGlobal('navigator', {
+      canShare: ({ files }: { files: File[] }) => files.every((f) => types.includes(f.type)),
+      share: async ({ files }: { files: File[] }) => {
+        if (outcome === 'closed') throw Object.assign(new Error('Share canceled'), { name: 'AbortError' });
+        if (outcome === 'broken') throw new Error('Share failed');
+        shared.push(...files);
+      },
+    });
+    return shared;
+  }
+
+  beforeEach(async () => {
+    await db.meta.delete('backup');
+    await db.sets.clear();
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('is not offered where the browser cannot share files', () => {
+    vi.stubGlobal('navigator', {});
+    expect(canShareBackup()).toBe(false);
+    fakeShare({ types: [] });
+    expect(canShareBackup()).toBe(false);
+  });
+
+  it('shares the backup file and counts it as a backup', async () => {
+    const shared = fakeShare();
+    expect(canShareBackup()).toBe(true);
+    expect(await shareBackup()).toBe(true);
+    expect(shared.map((f) => f.name)).toEqual([expect.stringMatching(/^skd-backup-\d{4}-\d{2}-\d{2}\.json$/)]);
+    expect((await getBackupState()).lastBackupKind).toBe('manual');
+  });
+
+  it('falls back to .txt where JSON cannot be shared (Chrome on Android), and that file restores', async () => {
+    await db.sets.put({ id: 's-share', name: 'Set dibagikan' } as never);
+    const shared = fakeShare({ types: ['text/plain'] });
+    expect(await shareBackup()).toBe(true);
+    expect(shared[0].name).toMatch(/\.txt$/);
+    expect(shared[0].type).toBe('text/plain');
+    await db.sets.clear();
+    expect((await importBackup(shared[0])).sets).toBe(1);
+    expect((await db.sets.get('s-share'))?.name).toBe('Set dibagikan');
+  });
+
+  it('does not count a closed share sheet as a backup', async () => {
+    fakeShare({ outcome: 'closed' });
+    expect(await shareBackup()).toBe(false);
+    expect((await getBackupState()).lastBackupAt).toBeUndefined();
+  });
+
+  it('reports a failed share', async () => {
+    fakeShare({ outcome: 'broken' });
+    await expect(shareBackup()).rejects.toThrow('Share failed');
+    expect((await getBackupState()).lastBackupAt).toBeUndefined();
   });
 });
