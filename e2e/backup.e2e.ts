@@ -201,6 +201,8 @@ test.describe('saving to a file automatically', () => {
     // Next visit: the browser wants permission again. Nothing is written until the user allows it.
     await page.evaluate(() => localStorage.setItem('e2e-permission', 'prompt'));
     await page.reload();
+    // Fill only once the stored name is shown: filling first lets it load into the field after the text was selected.
+    await expect(brand).toHaveValue('Bimbel Otomatis');
     await page.clock.install({ time: Date.now() + 2 * 60_000 });
     await brand.fill('Bimbel Izin');
     await page.clock.runFor(5_000);
@@ -220,6 +222,7 @@ test.describe('saving to a file automatically', () => {
     });
     await page.goto('#/settings');
     await page.reload();
+    await expect(brand).toHaveValue('Bimbel Izin');
     await page.clock.install({ time: Date.now() + 3 * 60_000 });
     await brand.fill('Bimbel Pindah');
     await page.clock.runFor(5_000);
