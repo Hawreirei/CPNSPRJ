@@ -1,7 +1,23 @@
 import { describeCell, FILL_NAMES, SHAPE_NAMES } from '../describe';
 import { dirName, norm, picKey } from '../pic';
 import type { Difficulty, FigureCell, Fill, Pic, Question, ShapeKind } from '../types';
-import { chance, chooseOptions, pick, randInt, stemFor, toQuestion, type Archetype, type Draft, type Lure, type Rand } from './build';
+import {
+  chance,
+  chooseOptions,
+  pick,
+  randInt,
+  stemFor,
+  toQuestion,
+  verifyAnalogy,
+  verifyDistinct,
+  verifyMatrix,
+  verifyOdd,
+  verifySeries,
+  type Archetype,
+  type Draft,
+  type Lure,
+  type Rand,
+} from './build';
 import { picDistance, picFeats, termFeats } from './features';
 import { judgeAnalogy, judgeMatrix, judgeSeries, oddOnes } from './solver';
 
@@ -643,6 +659,19 @@ function makeTransform(diff: Difficulty, r: Rand): Draft | null {
 }
 const isMirror = (k: TransformKey) => k.startsWith('mirror');
 
+/** The key is the stated steps applied to the arrow, read back from the stem. */
+function verifyArrowTransform(q: Question): boolean {
+  const [source] = (q.figure?.cells ?? []) as FigureCell[];
+  const steps = q.figureMeta?.signature.split('|')[1]?.split('+') as TransformKey[] | undefined;
+  if (!source || !steps?.every((k) => k in TRANSFORMS) || !q.stem.includes(transformName(steps))) return false;
+  const key = q.options.find((o) => o.label === q.answer)?.figure as FigureCell | undefined;
+  return (
+    !!key &&
+    norm(key.rotation) === applyTransforms(steps, source.rotation) &&
+    q.options.filter((o) => norm((o.figure as FigureCell).rotation) === norm(key.rotation) && picKey(o.figure!) === picKey(key)).length === 1
+  );
+}
+
 /* --------------------------------------------------------------- odd one out */
 
 type OddAttr = 'shape' | 'fill' | 'count';
@@ -713,6 +742,7 @@ export const GLYPH_ARCHETYPES: Archetype[] = [
     ],
     levels: ['mudah', 'sedang', 'sulit'],
     make: makeSeries,
+    verify: verifySeries(),
   },
   {
     id: 'glyph-analogy',
@@ -727,6 +757,7 @@ export const GLYPH_ARCHETYPES: Archetype[] = [
     ],
     levels: ['mudah', 'sedang', 'sulit'],
     make: makeAnalogy,
+    verify: verifyAnalogy,
   },
   {
     id: 'glyph-matrix',
@@ -736,6 +767,7 @@ export const GLYPH_ARCHETYPES: Archetype[] = [
     families: [],
     levels: ['mudah', 'sedang', 'sulit'],
     make: (d, r) => makeMatrix(d, r),
+    verify: verifyMatrix,
   },
   {
     id: 'glyph-transform',
@@ -745,6 +777,7 @@ export const GLYPH_ARCHETYPES: Archetype[] = [
     families: [],
     levels: ['mudah', 'sedang', 'sulit'],
     make: (d, r) => makeTransform(d, r),
+    verify: (q) => verifyDistinct(q) && verifyArrowTransform(q),
   },
   {
     id: 'glyph-odd',
@@ -754,6 +787,7 @@ export const GLYPH_ARCHETYPES: Archetype[] = [
     families: [],
     levels: ['mudah', 'sedang', 'sulit'],
     make: (d, r) => makeOdd(d, r),
+    verify: verifyOdd,
   },
 ];
 

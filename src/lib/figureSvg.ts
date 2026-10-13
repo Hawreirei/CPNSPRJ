@@ -121,7 +121,7 @@ function legacySvg(cell: FigureCell | null, size: number, color: string): string
     .join('');
   // The pattern lives in each shape's scaled coordinate space, so express a ~5px hatch in those units.
   const p = 5 / scale;
-  const pattern = `<defs><pattern id="${id}" width="${p.toFixed(3)}" height="${p.toFixed(3)}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="${p.toFixed(3)}" stroke="${color}" stroke-width="${(1.6 / scale).toFixed(3)}"/></pattern><pattern id="${id}d" width="${p.toFixed(3)}" height="${p.toFixed(3)}" patternUnits="userSpaceOnUse"><circle cx="${(p / 2).toFixed(3)}" cy="${(p / 2).toFixed(3)}" r="${(1 / scale).toFixed(3)}" fill="${color}"/></pattern></defs>`;
+  const pattern = `<defs><pattern id="${id}" width="${p.toFixed(3)}" height="${p.toFixed(3)}" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="${p.toFixed(3)}" stroke="${color}" stroke-width="${(1.6 / scale).toFixed(3)}"/></pattern><pattern id="${id}d" width="${(p * 0.9).toFixed(3)}" height="${(p * 0.9).toFixed(3)}" patternUnits="userSpaceOnUse"><circle cx="${(p * 0.45).toFixed(3)}" cy="${(p * 0.45).toFixed(3)}" r="${(1.4 / scale).toFixed(3)}" fill="${color}"/></pattern></defs>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${pattern}${frame}${shapes}</svg>`;
 }
 

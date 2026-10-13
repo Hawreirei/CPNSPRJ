@@ -33,14 +33,16 @@ function describeObject(scene: SceneCell, o: SceneObject): string {
   const canon = canonPose(o.glyph, o.dir, o.mirrored);
   const pose = ORIENTED.includes(o.glyph)
     ? ` menghadap ${dirName(o.dir ?? 0)}${canon.mirrored ? ', terbalik cermin' : ''}`
-    : canon.dir
-      ? o.glyph === 'rect' || o.glyph === 'eq'
-        ? ' tegak'
-        : ` diputar ${canon.dir}°`
-      : o.glyph === 'rect' || o.glyph === 'eq'
+    : o.glyph === 'rect' || o.glyph === 'eq'
+      ? canon.dir === 0
         ? ' mendatar'
+        : canon.dir === 90
+          ? ' tegak'
+          : ` miring ${canon.dir}°`
+      : canon.dir
+        ? ` diputar ${canon.dir}°`
         : '';
-  const anchor = o.anchor && (o.glyph === 'arrow' || o.glyph === 'dot') && scene.frame === 'plain' ? (o.anchor === 'in' ? ' (di dalam persegi)' : ' (di luar persegi)') : '';
+  const anchor = o.anchor && scene.frame === 'plain' ? (o.anchor === 'in' ? ' (di dalam persegi)' : ' (di luar persegi)') : '';
   return `${name}${pose} di ${where}${anchor}`;
 }
 

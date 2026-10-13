@@ -3,7 +3,8 @@ import { describePic } from '../describe';
 import { picKey } from '../pic';
 import { OPTION_LABELS } from '../types';
 import type { Difficulty, Figure, FigureMeta, OptionLabel, Pic, Question } from '../types';
-import { PIC_PICKER } from './features';
+import { PIC_PICKER, picFeats, termFeats } from './features';
+import { judgeAnalogy, judgeMatrix, judgeSeries, oddOnes, type Extract } from './solver';
 import { pickOptions, type Rand } from './options';
 
 export type { Rand };
@@ -41,7 +42,30 @@ export interface Archetype {
   levels: Difficulty[];
   /** Null when this attempt did not work out; the caller tries again. */
   make: (difficulty: Difficulty, r: Rand, want?: string[]) => Draft | null;
+  /** Judges a finished question again from its pictures alone (tests, and questions from elsewhere). */
+  verify: (q: Question) => boolean;
 }
+
+const keyOf = (q: Question) => q.options.findIndex((o) => o.label === q.answer);
+const optionPics = (q: Question) => q.options.map((o) => o.figure).filter((p): p is Pic => !!p);
+
+/** A series question read term by term. */
+export const verifySeries =
+  (extract: Extract<Pic> = termFeats) =>
+  (q: Question) =>
+    !!q.figure && q.figure.layout === 'series' && optionPics(q).length === 5 && judgeSeries<Pic>(q.figure.cells, optionPics(q), keyOf(q), extract).ok;
+/** a : b :: c : ? */
+export const verifyAnalogy = (q: Question) =>
+  !!q.figure && q.figure.layout === 'analogy' && judgeAnalogy<Pic>([[q.figure.cells[0]!, q.figure.cells[1]!]], q.figure.cells[2]!, optionPics(q), keyOf(q), picFeats).ok;
+/** A 3×3 grid. */
+export const verifyMatrix = (q: Question) => !!q.figure && q.figure.layout === 'matrix' && judgeMatrix<Pic>(q.figure.cells, optionPics(q), keyOf(q), picFeats).ok;
+/** Exactly the key is singled out by some property. */
+export const verifyOdd = (q: Question) => {
+  const outs = oddOnes<Pic>(optionPics(q), picFeats);
+  return outs.length === 1 && outs[0] === keyOf(q);
+};
+/** Five different pictures and one key: for recipes whose answer follows from the stem's own words. */
+export const verifyDistinct = (q: Question) => new Set(optionPics(q).map(picKey)).size === 5 && keyOf(q) >= 0;
 
 export const pick = <T>(arr: readonly T[], r: Rand): T => arr[Math.floor(r() * arr.length)];
 export const chance = (p: number, r: Rand) => r() < p;

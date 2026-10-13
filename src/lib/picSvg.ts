@@ -20,7 +20,7 @@ function wrap(body: string, size: number, color: string, defs = ''): string {
 function patterns(id: string, color: string): string {
   return (
     `<defs><pattern id="${id}s" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="${color}" stroke-width="1.3"/></pattern>` +
-    `<pattern id="${id}d" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="0.9" fill="${color}"/></pattern></defs>`
+    `<pattern id="${id}d" width="4.5" height="4.5" patternUnits="userSpaceOnUse"><circle cx="2.25" cy="2.25" r="1.35" fill="${color}"/></pattern></defs>`
   );
 }
 const paint = (fill: Fill | undefined, id: string, color: string, dflt: Fill = 'solid') => {
@@ -99,10 +99,11 @@ function slotPoint(frame: SceneCell['frame'], slot: number, anchor?: 'in' | 'out
   const a = (slotAngle(frame, slot) * Math.PI) / 180;
   const at = (r: number): [number, number] => [50 + r * Math.sin(a), 50 - r * Math.cos(a)];
   if (frame === 'plain') {
-    // Around the middle square (30–70): sides at the middle of each side, corners diagonally.
+    // Around the middle square (25–75): sides at the middle of each side, corners diagonally.
+    // Inside, objects sit in the corners, clear of the triangles on the sides.
     const corner = slot % 2 === 1;
-    if (anchor === 'in') return corner ? at(16 * Math.SQRT2 * 0.9) : at(11);
-    return corner ? at(34 * Math.SQRT2 * 0.92) : at(34);
+    if (anchor === 'in') return corner ? at(17 * Math.SQRT2) : at(12);
+    return corner ? at(37 * Math.SQRT2) : at(38);
   }
   if (frame === 'diag4') return at(28);
   if (frame === 'quad4') return at(22 * Math.SQRT2);
@@ -116,14 +117,14 @@ function tabMarkup(o: SceneObject, color: string): string {
   const out = o.anchor === 'out';
   const tri = out
     ? [
-        [-10, -20],
-        [10, -20],
-        [0, -32],
+        [-8, -25],
+        [8, -25],
+        [0, -36],
       ]
     : [
-        [-10, -20],
-        [10, -20],
-        [0, -8],
+        [-8, -25],
+        [8, -25],
+        [0, -14],
       ];
   return `<g transform="translate(50 50) rotate(${side})"><polygon points="${pts(tri as [number, number][])}" fill="${color}" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/></g>`;
 }
@@ -140,13 +141,13 @@ function wedgeMarkup(o: SceneObject, id: string, color: string): string {
   return `<path d="M50 50L${f1(p0[0])} ${f1(p0[1])}A${r} ${r} 0 ${span > 4 ? 1 : 0} 1 ${f1(p1[0])} ${f1(p1[1])}Z" fill="${fill}" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>`;
 }
 
-const GLYPH_SIZE: Record<SceneCell['frame'], number> = { plain: 9, diag4: 9, quad4: 12, ring8: 8, pie8: 8 };
+const GLYPH_SIZE: Record<SceneCell['frame'], number> = { plain: 10, diag4: 11, quad4: 13, ring8: 10, pie8: 8 };
 
 export function sceneSvg(c: SceneCell, size: number, color: string): string {
   const id = `s${++seq}`;
   const parts: string[] = [];
   const thin = `fill="none" stroke="${color}" stroke-width="1.6"`;
-  if (c.frame === 'plain') parts.push(`<rect x="30" y="30" width="40" height="40" ${thin}/>`);
+  if (c.frame === 'plain') parts.push(`<rect x="25" y="25" width="50" height="50" ${thin}/>`);
   if (c.frame === 'diag4') parts.push(`<rect x="8" y="8" width="84" height="84" ${thin}/><path ${thin} d="M8 8L92 92M92 8L8 92"/>`);
   if (c.frame === 'quad4') parts.push(`<rect x="8" y="8" width="84" height="84" ${thin}/><path ${thin} d="M50 8V92M8 50H92"/>`);
   if (c.frame === 'ring8') parts.push(`<circle cx="50" cy="50" r="33" fill="none" stroke="${color}" stroke-opacity="0.45" stroke-width="1.2"/>`);
@@ -165,7 +166,7 @@ export function sceneSvg(c: SceneCell, size: number, color: string): string {
       continue;
     }
     const [x, y] = slotPoint(c.frame, o.slot, o.anchor);
-    const s = GLYPH_SIZE[c.frame] * (o.anchor === 'in' ? 0.85 : 1);
+    const s = GLYPH_SIZE[c.frame] * (o.anchor === 'in' ? 0.6 : 1);
     const mirror = o.mirrored ? ' scale(-1 1)' : '';
     parts.push(
       `<g transform="translate(${f1(x)} ${f1(y)}) rotate(${norm(o.dir ?? 0)})${mirror} scale(${s})">${glyphMarkup(o.glyph, paint(o.fill, id, color), color, 1.5 / s)}</g>`,
