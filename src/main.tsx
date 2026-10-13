@@ -7,7 +7,7 @@ import { revalidateStored } from './engine/revalidate';
 import { getSettings, requestPersistence } from './db';
 import { pruneRequestLog } from './engine/quota';
 import { setupAutoBackup } from './lib/autoBackup';
-import { setupPwa } from './lib/pwa';
+import { setupInstallPrompt, setupPwa } from './lib/pwa';
 import { applyTextSize, applyTheme, watchSystemTheme } from './lib/theme';
 import { setupErrorLog } from './lib/errorLog';
 import { noteFirstVersion } from './lib/whatsNew';
@@ -24,6 +24,7 @@ void requestPersistence();
 void pruneRequestLog();
 setupErrorLog();
 setupPwa();
+setupInstallPrompt();
 setupAutoBackup();
 
 function whenIdle(fn: () => void) {

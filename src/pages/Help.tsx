@@ -5,9 +5,11 @@ import { CHANGELOG } from '../data/changelog';
 export default function Help() {
   const [params] = useSearchParams();
   const changes = useRef<HTMLElement>(null);
-  // "Riwayat perubahan" links here from the dashboard card and Pengaturan.
+  const keep = useRef<HTMLElement>(null);
+  // "Riwayat perubahan" links here from the dashboard card and Pengaturan; "Cara memasang" from the storage tip.
   useEffect(() => {
-    if (params.get('bagian') === 'perubahan') changes.current?.scrollIntoView({ block: 'start' });
+    const target = { perubahan: changes, pasang: keep }[params.get('bagian') ?? ''];
+    target?.current?.scrollIntoView({ block: 'start' });
   }, [params]);
 
   return (
@@ -164,12 +166,34 @@ export default function Help() {
             ekstensi yang tidak Anda percayai, dan batasi key di dasbor penyedia (misalnya batas pengeluaran, atau hanya untuk Gemini API). Panduan per penyedia ada di halaman API
             Key.
           </li>
-          <li>
-            Data browser bisa terhapus bila Anda membersihkan data situs. Unduh cadangan di Pengaturan; Beranda mengingatkan bila cadangan sudah lebih dari 7 hari atau ada 3 set
-            baru. Di Chrome/Edge desktop, pilih "Simpan otomatis ke berkas" agar cadangan diperbarui sendiri setiap ada perubahan.
-          </li>
           <li>Aplikasi bisa dipasang (Install / Add to Home Screen) dan set tersimpan serta simulasi bisa dipakai offline. Pembuatan soal baru butuh internet.</li>
         </ul>
+      </section>
+
+      <section id="pasang" ref={keep} className="card scroll-mt-4 space-y-2">
+        <h2>Agar data tidak hilang</h2>
+        <p>
+          Set, bank soal, riwayat latihan, dan Buku Kesalahan hanya tersimpan di browser ini. Browser bisa menghapusnya bila Anda membersihkan data situs, bila ruang HP hampir
+          penuh, atau (Safari di iPhone/iPad) bila aplikasi tidak dibuka sekitar seminggu. Tiga kebiasaan ini menjaganya:
+        </p>
+        <ol className="list-decimal space-y-1 pl-5">
+          <li>
+            <b>Pasang aplikasi ke layar utama</b> dan buka selalu dari ikonnya. Android (Chrome): menu ⋮ → <i>Instal aplikasi</i> atau <i>Tambahkan ke layar utama</i>. iPhone/iPad
+            (Safari): tombol Bagikan → <i>Tambahkan ke Layar Utama</i>. Laptop (Chrome/Edge): ikon pasang di ujung kanan kolom alamat. Aplikasi yang terpasang lebih jarang
+            dibersihkan browser, dan Safari tidak menghapusnya setelah seminggu.
+          </li>
+          <li>
+            <b>Cadangkan setelah latihan.</b> Laporan Skor dan Beranda mengingatkan setiap ada hasil latihan yang belum dicadangkan. Di HP, <i>Kirim cadangan ke…</i> mengirim
+            berkasnya langsung ke Google Drive, WhatsApp (misalnya ke chat diri sendiri), atau email, sehingga tetap ada walau HP direset.
+          </li>
+          <li>
+            <b>Di laptop Chrome/Edge</b>, pilih <i>Simpan otomatis ke berkas</i> di Pengaturan: cadangan diperbarui sendiri setiap ada perubahan.
+          </li>
+        </ol>
+        <p>
+          Memulihkan: Pengaturan → <i>Pulihkan dari file</i>, lalu pilih berkas cadangan terakhir (berakhiran .json, atau .txt bila dikirim dari HP Android). Set, soal, riwayat,
+          progres, streak, dan Buku Kesalahan kembali seperti saat dicadangkan; API key perlu dimasukkan lagi.
+        </p>
       </section>
 
       <section className="card space-y-2 border-amber-300 dark:border-amber-800">

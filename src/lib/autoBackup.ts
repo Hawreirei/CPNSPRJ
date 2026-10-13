@@ -31,6 +31,44 @@ export async function downloadBackup(): Promise<void> {
   await markBackedUp('manual');
 }
 
+/**
+ * A backup file the phone's share sheet accepts. Chrome on Android shares only some file types and
+ * JSON is not one of them, so the same content goes as .txt there; restoring reads either.
+ */
+function shareableFile(blob: Blob, now = new Date()): File | null {
+  if (typeof navigator === 'undefined' || typeof navigator.canShare !== 'function') return null;
+  const json = new File([blob], backupFileName(now), { type: 'application/json' });
+  if (navigator.canShare({ files: [json] })) return json;
+  const txt = new File([blob], backupFileName(now).replace(/\.json$/, '.txt'), { type: 'text/plain' });
+  return navigator.canShare({ files: [txt] }) ? txt : null;
+}
+
+/** Whether this browser can hand a backup to another app (Drive, WhatsApp, email) through the share sheet. */
+export function canShareBackup(): boolean {
+  try {
+    return shareableFile(new Blob(['{}'])) !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Send a backup through the share sheet and count it as the latest backup. False when the learner
+ * closed the sheet without picking an app.
+ */
+export async function shareBackup(): Promise<boolean> {
+  const file = shareableFile(await exportBackup());
+  if (!file) throw new Error('Browser ini tidak bisa membagikan berkas. Pakai "Unduh cadangan".');
+  try {
+    await navigator.share({ files: [file], title: 'Cadangan CASN Set Builder', text: 'Cadangan data latihan. Pulihkan lewat Pengaturan → Pulihkan dari file.' });
+  } catch (e) {
+    if ((e as { name?: string })?.name === 'AbortError') return false;
+    throw e;
+  }
+  await markBackedUp('manual');
+  return true;
+}
+
 export function isAutoBackupSupported(): boolean {
   return typeof window !== 'undefined' && typeof (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker === 'function';
 }

@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { db } from '../db';
+import { getBackupState } from '../db/backup';
 import { isCorrect, scoreQuestion, weakTopics } from '../domain/scoring';
 import { attemptMode } from '../domain/practice';
 import type { Question } from '../domain/types';
@@ -16,6 +17,7 @@ import { fmtSec } from '../engine/analytics';
 import { QuestionCard } from '../components/QuestionCard';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { FeedbackDialog } from '../components/FeedbackDialog';
+import { BackupButtons } from '../components/BackupButtons';
 import { Badge, Empty, ProgressBar, SubtestBadge } from '../components/ui';
 import { tabAwaySummary } from '../domain/catMode';
 import type { TabAway } from '../domain/types';
@@ -91,6 +93,8 @@ export default function ScoreReport() {
           </Link>
         </div>
       </div>
+
+      <BackupNudge finishedAt={a.finishedAt} />
 
       {a.catMode && <CatModeCard aways={a.tabAways} lockedOrder={!!a.lockedOrder} />}
 
@@ -226,6 +230,27 @@ export default function ScoreReport() {
           })}
       </section>
       {feedbackFor && <FeedbackDialog q={feedbackFor} onClose={() => setFeedbackFor(null)} />}
+    </div>
+  );
+}
+
+/**
+ * Right after an exam or practice is the moment its result is worth the most and is still only in this
+ * browser: offer a backup here, until one is made after it. Hidden while saving to a file automatically works.
+ */
+function BackupNudge({ finishedAt }: { finishedAt?: number }) {
+  const state = useLiveQuery(getBackupState, []);
+  if (!state || !finishedAt) return null;
+  if ((state.lastBackupAt ?? 0) >= finishedAt) return null;
+  if (state.auto && !state.auto.error) return null;
+  return (
+    <div className="strip" role="region" aria-label="Cadangan">
+      <div className="min-w-0 flex-1">
+        <b>Hasil ini baru tersimpan di browser ini.</b> Simpan cadangan agar riwayat, progres, dan Buku Kesalahan tidak hilang bila data browser terhapus.
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <BackupButtons small />
+      </div>
     </div>
   );
 }
