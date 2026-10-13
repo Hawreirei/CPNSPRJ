@@ -1,13 +1,14 @@
-import { hashText, shuffle, uid } from '../lib/id';
-import { OPTION_LABELS } from './types';
-import { describeCell, FILL_NAMES, SHAPE_NAMES } from './describe';
-import type { Difficulty, Figure, FigureCell, Fill, OptionLabel, Question, ShapeKind } from './types';
+import { hashText, shuffle, uid } from '../../lib/id';
+import { OPTION_LABELS } from '../types';
+import { describeCell, FILL_NAMES, SHAPE_NAMES } from '../describe';
+import { pickOptions, type Rand } from './options';
+import type { Difficulty, Figure, FigureCell, Fill, OptionLabel, Question, ShapeKind } from '../types';
 
-export { describeCell, describeFigure } from './describe';
+export { describeCell, describeFigure } from '../describe';
 
 const SHAPES: ShapeKind[] = ['circle', 'square', 'triangle', 'diamond', 'star', 'arrow', 'pentagon'];
 const FILLS: Fill[] = ['solid', 'empty', 'striped'];
-export type Rand = () => number;
+export type { Rand };
 const pick = <T>(arr: T[], r: Rand) => arr[Math.floor(r() * arr.length)];
 const sameCell = (a: FigureCell, b: FigureCell) => a.shape === b.shape && a.fill === b.fill && a.count === b.count && norm(a.rotation) === norm(b.rotation);
 const norm = (deg: number) => ((deg % 360) + 360) % 360;
@@ -89,6 +90,17 @@ function pickRule(difficulty: Difficulty, r: Rand): Rule {
   };
 }
 
+/** Rotation as the eye sees it: only the arrow shows every angle, the triangle repeats every 120°. */
+const rotKey = (c: FigureCell) => (c.shape === 'arrow' ? norm(c.rotation) : c.shape === 'triangle' ? norm(c.rotation) % 120 : 0);
+
+/** Visual identity of a cell. */
+export const cellKey = (c: FigureCell) => `${c.shape}|${c.fill}|${c.count}|${rotKey(c)}`;
+
+/** How many visible properties two cells differ in. */
+export function cellDistance(a: FigureCell, b: FigureCell): number {
+  return +(a.shape !== b.shape) + +(a.fill !== b.fill) + +(a.count !== b.count) + +(rotKey(a) !== rotKey(b));
+}
+
 /** Cells that differ from `answer` in one property: the near misses a careless reader picks. */
 function distractors(answer: FigureCell, r: Rand): FigureCell[] {
   const variants: FigureCell[] = [
@@ -98,22 +110,27 @@ function distractors(answer: FigureCell, r: Rand): FigureCell[] {
     { ...answer, fill: FILLS[(FILLS.indexOf(answer.fill) + 2) % 3] },
     { ...answer, count: (answer.count % 4) + 1 },
     { ...answer, count: answer.count === 1 ? 3 : answer.count - 1 },
-    {
-      ...answer,
-      shape: pick(
-        SHAPES.filter((s) => s !== answer.shape),
-        r,
-      ),
-    },
   ];
-  const isSymmetric = !ROTATABLE.includes(answer.shape);
-  const out: FigureCell[] = [];
-  for (const v of shuffle(variants, r)) {
-    if (isSymmetric && v.rotation !== answer.rotation && v.shape === answer.shape) continue;
-    if (sameCell(v, answer) || out.some((o) => sameCell(o, v))) continue;
-    out.push(v);
-  }
-  return out;
+  // A new shape keeps the angle only if it shows one; a turned star or square would look like a new figure.
+  const shape = pick(
+    SHAPES.filter((s) => s !== answer.shape),
+    r,
+  );
+  variants.push({ ...answer, shape, rotation: ROTATABLE.includes(shape) ? answer.rotation : 0 });
+  return variants.filter((v) => !looksSame(v, answer));
+}
+
+/**
+ * The answer among four wrong options, shuffled. The pool also has cells two changes away (a near
+ * miss of a near miss), which is what lets a wrong option, not the key, sit in the middle.
+ */
+function withDistractors(answer: FigureCell, r: Rand, preferred: FigureCell[] = [], reject: (c: FigureCell) => boolean = () => false): { opts: FigureCell[]; answerIdx: number } {
+  const singles = distractors(answer, r);
+  const doubles = singles.flatMap((a) => distractors(a, r).filter((b) => cellDistance(b, answer) === 2));
+  const ok = (c: FigureCell) => !looksSame(c, answer) && !reject(c);
+  const picked = pickOptions(answer, preferred.filter(ok), [...singles, ...doubles].filter(ok), r, { key: cellKey, distance: cellDistance });
+  if (!picked) throw new Error('Pilihan jawaban figural tidak cukup');
+  return picked;
 }
 
 type FiguralTopic = 'Deret Figural' | 'Analogi Figural' | 'Matriks Figural' | 'Transformasi Figural' | 'Figural Berbeda';
@@ -155,18 +172,6 @@ function buildQuestion(
     createdAt: now,
     updatedAt: now,
   };
-}
-
-/** The answer among four of its distractors, shuffled. */
-function withDistractors(answer: FigureCell, r: Rand, preferred: FigureCell[] = []): { opts: FigureCell[]; answerIdx: number } {
-  const picked: FigureCell[] = [];
-  for (const c of [...shuffle(preferred, r), ...distractors(answer, r)]) {
-    if (looksSame(c, answer) || picked.some((p) => looksSame(p, c))) continue;
-    picked.push(c);
-    if (picked.length === 4) break;
-  }
-  const opts = shuffle([answer, ...picked], r);
-  return { opts, answerIdx: opts.findIndex((o) => sameCell(o, answer)) };
 }
 
 export function generateFiguralSeries(difficulty: Difficulty, r: Rand = Math.random): Question {
@@ -300,13 +305,30 @@ function describeMatrix(m: MatrixRule): string {
   return `setiap baris dan setiap kolom memuat ketiga ${row} (${list(m.row)}) dan ketiga ${col} (${list(m.col)}), masing-masing tepat satu kali`;
 }
 
+/**
+ * Whether a full 3×3 grid follows a matrix pattern, judged from the cells alone: every property
+ * is either the same in a row (or column) or takes each of its three values once there.
+ */
+export function fitsMatrix(cells: FigureCell[]): boolean {
+  const attrs = ['shape', 'fill', 'count', 'rotation'] as const;
+  const value = (c: FigureCell, a: (typeof attrs)[number]) => (a === 'rotation' ? norm(c.rotation) : c[a]);
+  const lines = [0, 1, 2].flatMap((i) => [[0, 1, 2].map((j) => cells[i * 3 + j]), [0, 1, 2].map((j) => cells[j * 3 + i])]);
+  return attrs.every((a) => {
+    const all = new Set(cells.map((c) => value(c, a)));
+    if (all.size !== 1 && all.size !== 3) return false;
+    return lines.every((line) => new Set(line.map((c) => value(c, a))).size !== 2);
+  });
+}
+
 export function generateFiguralMatrix(difficulty: Difficulty, r: Rand = Math.random): Question {
   const m = matrixRule(difficulty, r);
   const cells = [0, 1, 2].flatMap((i) => [0, 1, 2].map((j) => matrixCell(m, i, j)));
   const answer = cells[8];
   // Near misses: the right cell with one of the varying properties taken from elsewhere in the grid.
   const preferred = [m.row, m.col].flatMap((x) => x.values.filter((v) => v !== answer[x.attr]).map((v) => withAttr(answer, x.attr, v)));
-  const { opts, answerIdx } = withDistractors(answer, r, preferred);
+  const visible = cells.slice(0, 8);
+  // A wrong option must not complete the grid by some other reading of it.
+  const { opts, answerIdx } = withDistractors(answer, r, preferred, (c) => fitsMatrix([...visible, c]));
   return buildQuestion(
     'Matriks Figural',
     difficulty,
