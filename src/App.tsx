@@ -23,6 +23,7 @@ const ImportSet = lazy(() => import('./pages/ImportSet'));
 const ImportPhoto = lazy(() => import('./pages/ImportPhoto'));
 const Kamus = lazy(() => import('./pages/Kamus'));
 const Kartu = lazy(() => import('./pages/Kartu'));
+const Lab = lazy(() => import('./pages/Lab'));
 
 /** Full-screen pages (exam, practice, print) wait for their code on their own; the rest under the layout's menu. */
 const page = (el: ReactNode) => <Suspense fallback={null}>{el}</Suspense>;
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="settings" element={<SettingsPage />} />
           <Route path="kamus" element={<Kamus />} />
           <Route path="kartu" element={<Kartu />} />
+          <Route path="lab" element={<Lab />} />
           <Route path="help" element={<Help />} />
           <Route path="import" element={<ImportSet />} />
         </Route>

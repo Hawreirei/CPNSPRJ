@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { RichText } from '../components/RichText';
 import { db } from '../db';
 import { DEFAULT_SETTINGS } from '../domain/blueprint';
-import { decodeLinkData, encodeLinkData, parseShared, SHARE_VERSION, SHARE_VERSION_PACKAGES, toShared } from '../domain/share';
+import { decodeLinkData, encodeLinkData, parseShared, SHARE_VERSION, SHARE_VERSION_FIGURAL, toShared } from '../domain/share';
 import type { Blueprint, OptionLabel, Question } from '../domain/types';
 import { loadMath } from '../domain/validators';
 import { importShared, previewImport } from '../engine/share';
@@ -84,14 +84,19 @@ describe('a received set is checked before anything is stored', () => {
   it('rejects other files with a clear message', () => {
     expect(() => parseShared(null)).toThrow('bukan set bersama');
     expect(() => parseShared({ app: 'cpns-skd-builder', version: 1, sets: [], questions: [] })).toThrow('berkas cadangan');
-    expect(() => parseShared({ ...valid(), version: SHARE_VERSION_PACKAGES + 1 })).toThrow('versi aplikasi yang lebih baru');
+    expect(() => parseShared({ ...valid(), version: SHARE_VERSION_FIGURAL + 1 })).toThrow('versi aplikasi yang lebih baru');
     expect(() => parseShared({ ...valid(), questions: [] })).toThrow('set kosong');
   });
 
   it('rejects anything that would end up inside drawing markup', () => {
     const bad = valid();
     bad.questions[2].figure = { layout: 'series', cells: [{ shape: '"/><script>alert(1)</script>', fill: 'solid', rotation: 0, count: 1 }] };
-    expect(() => parseShared(bad)).toThrow('questions.2.figure.cells.0.shape');
+    expect(() => parseShared(bad)).toThrow('questions.2.figure.cells.0');
+    // Newer kinds of picture are checked field by field too, and an unknown field is refused.
+    bad.questions[2].figure = { layout: 'series', cells: [{ kind: 'scene', frame: 'plain', objects: [{ glyph: '<script>', slot: 0 }] }] } as never;
+    expect(() => parseShared(bad)).toThrow('questions.2.figure.cells.0');
+    bad.questions[2].figure = { layout: 'series', cells: [{ kind: 'scene', frame: 'plain', objects: [], onload: 'x' }] } as never;
+    expect(() => parseShared(bad)).toThrow('questions.2.figure.cells.0');
     const inf = JSON.parse(JSON.stringify(valid()).replace('"durationMinutes":10', '"durationMinutes":1e400'));
     expect(() => parseShared(inf)).toThrow('Set tidak valid');
   });

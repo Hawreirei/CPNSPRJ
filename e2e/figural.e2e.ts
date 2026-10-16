@@ -33,8 +33,9 @@ test('matrix, transform and odd-one-out figures are drawn by the app and work ev
 
   // Stem figures and options are described for screen readers.
   await expect(page.getByRole('img', { name: /^Baris 1: .*Baris 3: .*tanda tanya$/ }).first()).toBeVisible();
-  await expect(page.getByRole('img', { name: /^Gambar awal: 1 panah/ }).first()).toBeVisible();
-  const odd = page.locator('article', { hasText: 'Empat dari lima gambar' }).first();
+  // A transform shows its source figure; folding paper shows its steps instead.
+  await expect(page.locator('article', { hasText: 'Transformasi Figural' }).first().locator('[role="img"][aria-label]').first()).toBeVisible();
+  const odd = page.locator('article', { has: page.getByText('Figural Berbeda', { exact: true }) }).first();
   await expect(odd.locator('[role="img"][aria-label]')).toHaveCount(5);
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });

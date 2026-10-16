@@ -10,6 +10,8 @@ import { Badge, FlagList, SubtestBadge } from './ui';
 import { isGraded, isTopOption } from '../domain/examPackage';
 import { hasKamus, kamusPath } from '../domain/kamus';
 import { uudRefs } from '../domain/cards';
+import { FIGURAL_RECIPES } from '../domain/figuralNames';
+import { PatternTrace } from './PatternTrace';
 
 // The tutor, its prompts and the similar-question generator load only when someone asks.
 const TutorDialog = lazy(() => import('./TutorDialog'));
@@ -153,6 +155,14 @@ export function Explanation({
           {/* A new tab, so a practice or review in progress stays where it is. */}
           <a className="text-brand-600 dark:text-brand-300 underline" href={`#${kamusPath(q.topic)}`} target="_blank" rel="noreferrer">
             Rumus {q.topic} di Kamus Rumus TIU (tab baru)
+          </a>
+        </p>
+      )}
+      {q.figureMeta && <PatternTrace q={q} />}
+      {onFeedback && q.figureMeta && FIGURAL_RECIPES[q.figureMeta.archetype] && (
+        <p className="mt-2 text-xs">
+          <a className="text-brand-600 dark:text-brand-300 underline" href={`#/lab?resep=${encodeURIComponent(q.figureMeta.archetype)}`} target="_blank" rel="noreferrer">
+            Jelajahi pola "{FIGURAL_RECIPES[q.figureMeta.archetype].name}" di Lab Pola (tab baru)
           </a>
         </p>
       )}

@@ -4,7 +4,8 @@ import { inExamOrder, inSubtestOrder, packageOf, subtestsIn } from '../domain/ex
 import { bankPriority, isReported } from '../domain/quality';
 import { keepGroupsTogether, moveUnit, takeUnits, units } from '../domain/groups';
 import { shuffle, uid } from '../lib/id';
-import type { BatchItem, Blueprint, PlanBatch, QSet, Question, Subtest, TopicResult } from '../domain/types';
+import { validateQuestion } from '../domain/validators';
+import type { BatchItem, Blueprint, Difficulty, PlanBatch, QSet, Question, Subtest, TopicResult } from '../domain/types';
 import { chunkItems, planBatches } from './plan';
 
 function newSet(partial: Pick<QSet, 'name' | 'blueprint' | 'source'> & Partial<QSet>): QSet {
@@ -188,4 +189,49 @@ export async function passingForSet(set: QSet, questions: Question[]): Promise<P
     if (mark !== undefined) out[s] = mark;
   }
   return out;
+}
+
+/** What a figural practice set holds: questions of one topic, made by some recipes and kinds of rule. */
+export interface FiguralSpec {
+  topic: string;
+  difficulty: Difficulty;
+  count: number;
+  archetypes?: string[];
+  families?: string[];
+}
+
+/**
+ * A practice set of figural questions made on the device, no AI: for the Lab, and for practising the
+ * kinds of rule a score report found weak. Patterns recently in the bank come last.
+ */
+export async function createFiguralSet(name: string, specs: FiguralSpec[]): Promise<QSet> {
+  const { generateProcedural } = await import('../domain/procedural');
+  const hashes = new Set<string>();
+  await db.questions.each((q) => hashes.add(q.hash));
+  const made: Question[] = [];
+  for (const s of specs) {
+    const recent = (await db.questions.where('topic').equals(s.topic).toArray())
+      .filter((q) => q.figureMeta)
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 200)
+      .map((q) => q.figureMeta!.signature);
+    for (const q of generateProcedural(s.topic, s.difficulty, s.count, { recent, archetypes: s.archetypes, families: s.families })) {
+      const v = validateQuestion(q, hashes);
+      hashes.add(v.hash);
+      made.push(v);
+    }
+  }
+  const count = made.length;
+  const blueprint: Blueprint = {
+    sections: [{ subtest: 'TIU', count, topics: [...new Set(specs.map((s) => s.topic))], difficulty: specs.length === 1 ? specs[0].difficulty : 'campuran' }],
+    // About a minute per figural question, as in the SKD.
+    durationMinutes: Math.max(5, count),
+    passing: {},
+  };
+  const set = newSet({ name, blueprint, source: 'bank', status: 'ready', questionIds: made.map((q) => q.id) });
+  await db.transaction('rw', db.sets, db.questions, async () => {
+    await db.questions.bulkPut(made);
+    await db.sets.add(set);
+  });
+  return set;
 }
