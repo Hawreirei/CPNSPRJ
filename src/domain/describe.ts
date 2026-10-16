@@ -73,6 +73,8 @@ export function describePic(p: Pic): string {
       return `Kubus: depan ${faceWords(p.front)}; atas ${faceWords(p.top)}; kanan ${faceWords(p.right)}`;
     case 'face':
       return `Sisi ${faceWords(p.face)}`;
+    case 'num':
+      return `${p.value}`;
     case 'net': {
       const xs = p.squares.map((s) => s.x);
       const ys = p.squares.map((s) => s.y);

@@ -29,10 +29,20 @@ export const FIGURAL_RECIPES: Record<string, { name: string; topic: string }> = 
   'lines-transform': { name: 'Cermin gambar garis', topic: 'Transformasi Figural' },
   'lines-odd': { name: 'Yang tidak simetris', topic: 'Figural Berbeda' },
   fold: { name: 'Kertas dilipat dan dilubangi', topic: 'Transformasi Figural' },
+  'number-table': { name: 'Tabel angka 3 × 3', topic: 'Tabel Angka' },
 };
 
 /** The figural topics, in the order the app offers them. */
-export const FIGURAL_TOPICS = ['Deret Figural', 'Analogi Figural', 'Matriks Figural', 'Transformasi Figural', 'Figural Berbeda', 'Ruang dan Kubus', 'Gabungan Gambar'] as const;
+export const FIGURAL_TOPICS = [
+  'Deret Figural',
+  'Analogi Figural',
+  'Matriks Figural',
+  'Transformasi Figural',
+  'Figural Berbeda',
+  'Ruang dan Kubus',
+  'Gabungan Gambar',
+  'Tabel Angka',
+] as const;
 
 export interface FiguralMiss {
   archetype: string;

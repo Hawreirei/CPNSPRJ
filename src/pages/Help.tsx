@@ -118,7 +118,12 @@ export default function Help() {
             <b>TIU figural</b>: soal gambar dibuat oleh aplikasi sendiri, gratis dan tanpa AI: deret (bangun, orbit, ruang, estafet, juring, garis dan titik), analogi, matriks,
             putar dan cermin, kertas lipat, figural berbeda, kubus (jaring, sisi berhadapan), dan gabungan gambar. Setiap soal diperiksa ulang agar hanya satu pilihan yang bisa
             dipertahankan, dan pengecohnya disusun agar jawaban tidak bisa ditebak tanpa memecahkan pola. Di pembahasan, "Telusuri pola" menunjukkan setiap aturan langkah demi
-            langkah. Di menu Materi, <b>Lab Pola Figural</b> membuat contoh soal per jenis dan aturan, lalu menjadikannya latihan 10 soal.
+            langkah. Di menu Materi, <b>Lab Pola</b> membuat contoh soal per jenis dan aturan, lalu menjadikannya latihan 10 soal.
+          </li>
+          <li>
+            <b>Tabel Angka</b>: tabel 3 × 3 yang setiap baris atau kolomnya mengubah dua angka menjadi angka ketiga dengan satu rumus (misalnya (a − b) × 4 atau a² + b). Dibuat
+            aplikasi tanpa AI; setiap tabel dibaca per baris dan per kolom dengan puluhan rumus, dan hanya dipakai bila jawabannya tepat satu. Pembahasan menyebut rumus jebakan
+            yang cocok di baris pertama tetapi gagal di baris kedua.
           </li>
           <li>
             <b>TIU analisis data</b>: tabel dan grafik dibuat aplikasi dari angka acak dengan konteks rekaan (bukan statistik sungguhan), dan kuncinya dihitung dari angka itu, jadi

@@ -2,7 +2,7 @@ import { expect, seriousViolations, test } from './fixtures';
 
 test('Lab Pola makes a question of the chosen kind, traces its rules, and turns it into practice', async ({ page }) => {
   await page.goto('#/lab');
-  await expect(page.getByRole('heading', { name: 'Lab Pola Figural' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Lab Pola' })).toBeVisible();
   // A series recipe at sulit: a question appears at once, no API key needed.
   await page.getByRole('button', { name: /^Deret orbit/ }).click();
   await page.getByRole('button', { name: 'sulit', exact: true }).click();
@@ -26,6 +26,12 @@ test('Lab Pola makes a question of the chosen kind, traces its rules, and turns 
   await page.getByRole('button', { name: 'Ruang dan Kubus', exact: true }).click();
   await page.getByRole('button', { name: /^Sisi berhadapan/ }).click();
   await expect(page.getByRole('img', { name: /^Gambar 1: Kubus/ })).toBeVisible();
+
+  // Number tables: a 3 × 3 table read by rows or columns, with plain number options.
+  await page.getByRole('button', { name: 'Tabel Angka', exact: true }).click();
+  await expect(page.getByRole('img', { name: /^Baris 1: \d+; \d+; \d+\. Baris 2: .*tanda tanya$/ })).toBeVisible();
+  await page.getByRole('button', { name: /^A \d+$/ }).click();
+  await expect(page.getByText(/^Aturan setiap (baris|kolom):/)).toBeVisible();
 
   // Ten questions of that kind as a practice set, made on the device.
   await page.getByRole('button', { name: 'Latihan 10 soal jenis ini' }).click();

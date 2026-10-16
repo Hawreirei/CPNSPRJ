@@ -17,7 +17,9 @@ export function seeded(seed: number): Rand {
 }
 
 export const keyIdx = (q: Question) => q.options.findIndex((o) => o.label === q.answer);
-export const pics = (q: Question) => q.options.map((o) => o.figure!) as Pic[];
+/** An option's picture; a number answer (Tabel Angka) is its text. */
+export const optPic = (o: Question['options'][number]): Pic => o.figure ?? { kind: 'num', value: Number(o.text) };
+export const pics = (q: Question) => q.options.map(optPic);
 
 export function expectWellFormed(q: Question, ctx: string) {
   expect(q.options, ctx).toHaveLength(5);
@@ -26,10 +28,10 @@ export function expectWellFormed(q: Question, ctx: string) {
     ctx,
   ).toHaveLength(1);
   expect(q.options.find((o) => o.score === 5)?.label, ctx).toBe(q.answer);
-  expect(new Set(q.options.map((o) => picKey(o.figure!))).size, `${ctx}: two options look the same`).toBe(5);
+  expect(new Set(q.options.map((o) => picKey(optPic(o)))).size, `${ctx}: two options look the same`).toBe(5);
   // A screen reader hears five different options too.
   expect(new Set(q.options.map((o) => o.text)).size, `${ctx}: two options read the same`).toBe(5);
-  for (const o of q.options) expect(o.text).toBe(describePic(o.figure!));
+  for (const o of q.options) expect(o.text).toBe(describePic(optPic(o)));
   expect(q.figureMeta?.archetype, ctx).toBeTruthy();
   expect(q.figureMeta!.signature.startsWith(q.figureMeta!.archetype), ctx).toBe(true);
   expect(q.explanation, ctx).toMatch(new RegExp(`\\b${q.answer}\\b`));

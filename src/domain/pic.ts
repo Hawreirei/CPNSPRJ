@@ -211,6 +211,8 @@ export function picKey(p: Pic): string {
       return `cube|${faceKey(p.front)}|${faceKey(p.top)}|${faceKey(p.right)}`;
     case 'face':
       return `face|${faceKey(p.face)}`;
+    case 'num':
+      return `num|${p.value}`;
     case 'net':
       return `net|${p.squares.map((s) => `${s.x},${s.y},${faceKey(s.face)}`).join('|')}`;
     case 'holes':

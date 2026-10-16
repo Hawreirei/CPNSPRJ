@@ -4,12 +4,13 @@ import { GLYPH_ARCHETYPES, makeWith } from './legacy';
 import { SCENE_ARCHETYPES } from './scene';
 import { CUBE_ARCHETYPES } from './cube';
 import { MORE_ARCHETYPES } from './more';
+import { TABLE_ARCHETYPES } from './numgrid';
 
 export * from './legacy';
 export type { Archetype, FiguralTopic } from './build';
 
 /** Every recipe, by topic. */
-export const ARCHETYPES: Archetype[] = [...GLYPH_ARCHETYPES, ...SCENE_ARCHETYPES, ...CUBE_ARCHETYPES, ...MORE_ARCHETYPES];
+export const ARCHETYPES: Archetype[] = [...GLYPH_ARCHETYPES, ...SCENE_ARCHETYPES, ...CUBE_ARCHETYPES, ...MORE_ARCHETYPES, ...TABLE_ARCHETYPES];
 
 export interface FiguralOptions {
   /** Signatures of figural questions made recently (the bank), so their patterns come last. */

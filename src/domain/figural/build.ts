@@ -9,7 +9,8 @@ import { pickOptions, type Rand } from './options';
 
 export type { Rand };
 
-export type FiguralTopic = 'Deret Figural' | 'Analogi Figural' | 'Matriks Figural' | 'Transformasi Figural' | 'Figural Berbeda' | 'Ruang dan Kubus' | 'Gabungan Gambar';
+export type FiguralTopic =
+  'Deret Figural' | 'Analogi Figural' | 'Matriks Figural' | 'Transformasi Figural' | 'Figural Berbeda' | 'Ruang dan Kubus' | 'Gabungan Gambar' | 'Tabel Angka';
 
 /** A wrong option a learner would arrive at, and why it is wrong. */
 export interface Lure {
@@ -144,7 +145,8 @@ export function toQuestion(arch: Archetype, difficulty: Difficulty, d: Draft): Q
     label: labels[i],
     text: describePic(pic),
     score: i === d.answerIdx ? 5 : 0,
-    figure: pic,
+    // A number is an answer in words: no picture, so it reads, prints and is typed like any other.
+    ...('kind' in pic && pic.kind === 'num' ? {} : { figure: pic }),
     ...(d.rationales[i] ? { rationale: d.rationales[i] } : {}),
   }));
   // With no stem figure the puzzle lives in the options, so they make it unique.

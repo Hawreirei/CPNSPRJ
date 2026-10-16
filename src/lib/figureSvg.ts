@@ -1,6 +1,6 @@
 import { isLegacy } from '../domain/pic';
 import type { Figure, FigureCell, Pic, ShapeKind } from '../domain/types';
-import { cubeSvg, faceSvg, foldSvg, holesSvg, linesSvg, netSvg, sceneSvg, strokesSvg } from './picSvg';
+import { cubeSvg, faceSvg, foldSvg, holesSvg, linesSvg, netSvg, numSvg, sceneSvg, strokesSvg } from './picSvg';
 
 const pts = (arr: [number, number][]) => arr.map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`).join(' ');
 
@@ -94,6 +94,8 @@ export function cellSvg(cell: Pic | null, size = 96, color = 'currentColor'): st
         return cubeSvg(cell, size, color);
       case 'face':
         return faceSvg(cell, size, color);
+      case 'num':
+        return numSvg(cell, size, color);
       case 'net':
         return netSvg(cell, size, color);
       case 'holes':

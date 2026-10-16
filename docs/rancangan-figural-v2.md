@@ -372,7 +372,8 @@ Langkah 2 dan 5 bisa dikerjakan paralel karena kubus tidak memakai pemecah adega
 | Gambar SVG dan kata untuk pembaca layar | `src/lib/figureSvg.ts`, `src/lib/picSvg.ts`, `src/domain/describe.ts` |
 | Pemecah (K1–K3) untuk deret, analogi, matriks, dan "berbeda" | `src/domain/figural/solver.ts`, `features.ts` |
 | Pemilih pengecoh anti-medoid | `src/domain/figural/options.ts`, `build.ts` |
-| Resep | `legacy.ts` (5), `scene.ts` (8), `cube.ts` (3), `more.ts` (7) |
+| Resep | `legacy.ts` (5), `scene.ts` (8), `cube.ts` (3), `more.ts` (7), `numgrid.ts` (1) |
+| Tabel Angka (topik TIU baru): 40 rumus, dibaca per baris dan per kolom, jawaban tepat satu, pengecoh dari rumus jebakan | `src/domain/figural/numgrid.ts`, sel `num` di `pic.ts` dan `picSvg.ts`, tes `numberTable` |
 | Telusuri pola, Lab Pola, latihan per jenis pola | `src/components/PatternTrace.tsx`, `src/pages/Lab.tsx`, `src/pages/ScoreReport.tsx`, `createFiguralSet` di `src/engine/sets.ts` |
 | Tes | `figuralRecipes`, `figuralVariety`, `figuralExamples`, `figuralPractice`, `figural`, e2e `lab` dan `figural` |
 

@@ -42,8 +42,8 @@ function FiguralCard({ questions, answers }: { questions: Question[]; answers: R
   }
   return (
     <section className="card">
-      <h2>Pola gambar yang perlu dilatih</h2>
-      <p className="muted mt-1 text-xs">Soal TIU gambar yang salah atau kosong, menurut jenisnya. Latihannya dibuat langsung oleh aplikasi, tanpa AI.</p>
+      <h2>Pola yang perlu dilatih</h2>
+      <p className="muted mt-1 text-xs">Soal TIU gambar dan tabel angka yang salah atau kosong, menurut jenisnya. Latihannya dibuat langsung oleh aplikasi, tanpa AI.</p>
       <ul className="mt-2 space-y-2">
         {misses.slice(0, 6).map((m) => (
           <li key={m.archetype} className="flex flex-wrap items-center gap-2 text-sm">

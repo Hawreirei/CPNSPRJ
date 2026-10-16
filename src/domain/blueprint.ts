@@ -11,6 +11,7 @@ export const TOPICS: Record<Subtest, string[]> = {
     'Pemahaman Bacaan',
     'Aritmetika',
     'Deret Angka',
+    'Tabel Angka',
     'Soal Cerita',
     'Perbandingan Kuantitatif',
     'Silogisme',
@@ -47,6 +48,7 @@ export const PROCEDURAL_TOPICS = new Set([
   'Figural Berbeda',
   'Ruang dan Kubus',
   'Gabungan Gambar',
+  'Tabel Angka',
   'Analisis Data',
 ]);
 /** Reading comprehension: two or more of these in a section are written as passages with several questions each. */

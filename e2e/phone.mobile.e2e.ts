@@ -68,6 +68,7 @@ test('every main page fits a 360 px phone screen and has no serious WCAG violati
     '#/lab',
     '#/lab?resep=relay',
     '#/lab?resep=cube-to-net',
+    '#/lab?resep=number-table',
     '#/keys',
     '#/settings',
     '#/help',

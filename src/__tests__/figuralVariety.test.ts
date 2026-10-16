@@ -3,7 +3,7 @@ import { ARCHETYPES, generateFigural, makeWith, type Rand } from '../domain/figu
 import { picDistance, picFeats } from '../domain/figural/features';
 import { centrality } from '../domain/figural/options';
 import type { Difficulty, Pic, Question } from '../domain/types';
-import { seeded } from './figuralHelpers';
+import { optPic, seeded } from './figuralHelpers';
 
 /*
  * Whether the key can be found without solving the question, and whether a topic's questions vary.
@@ -39,7 +39,7 @@ function shortcutRates(make: (r: Rand) => Question) {
   let vote = 0;
   for (let seed = 0; seed < N; seed++) {
     const q = make(seeded(seed));
-    const pics = q.options.map((o) => o.figure!);
+    const pics = q.options.map(optPic);
     const key = q.options.findIndex((o) => o.label === q.answer);
     const c = centrality(pics, picDistance);
     medoid += +(uniqueBest(c, true) === key);
@@ -63,7 +63,7 @@ describe('the key cannot be found without solving', () => {
 });
 
 describe('a topic varies', () => {
-  const TOPICS = ['Deret Figural', 'Analogi Figural', 'Matriks Figural', 'Transformasi Figural', 'Figural Berbeda', 'Ruang dan Kubus', 'Gabungan Gambar'];
+  const TOPICS = ['Deret Figural', 'Analogi Figural', 'Matriks Figural', 'Transformasi Figural', 'Figural Berbeda', 'Ruang dan Kubus', 'Gabungan Gambar', 'Tabel Angka'];
   for (const t of TOPICS)
     for (const d of LEVELS)
       it(`${t} ${d}`, { timeout: 60_000 }, () => {

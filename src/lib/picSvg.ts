@@ -1,6 +1,6 @@
 import { foldGeometry, foldShapes, holePoint, type Poly } from '../domain/fold';
 import { LATTICE_SEGMENTS, norm, slotAngle } from '../domain/pic';
-import type { CubeCell, Face, FaceCell, Fill, FoldCell, GlyphKind, HolesCell, LinesCell, NetCell, SceneCell, SceneObject, StrokeCell } from '../domain/types';
+import type { CubeCell, Face, FaceCell, Fill, FoldCell, GlyphKind, HolesCell, LinesCell, NetCell, NumCell, SceneCell, SceneObject, StrokeCell } from '../domain/types';
 
 /*
  * Drawings for the figural pictures beyond the first kind (scenes, line figures, lattices, cubes,
@@ -300,6 +300,17 @@ export function cubeSvg(c: CubeCell, size: number, color: string): string {
     facePlate(c.right, [x0 + s, y0], [d, -d], [0, s], color),
   ].join('');
   return wrap(body, size, color);
+}
+
+/** A number in a table cell, sized to fit up to four digits. */
+export function numSvg(c: NumCell, size: number, color: string): string {
+  const t = `${c.value}`;
+  const fs = t.length <= 2 ? 44 : t.length === 3 ? 36 : 28;
+  return wrap(
+    `<text x="50" y="52" font-size="${fs}" font-weight="700" font-family="sans-serif" text-anchor="middle" dominant-baseline="middle" fill="${color}">${t.replace(/[^0-9-]/g, '')}</text>`,
+    size,
+    color,
+  );
 }
 
 export function faceSvg(c: FaceCell, size: number, color: string): string {

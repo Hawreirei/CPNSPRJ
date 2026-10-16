@@ -74,6 +74,8 @@ export function picFeats(p: Pic): Feat[] {
       return (['front', 'top', 'right'] as const).map((f) => ({ key: f, value: faceKey(p[f]) }));
     case 'face':
       return [{ key: 'face', value: faceKey(p.face) }];
+    case 'num':
+      return [{ key: 'value', value: p.value }];
     case 'net':
       return p.squares.map((s) => ({ key: `sq${s.x},${s.y}`, value: faceKey(s.face) }));
     case 'holes':
@@ -88,6 +90,8 @@ export const termFeats = <T extends Pic>(seq: T[], i: number) => picFeats(seq[i]
 
 /** How many visible properties two pictures differ in. */
 export function picDistance(a: Pic, b: Pic): number {
+  // Numbers are near or far by how much they differ: a learner guessing picks the one in the middle.
+  if (!isLegacy(a) && !isLegacy(b) && a.kind === 'num' && b.kind === 'num') return Math.abs(a.value - b.value);
   const fa = new Map(picFeats(a).map((f) => [f.key, f.value]));
   const fb = new Map(picFeats(b).map((f) => [f.key, f.value]));
   let d = 0;

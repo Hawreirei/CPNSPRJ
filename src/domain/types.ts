@@ -103,6 +103,11 @@ export interface CubeCell {
   top: Face;
   right: Face;
 }
+/** A number in a number table (Tabel Angka); its options are plain numbers. */
+export interface NumCell {
+  kind: 'num';
+  value: number;
+}
 /** One face on its own (an answer such as "the face opposite …"). */
 export interface FaceCell {
   kind: 'face';
@@ -126,7 +131,7 @@ export interface FoldCell {
 }
 export type FoldKind = 'R>L' | 'L>R' | 'T>B' | 'B>T' | 'TR>BL' | 'TL>BR';
 /** Any figural picture: a stem cell or an option. The first kind has no `kind`. */
-export type Pic = FigureCell | SceneCell | StrokeCell | LinesCell | CubeCell | FaceCell | NetCell | HolesCell | FoldCell;
+export type Pic = FigureCell | SceneCell | StrokeCell | LinesCell | CubeCell | FaceCell | NetCell | HolesCell | FoldCell | NumCell;
 
 export interface Figure {
   /**

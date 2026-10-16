@@ -22,8 +22,9 @@ export const CHANGELOG: Release[] = [
     items: [
       'Soal TIU gambar jauh lebih beragam: deret orbit (panah dan segitiga mengelilingi persegi), deret ruang, deret estafet, juring berputar, garis dan titik, matriks letak, putar dan cermin gambar, kertas dilipat lalu dilubangi, serta "bukan hasil putaran". Ada dua topik baru: Ruang dan Kubus (jaring-jaring kubus, sisi berhadapan) dan Gabungan Gambar.',
       'Jawaban soal gambar tidak bisa lagi ditebak dengan memilih gambar yang paling mirip dengan pilihan lain. Setiap soal diperiksa ulang agar hanya satu pilihan yang bisa dipertahankan, dan pembahasannya menjelaskan mengapa pilihan pengecoh tampak benar.',
-      'Pembahasan soal gambar punya tombol "Telusuri pola" untuk mengikuti setiap aturan langkah demi langkah. Menu Materi punya Lab Pola Figural: pilih jenis soal dan aturannya, coba contohnya, lalu jadikan latihan 10 soal. Laporan Skor menunjukkan jenis pola gambar yang sering salah, dengan tombol latihan 5 soal jenis itu.',
-      'Set dengan soal gambar jenis baru hanya bisa dibuka oleh aplikasi versi ini atau yang lebih baru; versi lama akan meminta pembaruan.',
+      'Pembahasan soal gambar punya tombol "Telusuri pola" untuk mengikuti setiap aturan langkah demi langkah. Menu Materi punya Lab Pola: pilih jenis soal dan aturannya, coba contohnya, lalu jadikan latihan 10 soal. Laporan Skor menunjukkan jenis pola yang sering salah, dengan tombol latihan 5 soal jenis itu.',
+      'Topik TIU baru Tabel Angka: tabel 3 × 3 yang setiap baris atau kolomnya memakai satu rumus, misalnya (a − b) × 4 atau a² + b. Dibuat aplikasi tanpa AI, jawabannya selalu tepat satu, dan pembahasannya menunjukkan rumus jebakan yang hanya cocok di baris pertama.',
+      'Set dengan soal gambar atau tabel angka jenis baru hanya bisa dibuka oleh aplikasi versi ini atau yang lebih baru; versi lama akan meminta pembaruan.',
     ],
   },
   {

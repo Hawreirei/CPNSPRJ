@@ -27,7 +27,7 @@ describe('every figural recipe', () => {
             expect(figureSvg(q.figure, 64)).toMatch(/^<svg /);
           }
           for (const o of q.options) {
-            expect(cellSvg(o.figure!, 56)).not.toContain('NaN');
+            if (o.figure) expect(cellSvg(o.figure, 56)).not.toContain('NaN');
             expect(o.text).not.toContain('undefined');
           }
         }

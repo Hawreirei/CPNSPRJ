@@ -87,8 +87,8 @@ export default function Lab() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Lab Pola Figural"
-        description="Pilih jenis soal gambar dan aturannya, lalu coba soal contoh yang langsung dibuat aplikasi. Tanpa AI dan tanpa kuota; setiap soal diperiksa agar jawabannya tepat satu."
+        title="Lab Pola"
+        description="Pilih jenis soal gambar atau tabel angka beserta aturannya, lalu coba soal contoh yang langsung dibuat aplikasi. Tanpa AI dan tanpa kuota; setiap soal diperiksa agar jawabannya tepat satu."
       />
 
       <section className="card space-y-3">
