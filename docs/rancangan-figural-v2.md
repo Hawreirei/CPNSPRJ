@@ -2,7 +2,7 @@
 
 Dokumen ini melanjutkan [rencana-tiu-figural.md](rencana-tiu-figural.md). Rencana itu menjawab pertanyaan *apa yang salah dan urutan perbaikannya*. Dokumen ini menjawab pertanyaan *bentuk mesinnya*: model data, aturan, pemecah, dan pengecoh. Rancangan disusun dari empat contoh soal figural bergaya SKD dan dibuat lebih luas daripada keempat contoh itu.
 
-Status: rancangan, belum dikerjakan. Model "sel komposit" di §3.1 rencana digantikan oleh **model adegan** di §2 dokumen ini.
+Status: **dikerjakan di versi 1.11.0**; lihat [§11](#11-yang-dibangun). Model "sel komposit" di §3.1 rencana digantikan oleh **model adegan** di §2 dokumen ini.
 
 ## Daftar isi
 
@@ -361,3 +361,29 @@ Langkah 2 dan 5 bisa dikerjakan paralel karena kubus tidak memakai pemecah adega
 2. **Kubus tiga dimensi interaktif** (bisa diputar di layar): menarik untuk Lab Pola, tetapi menambah pustaka 3D. Usulan kami: tidak dulu, cukup animasi lipatan 2D.
 3. **Kalibrasi tingkat**: rentang skor §3.4 adalah tebakan awal. Usulan kami: kalibrasi dari data jawaban pengguna (persentase benar per skor) setelah dua minggu, lalu sesuaikan rentangnya.
 4. **Simbol huruf** (C, S) di Contoh 2 mudah dibaca, tetapi bisa diputar dan dicerminkan secara ambigu bagi sebagian peserta. Usulan kami: hanya memakai huruf yang tidak simetris dan jelas (F, R, J, L), dan hanya di arketipe cermin F13.
+
+---
+
+## 11. Yang dibangun
+
+| Bagian | Berkas |
+|---|---|
+| Model gambar (adegan, figur garis, kisi garis, kubus, sisi, jaring, kertas) | `src/domain/types.ts`, `src/domain/pic.ts`, `src/domain/fold.ts` |
+| Gambar SVG dan kata untuk pembaca layar | `src/lib/figureSvg.ts`, `src/lib/picSvg.ts`, `src/domain/describe.ts` |
+| Pemecah (K1–K3) untuk deret, analogi, matriks, dan "berbeda" | `src/domain/figural/solver.ts`, `features.ts` |
+| Pemilih pengecoh anti-medoid | `src/domain/figural/options.ts`, `build.ts` |
+| Resep | `legacy.ts` (5), `scene.ts` (8), `cube.ts` (3), `more.ts` (7) |
+| Telusuri pola, Lab Pola, latihan per jenis pola | `src/components/PatternTrace.tsx`, `src/pages/Lab.tsx`, `src/pages/ScoreReport.tsx`, `createFiguralSet` di `src/engine/sets.ts` |
+| Tes | `figuralRecipes`, `figuralVariety`, `figuralExamples`, `figuralPractice`, `figural`, e2e `lab` dan `figural` |
+
+Keputusan atas §10:
+1. **Cetak hitam-putih murni.** Kubus hanya memakai hitam, putih, dan simbol hitam.
+2. **Animasi lipatan 2D.** Kubus 3D yang bisa diputar tidak dibuat. Sebagai gantinya, langkah lipatan kertas digambar berurutan dengan panah, dan jejak pola bisa dilangkahkan.
+3. **Kalibrasi tingkat** memakai rentang skor §3.4 sebagai titik awal. Tes memastikan rata-rata tingkat sulit lebih tinggi daripada mudah di setiap resep.
+4. **Simbol huruf tidak dipakai.** Bayangan cermin diuji dengan bangun tak simetris (L, bendera) dan gambar garis.
+
+Yang berbeda dari rancangan:
+- **Bingkai** `grid9` tidak dibuat. Matriks letak memakai `ring8` dan `plain`, dan juring memakai `pie8`.
+- **Di dalam persegi** pada bingkai `plain`, objek hanya menempati sudut. Sisi dalam disediakan untuk segitiga tempel, agar gambar tidak bertumpuk.
+- **Estafet** dinilai dengan pembaca fitur khusus berdasarkan peran (simbol yang dibawa dan simbol baru). Simbol baru ditandai "bebas" (K3), sehingga harus sama di semua opsi; inilah yang menolak Contoh 2.
+- **Contoh 1** tidak dijadikan tes. Dengan resolusi gambar yang ada, beda A dan C tidak bisa dipastikan, jadi soal itu memang tidak lolos K3. Resep "pasangan garis dan titik" membuat soal sejenis yang beda opsinya jelas.

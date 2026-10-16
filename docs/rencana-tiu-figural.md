@@ -1,6 +1,6 @@
 # Rencana: TIU Figural yang Lebih Variatif dan Lebih Kompleks
 
-Status: rencana, belum dikerjakan. Ukuran pekerjaan memakai skala S/M/L seperti di [PROPOSAL-PENGEMBANGAN-FITUR.md](PROPOSAL-PENGEMBANGAN-FITUR.md).
+Status: **dikerjakan di versi 1.11.0** (lihat [Hasil 1.11.0](#hasil-1110) di bawah). Ukuran pekerjaan memakai skala S/M/L seperti di [PROPOSAL-PENGEMBANGAN-FITUR.md](PROPOSAL-PENGEMBANGAN-FITUR.md).
 
 Rancangan mesinnya, disusun dari contoh soal bergaya SKD (deret orbit, kotak berdiagonal, figur garis, jaring kubus), ada di [rancangan-figural-v2.md](rancangan-figural-v2.md). Model "sel komposit" di §3.1 digantikan oleh model adegan di sana.
 
@@ -255,3 +255,27 @@ Setiap tahap bisa dirilis sendiri dan disertai tes.
 1. **Urutan topik baru**: Gabungan Gambar dulu (lebih ringan), atau langsung Jaring-jaring Kubus (lebih sering muncul di psikotes kedinasan, tetapi pekerjaannya L)?
 2. **Soal figural lama di bank** masih punya celah tebakan, dan aturannya tidak tersimpan sehingga pengecohnya tidak bisa dibuat ulang. Ada tiga pilihan: (a) dibiarkan saja; (b) diberi prioritas paling akhir saat menyusun set; atau (c) disarankan dibuat ulang lewat tombol di Bank Soal.
 3. **Bobot bawaan topik figural** di profil SKD setelah ada topik baru.
+
+---
+
+## Hasil 1.11.0
+
+Diukur dengan cara yang sama seperti §1, kini pada semua resep. Ambang di §2 dijaga oleh `src/__tests__/figuralVariety.test.ts`.
+
+| Ukuran | Sebelum | Sesudah |
+|---|---|---|
+| Medoid (jawaban = opsi paling mirip), terburuk di semua resep × tingkat | 100% | 24% (kertas lipat sulit); umumnya 9–15% |
+| Pola berbeda per 200 soal, Deret sulit | 9 per 1.000 | 152 |
+| Pola terbanyak, Deret / Analogi / Matriks / Transformasi | hingga 100% | 6–10% |
+| Transformasi yang memakai panah | 100% | sekitar 25% (satu dari empat resep) |
+| Resep (jenis soal) | 5 | 23, di 7 topik |
+
+Keputusan di §6 diambil dengan usulan bawaan:
+1. Kedua topik baru dikerjakan sekaligus: Gabungan Gambar dan Ruang dan Kubus.
+2. Soal figural lama di bank dibiarkan (pilihan a). Soal baru dibuat dengan generator baru, dan Serupa+ pada soal lama memakai generator baru.
+3. Topik baru masuk daftar topik TIU dengan bobot sama seperti topik lain.
+
+Yang berbeda dari rencana:
+- **Kertas lipat, figur garis, dan matriks adegan** ikut dibuat; "gambar tersembunyi" belum.
+- Untuk Figural Berbeda, Ruang dan Kubus, dan Gabungan Gambar, ambang pola terbanyak adalah 30%, bukan 12%. Soal jenis ini memang hanya punya sedikit aturan, jadi yang bervariasi adalah resep dan setelannya.
+- Entri Kamus untuk pola figural digantikan oleh **Lab Pola Figural**: setiap jenis soal tampil dengan penjelasan singkat, contoh langsung, dan jejak polanya.

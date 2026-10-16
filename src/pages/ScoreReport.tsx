@@ -5,11 +5,12 @@ import { db } from '../db';
 import { getBackupState } from '../db/backup';
 import { isCorrect, scoreQuestion, weakTopics } from '../domain/scoring';
 import { attemptMode } from '../domain/practice';
-import type { Question } from '../domain/types';
+import type { OptionLabel, Question } from '../domain/types';
 import { mistakesInAttempt } from '../engine/srs';
 import { attemptQuestions } from '../engine/attempts';
 import { startGeneration } from '../engine/generator';
-import { createRemedialSet } from '../engine/sets';
+import { createFiguralSet, createRemedialSet } from '../engine/sets';
+import { figuralMisses } from '../domain/figuralNames';
 import { Recommendations, TimingCard, TkpCard, UnsureCard } from '../components/Analysis';
 import { CompareCard } from '../components/CompareCard';
 import { earlierExams } from '../domain/compare';
@@ -23,6 +24,47 @@ import { tabAwaySummary } from '../domain/catMode';
 import type { TabAway } from '../domain/types';
 import { isGraded, maxPerQuestion, specOf } from '../domain/examPackage';
 import { fmtDate } from '../lib/format';
+
+/** Figural mistakes by kind of question, each with practice of just that kind (made on the device, no AI). */
+function FiguralCard({ questions, answers }: { questions: Question[]; answers: Record<string, OptionLabel> }) {
+  const nav = useNavigate();
+  const [busy, setBusy] = useState('');
+  const misses = figuralMisses(questions, answers);
+  if (!misses.length) return null;
+  async function practise(m: (typeof misses)[number]) {
+    setBusy(m.archetype);
+    try {
+      const set = await createFiguralSet(`Latihan pola: ${m.name}`, [{ topic: m.topic, difficulty: m.difficulty, count: 5, archetypes: [m.archetype] }]);
+      nav(`/simulation?set=${set.id}&mode=practice`);
+    } finally {
+      setBusy('');
+    }
+  }
+  return (
+    <section className="card">
+      <h2>Pola gambar yang perlu dilatih</h2>
+      <p className="muted mt-1 text-xs">Soal TIU gambar yang salah atau kosong, menurut jenisnya. Latihannya dibuat langsung oleh aplikasi, tanpa AI.</p>
+      <ul className="mt-2 space-y-2">
+        {misses.slice(0, 6).map((m) => (
+          <li key={m.archetype} className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="mr-auto">
+              {m.name} <span className="muted">· {m.topic}</span>
+            </span>
+            <span className="muted text-xs">
+              {m.wrong} dari {m.total} salah
+            </span>
+            <button className="btn btn-sm" disabled={!!busy} onClick={() => void practise(m)}>
+              {busy === m.archetype ? 'Membuat…' : 'Latih 5 soal'}
+            </button>
+            <a className="text-brand-600 dark:text-brand-300 text-xs underline" href={`#/lab?resep=${encodeURIComponent(m.archetype)}`}>
+              Lab Pola
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 /** What Mode CAT recorded. Shown, never scored. */
 function CatModeCard({ aways, lockedOrder }: { aways?: TabAway[]; lockedOrder: boolean }) {
@@ -185,6 +227,8 @@ export default function ScoreReport() {
         </section>
         <TimingCard a={a} questions={questions} practice={practice} />
       </div>
+
+      <FiguralCard questions={questions} answers={a.answers} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <UnsureCard a={a} questions={questions} />

@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.11.0',
+    date: '2026-10-16',
+    items: [
+      'Soal TIU gambar jauh lebih beragam: deret orbit (panah dan segitiga mengelilingi persegi), deret ruang, deret estafet, juring berputar, garis dan titik, matriks letak, putar dan cermin gambar, kertas dilipat lalu dilubangi, serta "bukan hasil putaran". Ada dua topik baru: Ruang dan Kubus (jaring-jaring kubus, sisi berhadapan) dan Gabungan Gambar.',
+      'Jawaban soal gambar tidak bisa lagi ditebak dengan memilih gambar yang paling mirip dengan pilihan lain. Setiap soal diperiksa ulang agar hanya satu pilihan yang bisa dipertahankan, dan pembahasannya menjelaskan mengapa pilihan pengecoh tampak benar.',
+      'Pembahasan soal gambar punya tombol "Telusuri pola" untuk mengikuti setiap aturan langkah demi langkah. Menu Materi punya Lab Pola Figural: pilih jenis soal dan aturannya, coba contohnya, lalu jadikan latihan 10 soal. Laporan Skor menunjukkan jenis pola gambar yang sering salah, dengan tombol latihan 5 soal jenis itu.',
+      'Set dengan soal gambar jenis baru hanya bisa dibuka oleh aplikasi versi ini atau yang lebih baru; versi lama akan meminta pembaruan.',
+    ],
+  },
+  {
     version: '1.10.0',
     date: '2026-10-13',
     items: [

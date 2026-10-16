@@ -8,7 +8,13 @@ export function FigureView({ figure, size = 80 }: { figure: Figure; size?: numbe
   const html = useMemo(() => (hasStemFigure(figure) ? figureSvg(figure, size) : ''), [figure, size]);
   if (!html) return null;
   return (
-    <div role="img" aria-label={describeFigure(figure)} className="my-2 max-w-full overflow-x-auto text-slate-800 dark:text-slate-100" dangerouslySetInnerHTML={{ __html: html }} />
+    // A wide figure (a long series, three cubes) shrinks to the screen instead of scrolling sideways.
+    <div
+      role="img"
+      aria-label={describeFigure(figure)}
+      className="my-2 max-w-full text-slate-800 dark:text-slate-100 [&>svg]:h-auto [&>svg]:max-w-full"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   );
 }
 

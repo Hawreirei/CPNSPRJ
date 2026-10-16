@@ -42,6 +42,7 @@ const NAV: { group?: string; items: NavItem[] }[] = [
     items: [
       { to: '/kartu', label: 'Kartu Hafalan TWK', icon: 'cards' },
       { to: '/kamus', label: 'Kamus Rumus TIU', icon: 'formula' },
+      { to: '/lab', label: 'Lab Pola Figural', icon: 'shapes' },
     ],
   },
   {

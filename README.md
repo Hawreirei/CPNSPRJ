@@ -20,7 +20,8 @@ Setiap set terdiri dari tiga keluaran yang saling terhubung:
 | Panel rencana | Jumlah permintaan API, perkiraan token, biaya, dan waktu sebelum generasi |
 | Generasi | Batch campuran topik, progres, stop/lanjut, coba ulang batch gagal, autosave per batch |
 | Pemeriksaan keandalan | TIU numerik dihitung ulang dengan mathjs (kunci dikoreksi otomatis bila jelas); TKP wajib skor 1–5 tanpa skor tertinggi kembar; TWK wajib rujukan, ditandai bila meragukan; deteksi duplikat |
-| TIU figural | Deret dan analogi gambar dibuat oleh aplikasi (SVG) dari aturan pasti: gratis dan kuncinya selalu benar |
+| TIU figural | Soal gambar dibuat oleh aplikasi (SVG), gratis dan tanpa AI: 23 resep di 7 topik (deret bangun, orbit, ruang, estafet, juring, garis dan titik; analogi; matriks; putar, cermin, dan kertas lipat; figural berbeda; Ruang dan Kubus; Gabungan Gambar). Pemecah aturan memastikan hanya satu pilihan yang bisa dipertahankan; pengecoh berasal dari salah paham yang umum dan disusun agar kunci tidak bisa ditebak tanpa memecahkan pola. Pola yang baru dipakai di bank dihindari. Lihat [docs/rancangan-figural-v2.md](docs/rancangan-figural-v2.md) |
+| Lab Pola Figural | Pilih jenis soal gambar, tingkat, dan aturannya; coba soal contoh, telusuri polanya langkah demi langkah, lalu jadikan latihan 10 soal. Laporan Skor menunjukkan jenis pola gambar yang sering salah, dengan tombol latihan 5 soal jenis itu |
 | TIU analisis data dan bacaan | Analisis Data: tabel, grafik batang, garis, atau lingkaran dibuat aplikasi dari angka acak dengan konteks rekaan, dan kuncinya dihitung dari angka itu (gratis). Pemahaman Bacaan: AI menulis bacaan dengan beberapa soal sekaligus |
 | Kontrol soal | Edit, tulis ulang dengan AI, kunci, bintangi, pindah, hapus, "Serupa+" |
 | Simulasi CAT | Timer (default 100 menit), grid nomor, ragu-ragu, pintasan keyboard, kirim otomatis, bisa dilanjutkan setelah refresh |

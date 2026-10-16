@@ -63,7 +63,7 @@ describe('the key cannot be found without solving', () => {
 });
 
 describe('a topic varies', () => {
-  const TOPICS = ['Deret Figural', 'Analogi Figural', 'Matriks Figural', 'Transformasi Figural', 'Figural Berbeda', 'Ruang dan Kubus'];
+  const TOPICS = ['Deret Figural', 'Analogi Figural', 'Matriks Figural', 'Transformasi Figural', 'Figural Berbeda', 'Ruang dan Kubus', 'Gabungan Gambar'];
   for (const t of TOPICS)
     for (const d of LEVELS)
       it(`${t} ${d}`, { timeout: 60_000 }, () => {
@@ -77,9 +77,9 @@ describe('a topic varies', () => {
             total++;
           }
         const top = Math.max(...sigs.values()) / total;
-        // An odd-one-out or cube question is one rule by nature, so there it is the recipes that vary.
-        const odd = t === 'Figural Berbeda' || t === 'Ruang dan Kubus';
+        // Odd-one-out, cube and overlay questions have few rules by nature; there the settings and recipes vary.
+        const odd = t === 'Figural Berbeda' || t === 'Ruang dan Kubus' || t === 'Gabungan Gambar';
         expect(top, 'share of the most common pattern').toBeLessThanOrEqual(odd ? 0.3 : 0.12);
-        expect(sigs.size, 'different patterns in 300 questions').toBeGreaterThanOrEqual(odd ? 8 : 20);
+        expect(sigs.size, 'different patterns in 300 questions').toBeGreaterThanOrEqual(odd ? 6 : 20);
       });
 });

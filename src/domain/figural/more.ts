@@ -267,9 +267,10 @@ const randomSegs = (k: number, r: Rand) => [...Array(20).keys()].sort(() => r() 
 const opsFitting = (a: number[], b: number[], c: number[]) => (Object.keys(OPS) as Op[]).filter((o) => picKey(lines(OPS[o].apply(a, b))) === picKey(lines(c)));
 
 function makeOverlay(d: Difficulty, r: Rand): Draft | null {
-  const ops: Op[] = d === 'mudah' ? ['union', 'xor'] : d === 'sedang' ? ['union', 'xor', 'and'] : ['xor', 'and', 'minus'];
+  const ops: Op[] = d === 'mudah' ? ['union', 'xor', 'and'] : ['union', 'xor', 'and', 'minus'];
   const op = pick(ops, r);
-  const k = d === 'mudah' ? 3 : d === 'sedang' ? 4 : 5;
+  // More lines to keep track of at higher levels.
+  const k = d === 'mudah' ? randInt(3, 4, r) : d === 'sedang' ? randInt(4, 5, r) : randInt(5, 6, r);
   const A = randomSegs(k, r);
   const B = [...A.slice(0, randInt(1, 2, r)), ...randomSegs(k, r)].slice(0, k);
   const D = randomSegs(k, r);
