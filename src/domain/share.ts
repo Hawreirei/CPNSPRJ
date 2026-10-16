@@ -91,6 +91,7 @@ const cell = z.union([
   }),
   z.strictObject({ kind: z.literal('lines'), segs: z.array(z.number().int().min(0).max(19)).max(20) }),
   z.strictObject({ kind: z.literal('cube'), front: face, top: face, right: face }),
+  z.strictObject({ kind: z.literal('face'), face }),
   z.strictObject({
     kind: z.literal('net'),
     squares: z.array(z.strictObject({ x: z.number().int().min(0).max(6), y: z.number().int().min(0).max(6), face })).length(6),

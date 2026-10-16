@@ -3,7 +3,7 @@ import { fmtNum } from '../domain/describe';
 import type { DataFigure, Question } from '../domain/types';
 import { dataChartSvg } from './dataSvg';
 import { opensGroup, passageLabel } from '../domain/groups';
-import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
+import { cellSvg, figureSvg, hasStemFigure, optionSize, svgToPng } from './figureSvg';
 import { isImageSrc, printSize } from '../domain/questionImage';
 import { isGraded, scoringRulesText, specOf, subtestsIn } from '../domain/examPackage';
 import { toPlain } from './richText';
@@ -122,7 +122,7 @@ export async function exportDocx(meta: ExportMeta, questions: Question[], pack: 
       out.push(new Paragraph({ keepNext: true, children: [picture] }));
     }
     for (const o of q.options) {
-      const runs = o.figure ? [await image(cellSvg(o.figure, 56, '#111'))] : text(o.text);
+      const runs = o.figure ? [await image(cellSvg(o.figure, optionSize(o.figure), '#111'))] : text(o.text);
       const suffix = withKey && isGraded(q.subtest) ? [new TextRun({ text: `  (skor ${o.score})`, italics: true, color: '555555' })] : [];
       const isKey = withKey && !isGraded(q.subtest) && o.label === q.answer;
       out.push(new Paragraph({ indent: { left: 360 }, keepNext: true, children: [new TextRun({ text: `${o.label}. `, bold: isKey }), ...runs, ...suffix] }));

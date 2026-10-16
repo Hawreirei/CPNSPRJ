@@ -1,6 +1,6 @@
 import { isLegacy } from '../domain/pic';
 import type { Figure, FigureCell, Pic, ShapeKind } from '../domain/types';
-import { cubeSvg, foldSvg, holesSvg, linesSvg, netSvg, sceneSvg, strokesSvg } from './picSvg';
+import { cubeSvg, faceSvg, foldSvg, holesSvg, linesSvg, netSvg, sceneSvg, strokesSvg } from './picSvg';
 
 const pts = (arr: [number, number][]) => arr.map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`).join(' ');
 
@@ -92,6 +92,8 @@ export function cellSvg(cell: Pic | null, size = 96, color = 'currentColor'): st
         return linesSvg(cell, size, color);
       case 'cube':
         return cubeSvg(cell, size, color);
+      case 'face':
+        return faceSvg(cell, size, color);
       case 'net':
         return netSvg(cell, size, color);
       case 'holes':
@@ -172,6 +174,9 @@ export function figureSvg(fig: Figure, cellSize = 96, color = 'currentColor'): s
   });
   return svg(x - gap, size);
 }
+
+/** Options with more detail (scenes, cubes, nets, paper) are drawn larger than a single shape; `scale` for print. */
+export const optionSize = (cell: Pic, scale = 1) => Math.round(scale * (isLegacy(cell) || cell.kind === 'face' ? 56 : cell.kind === 'net' || cell.kind === 'cube' ? 84 : 72));
 
 /** Whether a question has a figure in its stem (odd-one-out puzzles show theirs in the options only). */
 export const hasStemFigure = (fig: Figure | undefined): fig is Figure => !!fig && fig.cells.length > 0;

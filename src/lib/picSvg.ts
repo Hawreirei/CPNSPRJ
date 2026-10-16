@@ -1,6 +1,6 @@
 import { foldGeometry, foldShapes, holePoint, type Poly } from '../domain/fold';
 import { LATTICE_SEGMENTS, norm, slotAngle } from '../domain/pic';
-import type { CubeCell, Face, Fill, FoldCell, GlyphKind, HolesCell, LinesCell, NetCell, SceneCell, SceneObject, StrokeCell } from '../domain/types';
+import type { CubeCell, Face, FaceCell, Fill, FoldCell, GlyphKind, HolesCell, LinesCell, NetCell, SceneCell, SceneObject, StrokeCell } from '../domain/types';
 
 /*
  * Drawings for the figural pictures beyond the first kind (scenes, line figures, lattices, cubes,
@@ -283,7 +283,9 @@ function faceMarkup(f: Face, color: string, w: number): string {
 function facePlate(f: Face, o: [number, number], u: [number, number], v: [number, number], color: string): string {
   const m = `matrix(${f1(u[0])} ${f1(u[1])} ${f1(v[0])} ${f1(v[1])} ${f1(o[0])} ${f1(o[1])})`;
   const len = Math.hypot(...u);
-  return `<g transform="${m}">${faceMarkup(f, color, 1.7 / len)}<rect x="0" y="0" width="1" height="1" fill="none" stroke="${color}" stroke-width="${f1(2 / len)}" vector-effect="non-scaling-stroke"/></g>`;
+  // The outline is drawn outside the skewing transform so its lines keep one width.
+  const corners: [number, number][] = [o, [o[0] + u[0], o[1] + u[1]], [o[0] + u[0] + v[0], o[1] + u[1] + v[1]], [o[0] + v[0], o[1] + v[1]]];
+  return `<polygon points="${pts(corners)}" fill="white" stroke="none"/><g transform="${m}">${faceMarkup(f, color, 1.7 / len)}</g><polygon points="${pts(corners)}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round"/>`;
 }
 
 export function cubeSvg(c: CubeCell, size: number, color: string): string {
@@ -298,6 +300,10 @@ export function cubeSvg(c: CubeCell, size: number, color: string): string {
     facePlate(c.right, [x0 + s, y0], [d, -d], [0, s], color),
   ].join('');
   return wrap(body, size, color);
+}
+
+export function faceSvg(c: FaceCell, size: number, color: string): string {
+  return wrap(facePlate(c.face, [18, 18], [64, 0], [0, 64], color), size, color);
 }
 
 export function netSvg(c: NetCell, size: number, color: string): string {

@@ -57,12 +57,23 @@ export function picFeats(p: Pic): Feat[] {
         { key: 'apex', value: norm(p.apex), mod: 360, step: 90 },
         { key: 'attached', value: p.attached ? 'ya' : 'tidak' },
         { key: 'dots', value: p.attached ? p.strands : p.dots, step: 1 },
-        p.attached ? { key: 'dotSide', value: 'ujung' } : { key: 'dotSide', value: norm(p.dotSide), mod: 360, step: 90 },
+        // Where the dots line up, read on its own or against where the apex points.
+        ...(p.attached
+          ? [
+              { key: 'dotSide', group: 'dotSide', view: 'abs', value: 'ujung' },
+              { key: 'dotSideRel', group: 'dotSide', view: 'rel', value: 'ujung' },
+            ]
+          : [
+              { key: 'dotSide', group: 'dotSide', view: 'abs', value: norm(p.dotSide), mod: 360, step: 90 },
+              { key: 'dotSideRel', group: 'dotSide', view: 'rel', value: norm(p.dotSide - p.apex), mod: 360, step: 90 },
+            ]),
       ];
     case 'lines':
       return Array.from({ length: 20 }, (_, i) => ({ key: `seg${i}`, value: p.segs.includes(i) ? '1' : '0' }));
     case 'cube':
       return (['front', 'top', 'right'] as const).map((f) => ({ key: f, value: faceKey(p[f]) }));
+    case 'face':
+      return [{ key: 'face', value: faceKey(p.face) }];
     case 'net':
       return p.squares.map((s) => ({ key: `sq${s.x},${s.y}`, value: faceKey(s.face) }));
     case 'holes':

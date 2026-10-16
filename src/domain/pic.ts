@@ -209,6 +209,8 @@ export function picKey(p: Pic): string {
       return `lines|${[...new Set(p.segs)].sort((a, b) => a - b).join(',')}`;
     case 'cube':
       return `cube|${faceKey(p.front)}|${faceKey(p.top)}|${faceKey(p.right)}`;
+    case 'face':
+      return `face|${faceKey(p.face)}`;
     case 'net':
       return `net|${p.squares.map((s) => `${s.x},${s.y},${faceKey(s.face)}`).join('|')}`;
     case 'holes':

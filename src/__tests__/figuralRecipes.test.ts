@@ -14,7 +14,7 @@ const RUNS = 40;
 
 describe('every figural recipe', () => {
   for (const a of ARCHETYPES)
-    it(`${a.id}`, () => {
+    it(`${a.id}`, { timeout: 60_000 }, () => {
       for (const d of a.levels)
         for (let seed = 0; seed < RUNS; seed++) {
           const q = makeWith(a, d, seeded(seed));

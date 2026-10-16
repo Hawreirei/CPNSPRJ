@@ -5,7 +5,7 @@ import type { DataFigure, Question } from '../domain/types';
 import { dataChartSvg } from './dataSvg';
 import { isImageSrc, printSize } from '../domain/questionImage';
 import { opensGroup, passageLabel } from '../domain/groups';
-import { cellSvg, figureSvg, hasStemFigure, svgToPng } from './figureSvg';
+import { cellSvg, figureSvg, hasStemFigure, optionSize, svgToPng } from './figureSvg';
 import { hasStudentHeader, keyText, PACK_TITLES, type ExportMeta, type PackKind } from './exportDocx';
 import { isGraded, isTopOption, scoringRulesText, specOf, subtestsIn } from '../domain/examPackage';
 import { toPlain } from './richText';
@@ -61,7 +61,7 @@ export async function exportPdf(meta: ExportMeta, questions: Question[], pack: P
     if (q.image && isImageSrc(q.image.src)) parts.push({ image: q.image.src, ...printSize(q.image), margin: [0, 2, 0, 4] });
     for (const o of q.options) {
       const isKey = withKey && (isGraded(q.subtest) ? isTopOption(q, o) : o.label === q.answer);
-      const option: Content = o.figure ? await image(cellSvg(o.figure, 56, '#111')) : { text: toPlain(o.text), bold: isKey };
+      const option: Content = o.figure ? await image(cellSvg(o.figure, optionSize(o.figure), '#111')) : { text: toPlain(o.text), bold: isKey };
       const body: Content = withKey && o.rationale ? { stack: [option, { text: o.rationale, italics: true, fontSize: 9, color: '#444444' }] } : option;
       const score = withKey && isGraded(q.subtest) ? { text: `(skor ${o.score})`, italics: true, color: '#555555', width: 'auto' as const } : null;
       parts.push({ columns: [{ text: `${o.label}.`, width: 18, bold: isKey }, { stack: [body], width: '*' }, ...(score ? [score] : [])], columnGap: 4, margin: [14, 1, 0, 1] });

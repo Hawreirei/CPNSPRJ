@@ -822,32 +822,70 @@ function makeSceneAnalogy(d: Difficulty, r: Rand): Draft | null {
 /* ----------------------------------------------------- F10: scene matrix */
 
 function makeSceneMatrix(d: Difficulty, r: Rand): Draft | null {
-  const frame: FrameKind = 'ring8';
-  const glyphs = [...REGION_GLYPHS.filter((g) => !ORIENTED.includes(g))].sort(() => r() - 0.5).slice(0, 2);
-  // Each object's place follows the rows, the columns, or appears once in each row and column.
-  const places = d === 'mudah' ? (['row', 'col'] as const) : d === 'sedang' ? (['row', 'latin'] as const) : (['latin', 'latin2'] as const);
-  // Two objects on a ring of eight places, each with three places of its own, so they never meet.
+  const frame: FrameKind = pick(['ring8', 'plain'], r);
+  // Each property follows the rows, the columns, or takes each of its three values once per row and column.
+  const pair: [string, string] = d === 'mudah' ? (chance(0.5, r) ? ['row', 'col'] : ['col', 'row']) : d === 'sedang' ? [pick(['row', 'col'], r), 'latin'] : ['latin', 'latin2'];
+  if (chance(0.5, r)) pair.reverse();
+  const places = pair;
+  // The first object moves around; the second moves too, turns in place, or changes its fill.
+  const kind = pick(['slot', 'dir', 'fill'] as const, r);
+  const moving = pick(
+    REGION_GLYPHS.filter((g) => !ORIENTED.includes(g) && g !== 'rect' && g !== 'eq'),
+    r,
+  );
+  const second: GlyphKind =
+    kind === 'dir'
+      ? pick(['arrow', 'pin', 'L', 'flag'] as GlyphKind[], r)
+      : kind === 'fill'
+        ? pick(['square', 'star', 'triangle'] as GlyphKind[], r)
+        : pick(
+            REGION_GLYPHS.filter((g) => g !== moving && !ORIENTED.includes(g)),
+            r,
+          );
+  // Two objects on eight places, each with places of its own, so they never meet.
   const ring = [0, 1, 2, 3, 4, 5, 6, 7].sort(() => r() - 0.5);
   const slotsA = ring.slice(0, 3);
   const slotsB = ring.slice(3, 6);
+  const fixed = ring[6];
+  const dirs = [0, 90, 180, 270].sort(() => r() - 0.5).slice(0, 3);
+  const fills = (['solid', 'empty', 'striped', 'dotted'] as Fill[]).sort(() => r() - 0.5).slice(0, 3);
+  const anchor = frame === 'plain' ? { anchor: 'out' as const } : {};
   const idx = (p: string, i: number, j: number) => (p === 'row' ? i : p === 'col' ? j : p === 'latin' ? (i + j) % 3 : (2 * i + j) % 3);
-  const cell = (i: number, j: number): SceneCell => ({
-    kind: 'scene',
-    frame,
-    objects: [
-      { glyph: glyphs[0], slot: slotsA[idx(places[0], i, j)] },
-      { glyph: glyphs[1], slot: slotsB[idx(places[1], i, j)] },
-    ],
-  });
+  const cell = (i: number, j: number): SceneCell => {
+    const k = idx(places[1], i, j);
+    return {
+      kind: 'scene',
+      frame,
+      objects: [
+        { glyph: moving, slot: slotsA[idx(places[0], i, j)], ...anchor },
+        kind === 'slot'
+          ? { glyph: second, slot: slotsB[k], ...anchor }
+          : kind === 'dir'
+            ? { glyph: second, slot: fixed, dir: dirs[k], ...anchor }
+            : { glyph: second, slot: fixed, fill: fills[k], ...anchor },
+      ],
+    };
+  };
   const cells = [0, 1, 2].flatMap((i) => [0, 1, 2].map((j) => cell(i, j)));
   if (cells.some(collides)) return null;
   const key = cells[8];
   const visible = [...cells.slice(0, 8), null];
-  const lures: Lure[] = [glyphs[0], glyphs[1]].flatMap((g, gi) =>
-    (gi === 0 ? slotsA : slotsB)
-      .filter((s) => s !== key.objects[gi].slot)
-      .map((s) => ({ pic: withProp(key, g, 'slot', s), why: `Letak ${GLYPH_NAMES[g]} ini sudah dipakai di baris atau kolom yang sama, atau tidak mengikuti urutannya.` })),
-  );
+  const prop: Prop = kind;
+  const values: Val[] = kind === 'slot' ? slotsB : kind === 'dir' ? dirs : fills;
+  const lures: Lure[] = [
+    ...slotsA
+      .filter((x) => x !== key.objects[0].slot)
+      .map((x) => ({
+        pic: withProp(key, moving, 'slot', x),
+        why: `Letak ${GLYPH_NAMES[moving]} ini sudah dipakai di baris atau kolom yang sama, atau tidak mengikuti urutannya.`,
+      })),
+    ...values
+      .filter((x) => x !== key.objects[1][prop])
+      .map((x) => ({
+        pic: withProp(key, second, prop, x),
+        why: `${PROP_WORD[prop][0].toUpperCase()}${PROP_WORD[prop].slice(1)} ${GLYPH_NAMES[second]} ini sudah dipakai di baris atau kolom yang sama.`,
+      })),
+  ];
   const pool = scenePool(
     key,
     r,
@@ -861,12 +899,15 @@ function makeSceneMatrix(d: Difficulty, r: Rand): Draft | null {
   if (!chosen) return null;
   const final = judgeMatrix<Pic>(visible, chosen.options, chosen.answerIdx, picFeats);
   if (!final.ok) return null;
-  const say = (g: GlyphKind, p: string, slots: number[]) =>
-    p === 'row'
-      ? `${GLYPH_NAMES[g]} berada di tempat yang sama dalam setiap baris (${slots.map((s) => slotName(frame, s)).join(', ')})`
+  const say = (g: GlyphKind, pr: Prop, p: string, vals: Val[]) => {
+    const list = vals.map((v) => valueWord(frame, pr, v)).join(', ');
+    const what = `${PROP_WORD[pr]} ${GLYPH_NAMES[g]}`;
+    return p === 'row'
+      ? `${what} sama dalam setiap baris (${list})`
       : p === 'col'
-        ? `${GLYPH_NAMES[g]} berada di tempat yang sama dalam setiap kolom (${slots.map((s) => slotName(frame, s)).join(', ')})`
-        : `${GLYPH_NAMES[g]} menempati ${slots.map((s) => slotName(frame, s)).join(', ')} masing-masing sekali di setiap baris dan kolom`;
+        ? `${what} sama dalam setiap kolom (${list})`
+        : `${what} (${list}) muncul masing-masing sekali di setiap baris dan kolom`;
+  };
   return {
     stem: stemFor('matrix', r),
     figure: { layout: 'matrix', cells: visible },
@@ -875,11 +916,11 @@ function makeSceneMatrix(d: Difficulty, r: Rand): Draft | null {
     rationales: chosen.rationales,
     meta: {
       families: [...new Set(places.map((p) => (p.startsWith('latin') ? 'latin' : p)))],
-      signature: `scene-matrix|${frame}|${places.join('+')}`,
+      signature: `scene-matrix|${frame}|slot:${places[0]}|${kind}:${places[1]}`,
       complexity: final.complexity + 1,
     },
     explanation: (ans) =>
-      `Pola: ${say(glyphs[0], places[0], slotsA)}; ${say(glyphs[1], places[1], slotsB)}.\n\nJadi gambar di baris ketiga, kolom ketiga: ${describePic(key)} (${ans}).`,
+      `Pola: ${say(moving, 'slot', places[0], slotsA)}; ${say(second, kind, places[1], values)}.\n\nJadi gambar di baris ketiga, kolom ketiga: ${describePic(key)} (${ans}).`,
   };
 }
 
