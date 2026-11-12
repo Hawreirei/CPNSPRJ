@@ -2,7 +2,7 @@ import { db } from '../db';
 import { isGraded } from '../domain/examPackage';
 import { CROSS_CHECK_KINDS } from '../domain/quality';
 
-const VALIDATOR_VERSION = '3';
+const VALIDATOR_VERSION = '4';
 
 /**
  * Re-run the answer checks on saved questions once, after the checks themselves improve. Runs at
@@ -14,7 +14,8 @@ export async function revalidateStored() {
   } catch {
     return;
   }
-  const qs = await db.questions.filter((q) => !isGraded(q.subtest) && q.source !== 'procedural' && !q.locked).toArray();
+  // Graded AI questions too since version 4: an answer given away by the options' lengths is marked there as well.
+  const qs = await db.questions.filter((q) => (!isGraded(q.subtest) || q.source === 'ai') && q.source !== 'procedural' && !q.locked).toArray();
   if (qs.length) {
     const { loadMath, validateQuestion } = await import('../domain/validators');
     await loadMath();

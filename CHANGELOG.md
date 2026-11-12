@@ -2,6 +2,12 @@
 
 Perubahan yang terasa bagi pengguna, per versi. Berkas ini dibuat dari `src/data/changelog.ts` dengan `npm run changelog`; jangan diedit langsung.
 
+## 1.12.0 (2026-11-12)
+
+- Jawaban TWK dan TKP tidak bisa lagi ditebak dengan memilih opsi yang paling panjang. AI kini diminta menulis kelima opsi sama panjang dan sama rinci, dengan pengecoh dan opsi berskor rendah yang sama meyakinkan. Soal yang jawaban benarnya (atau opsi skor tertingginya) masih jauh lebih panjang, atau sebaliknya jauh lebih pendek, atau yang skornya naik seiring panjang opsi, ditandai "perlu dicek" dan langsung ditulis ulang setelah set dibuat.
+- Soal lama di Bank Soal ikut diperiksa sekali saat aplikasi dibuka; yang jawabannya bisa ditebak dari panjang opsi ditandai "perlu dicek" dan bisa diperbaiki dengan tombol 🔧 Perbaiki semua.
+- Halaman set menampilkan "Uji tebak opsi terpanjang": berapa skor yang didapat bila selalu memilih opsi terpanjang tanpa membaca soal, dibandingkan dengan peluang wajarnya (sekitar 20% untuk TWK dan TIU).
+
 ## 1.11.0 (2026-10-16)
 
 - Soal TIU gambar jauh lebih beragam: deret orbit (panah dan segitiga mengelilingi persegi), deret ruang, deret estafet, juring berputar, garis dan titik, matriks letak, putar dan cermin gambar, kertas dilipat lalu dilubangi, serta "bukan hasil putaran". Ada dua topik baru: Ruang dan Kubus (jaring-jaring kubus, sisi berhadapan) dan Gabungan Gambar.

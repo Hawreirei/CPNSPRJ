@@ -17,7 +17,8 @@ import { answerStats } from '../domain/quality';
 import { opensGroup, passageLabel } from '../domain/groups';
 import { DownloadDialog } from '../components/DownloadDialog';
 import { Badge, Empty, ProgressBar } from '../components/ui';
-import { subtestsIn } from '../domain/examPackage';
+import { isGraded, subtestsIn } from '../domain/examPackage';
+import { longestGuess } from '../domain/optionLength';
 
 const STATUS_TEXT: Record<string, string> = { ready: 'Siap dipakai', generating: 'Sedang dibuat', paused: 'Belum selesai', draft: 'Draf' };
 
@@ -128,6 +129,7 @@ export default function SetDetail() {
             {STATUS_TEXT[set.status] ?? set.status} · {questions.length} soal
             {subtestsIn(questions).map((s) => ` · ${s} ${questions.filter((q) => q.subtest === s).length}`)}
           </div>
+          <LongestGuessNote questions={questions} />
         </div>
         <div className="flex flex-wrap gap-2">
           <button className="btn btn-primary" disabled={!questions.length} onClick={() => setDownloading(true)}>
@@ -402,6 +404,40 @@ function WaitCountdown({ until }: { until: number }) {
   return (
     <div className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
       Jeda sebentar ({left} detik) agar tidak melewati batas kuota gratis. Proses berlanjut otomatis.
+    </div>
+  );
+}
+
+/** Fewer questions than this say more about luck than about the set; a warning needs twice as many. */
+const MIN_GUESS_SAMPLE = 5;
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+
+/**
+ * What always picking the longest option would score on this set, so the learner can see for
+ * themselves that the answers cannot be told from the options' lengths (domain/optionLength.ts).
+ */
+function LongestGuessNote({ questions }: { questions: Question[] }) {
+  const g = longestGuess(questions);
+  const names = (graded: boolean) =>
+    subtestsIn(questions)
+      .filter((s) => isGraded(s) === graded)
+      .join('/');
+  const parts: string[] = [];
+  let high = false;
+  if (g.keyed >= MIN_GUESS_SAMPLE && g.keyedChance !== null) {
+    // Twice what a blind guess gets is no longer luck.
+    high ||= g.keyed >= 2 * MIN_GUESS_SAMPLE && g.right / g.keyed > 2 * g.keyedChance;
+    parts.push(`benar ${g.right} dari ${g.keyed} soal ${names(false)} (wajarnya sekitar ${pct(g.keyedChance)})`);
+  }
+  if (g.graded >= MIN_GUESS_SAMPLE && g.gradedShare !== null && g.gradedChance !== null) {
+    high ||= g.graded >= 2 * MIN_GUESS_SAMPLE && g.gradedShare > g.gradedChance + 0.25;
+    parts.push(`${pct(g.gradedShare)} dari skor maksimal ${names(true)} (wajarnya sekitar ${pct(g.gradedChance)})`);
+  }
+  if (!parts.length) return null;
+  return (
+    <div className={`mt-1 text-xs ${high ? 'text-amber-700 dark:text-amber-400' : 'muted'}`} data-testid="longest-guess">
+      Uji tebak opsi terpanjang: {parts.join(' · ')}.
+      {high ? ' Jawaban terlalu mudah ditebak dari panjang opsi; soal yang bermasalah ditandai "perlu dicek" dan bisa diperbaiki.' : ''}
     </div>
   );
 }

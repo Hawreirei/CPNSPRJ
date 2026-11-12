@@ -420,15 +420,17 @@ export async function startGeneration(setId: string): Promise<void> {
   const concurrency = limited && session && limitsOf(session.key).rpm ? 1 : Math.max(1, settings.concurrency);
   await Promise.all(Array.from({ length: concurrency }, worker));
 
-  // One extra request to fix questions whose key, explanation and calculation disagree.
+  // An extra request to fix questions whose key, explanation and calculation disagree, or whose
+  // answer is given away by being the longest option.
   if (session && !quotaStop && !ctrl.signal.aborted) {
     const broken = ((await db.questions.bulkGet(producedIds)).filter(Boolean) as Question[]).filter(needsAutoRepair);
     const u = broken.length ? await keyUsage(session.key) : null;
     if (u && (u.remainingToday === null || u.remainingToday > 0)) {
       update(setId, { current: ['Memeriksa ulang soal'] });
-      log(setId, 'info', `Memeriksa ulang ${broken.length} soal yang kunci jawaban dan pembahasannya tidak cocok…`);
+      log(setId, 'info', `Memeriksa ulang ${broken.length} soal yang kunci, pembahasan, atau panjang opsinya bermasalah…`);
       try {
-        const fixed = await repairWith(session, broken, ctrl.signal, (i, o) => addUsage(setId, i, o), { maxRequests: 1 });
+        // Rationed keys spend one request on it; others up to three (30 questions).
+        const fixed = await repairWith(session, broken, ctrl.signal, (i, o) => addUsage(setId, i, o), { maxRequests: limited ? 1 : 3 });
         log(setId, 'info', `${fixed} dari ${broken.length} soal berhasil diperbaiki.${fixed < broken.length ? ' Sisanya ditandai "perlu dicek".' : ''}`);
       } catch (e) {
         if ((e as Error).name !== 'AbortError') log(setId, 'info', `Perbaikan otomatis dilewati: ${(e as Error).message}`);

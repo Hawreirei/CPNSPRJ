@@ -14,9 +14,12 @@ import { addUsage } from './usage';
  * not among them: a copy from a photo must be compared with the photo, a duplicate is a choice,
  * and a cross-check that has not run yet needs the checker, not a rewrite.
  */
-const FIXABLE = new Set<FlagKind>(['math-mismatch', 'explanation-mismatch', 'tkp-spread', 'twk-unverified', 'low-confidence', 'structure', 'cross-check-mismatch']);
-/** Fixed right after generation without being asked: a key, explanation or scores that contradict each other. */
-const AUTO_FIX = new Set<FlagKind>(['math-mismatch', 'explanation-mismatch', 'tkp-spread']);
+const FIXABLE = new Set<FlagKind>(['math-mismatch', 'explanation-mismatch', 'tkp-spread', 'twk-unverified', 'low-confidence', 'structure', 'cross-check-mismatch', 'length-cue']);
+/**
+ * Fixed right after generation without being asked: a key, explanation or scores that contradict
+ * each other, and an answer that gives itself away by being the longest option.
+ */
+const AUTO_FIX = new Set<FlagKind>(['math-mismatch', 'explanation-mismatch', 'tkp-spread', 'length-cue']);
 /** Questions per repair request: each comes back whole, so replies stay short enough not to be cut off. */
 const PER_REQUEST = 10;
 

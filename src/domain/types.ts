@@ -223,7 +223,9 @@ export type FlagKind =
   /** The learner reported a problem; mirrors `Question.report` until they withdraw it. */
   | 'user-report'
   /** Copied from a photo or PDF page by a model, and not yet marked as checked by the learner. */
-  | 'import-unchecked';
+  | 'import-unchecked'
+  /** The answer can be told from the options' lengths alone (domain/optionLength.ts). */
+  | 'length-cue';
 
 export type ReportReason = 'kunci-salah' | 'ambigu' | 'usang' | 'typo' | 'lainnya';
 

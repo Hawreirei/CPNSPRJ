@@ -1,5 +1,6 @@
 import { NUMERIC_TOPICS } from './blueprint';
 import { approxEqual, evaluateExpression, parseNumeric } from './numeric';
+import { lengthCueFlag } from './optionLength';
 import { reportFlag } from './quality';
 import type { Flag, OptionLabel, Question } from './types';
 import { isGraded, scoringOf } from './examPackage';
@@ -42,6 +43,9 @@ export function validateQuestion(q: Question, knownHashes?: Set<string>): Questi
       });
     }
   }
+
+  const cue = lengthCueFlag(next);
+  if (cue) flags.push(cue);
 
   if (next.subtest === 'TWK') {
     if (!next.reference?.trim()) {

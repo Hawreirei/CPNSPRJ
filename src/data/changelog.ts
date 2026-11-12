@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.12.0',
+    date: '2026-11-12',
+    items: [
+      'Jawaban TWK dan TKP tidak bisa lagi ditebak dengan memilih opsi yang paling panjang. AI kini diminta menulis kelima opsi sama panjang dan sama rinci, dengan pengecoh dan opsi berskor rendah yang sama meyakinkan. Soal yang jawaban benarnya (atau opsi skor tertingginya) masih jauh lebih panjang, atau sebaliknya jauh lebih pendek, atau yang skornya naik seiring panjang opsi, ditandai "perlu dicek" dan langsung ditulis ulang setelah set dibuat.',
+      'Soal lama di Bank Soal ikut diperiksa sekali saat aplikasi dibuka; yang jawabannya bisa ditebak dari panjang opsi ditandai "perlu dicek" dan bisa diperbaiki dengan tombol 🔧 Perbaiki semua.',
+      'Halaman set menampilkan "Uji tebak opsi terpanjang": berapa skor yang didapat bila selalu memilih opsi terpanjang tanpa membaca soal, dibandingkan dengan peluang wajarnya (sekitar 20% untuk TWK dan TIU).',
+    ],
+  },
+  {
     version: '1.11.0',
     date: '2026-10-16',
     items: [

@@ -5,6 +5,7 @@ import type { BatchItem, Difficulty, Question, Subtest } from './types';
 export const SYSTEM_PROMPT = `Anda adalah penyusun soal latihan SKD CPNS (Seleksi Kompetensi Dasar) yang teliti.
 Tulis soal ORISINAL dalam Bahasa Indonesia baku. Jangan menyalin soal resmi BKN atau soal bimbel.
 Setiap soal memiliki tepat 5 opsi (A–E). Pembahasan ditulis langkah demi langkah dan jelas untuk belajar mandiri.
+PANJANG OPSI SETARA: jawaban tidak boleh bisa ditebak dari bentuk opsinya. Dalam satu soal, kelima opsi ditulis dengan panjang, tingkat kerincian, dan pola kalimat yang hampir sama (selisih panjang paling banyak sekitar 20%). Opsi benar (atau opsi berskor tertinggi) TIDAK lebih panjang, lebih rinci, atau lebih banyak memuat kata kunci positif daripada opsi lain, dan juga tidak mencolok paling pendek; pengecoh ditulis sama lengkap dan meyakinkan. Variasikan opsi mana yang paling panjang dan paling pendek, sehingga panjang opsi sama sekali tidak memberi petunjuk. Sebelum menulis JSON, bandingkan panjang kelima opsi; bila opsi benar mencolok paling panjang atau paling pendek, sesuaikan panjang opsi tanpa mengubah maknanya.
 Gunakan notasi LaTeX di antara tanda $...$ hanya bila perlu (pecahan, pangkat, akar).
 Untuk TWK dan TIU: sebelum menulis, kerjakan sendiri soalnya dan pastikan "answer", kesimpulan pembahasan, dan nilai opsi itu saling cocok. Akhiri pembahasan dengan kalimat "Jawaban: <huruf opsi>." (contoh: "Jawaban: C.").
 Balas HANYA dengan JSON valid sesuai format yang diminta, tanpa teks lain.`;
@@ -43,6 +44,7 @@ function subtestGuide(subtest: Subtest, topics: string[]): string {
     return `Sub-tes: TWK (Tes Wawasan Kebangsaan). Topik: ${list}.
 Variasikan jenis: ingatan konsep, studi kasus "nilai apa yang tercermin", dan dasar hukum.
 Hanya satu opsi benar; pengecoh harus masuk akal.
+Pengecoh ditulis sejenis dan sepanjang opsi benar: bila opsi benar berupa kalimat penjelasan, pengecoh juga kalimat penjelasan yang sama panjang dan sama meyakinkan (misalnya menyebut nilai, pasal, atau tokoh lain yang dekat); bila opsi benar berupa istilah singkat, pengecoh juga istilah singkat.
 WAJIB isi "reference" dengan rujukan spesifik (contoh: "Sila ke-3 Pancasila", "UUD 1945 Pasal 27 ayat (3)", "Sumpah Pemuda 28 Oktober 1928").
 Jika Anda tidak yakin fakta atau nomor pasal benar, isi "confidence": "low". Jangan mengarang nomor pasal.`;
   }
@@ -60,6 +62,7 @@ Untuk deret angka, ekspresi menghitung suku berikutnya, contoh: "48 * 2".`
   }
   return `Sub-tes: TKP (Tes Karakteristik Pribadi). Aspek: ${list}.
 Tulis situasi kerja ASN yang realistis. Kelima opsi adalah tindakan yang masuk akal (hindari opsi yang jelas konyol).
+Kelima opsi ditulis dengan pola kalimat dan panjang yang setara (selisih paling banyak sekitar 4 kata). Opsi berskor rendah juga tindakan lengkap yang terdengar wajar dan punya alasan masuk akal, bukan kalimat pendek yang jelas salah. Opsi skor 5 TIDAK boleh lebih panjang, lebih rinci, atau memuat lebih banyak frasa positif ("dengan ramah", "sesuai prosedur", "berkoordinasi dengan atasan") daripada opsi lain: pembedanya ada pada isi tindakan, bukan pada panjang kalimat. Panjang opsi tidak boleh naik atau turun seiring skornya.
 Setiap opsi WAJIB punya "score" 1 sampai 5, dan kelima skor HARUS berbeda (tepat satu skor 5, satu 4, satu 3, satu 2, satu 1).
 Skor mencerminkan nilai pelayanan publik, integritas, dan profesionalisme ASN. Acak posisi opsi terbaik.
 Pembahasan menjelaskan alasan skor tiap opsi. Tidak perlu "answer".
@@ -173,7 +176,7 @@ export function buildPassagePrompt(opts: { items: BatchItem[]; sizes: number[]; 
     `Sub-tes: TIU (Tes Intelegensia Umum). Topik: "Pemahaman Bacaan".
 Tulis wacana ORISINAL berbahasa Indonesia baku, 150 sampai 250 kata, bertema pelayanan publik, kebijakan, lingkungan, ekonomi, atau sosial budaya. Jangan menyalin teks yang sudah ada.
 Setiap soal harus bisa dijawab HANYA dari isi wacananya: gagasan utama, informasi tersurat, simpulan, makna kata dalam konteks, atau sikap penulis. Hanya satu opsi benar.
-Variasikan jenis pertanyaan di dalam satu wacana. Akhiri pembahasan dengan kalimat "Jawaban: <huruf opsi>.".`,
+Variasikan jenis pertanyaan di dalam satu wacana. Kelima opsi tiap soal sama panjang dan sama rinci; opsi benar tidak boleh menjadi yang paling panjang secara mencolok. Akhiri pembahasan dengan kalimat "Jawaban: <huruf opsi>.".`,
     `Buat ${opts.sizes.length} wacana berbeda, berurutan sesuai daftar ini, masing-masing dengan TEPAT jumlah soal yang diminta:\n${plan}`,
   ];
   if (opts.avoid?.length)
@@ -249,6 +252,7 @@ Perbaiki setiap soal sesuai masalahnya: kerjakan ulang dengan teliti, pastikan t
         subtest === 'TIU' ? '; untuk soal hitungan, "mathExpression" (sintaks mathjs, titik sebagai desimal) harus menghasilkan nilai opsi benar' : ''
       }${subtest === 'TWK' ? '; isi "reference" dengan rujukan spesifik yang Anda yakini benar' : ''}.`
 }
+Bila masalahnya panjang opsi, tulis ulang opsi (terutama pengecoh atau opsi berskor rendah) sehingga kelima opsi sama panjang, sama rinci, dan sama meyakinkan; jawaban benar dan skor tiap opsi tetap sama, dan pembahasan disesuaikan dengan teks opsi yang baru.
 Bila soal dilaporkan pengguna, tangani isi laporannya. Bila Anda ragu akan suatu fakta, ganti isi soal dengan fakta yang Anda yakini; jangan mengarang nomor pasal atau tahun.
 Boleh mengubah angka pada soal atau opsi bila perlu. Pertahankan topik dan tingkat kesulitan. Kembalikan ${questions.length} soal dengan urutan yang sama.
 
